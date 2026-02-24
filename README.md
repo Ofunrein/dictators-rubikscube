@@ -1,29 +1,30 @@
-# README #
+# 3D Rubik's Cube - Sprint 1 Skeleton
 
-This README would normally document whatever steps are necessary to get your application up and running.
+This repository contains a Sprint-1-friendly scaffold for a 3D online Rubik's cube game with:
+- `frontend/`: Vite + three.js rotating cubie demo
+- `backend/`: C++ backend placeholders
+- `docs/`: architecture notes
 
-### What is this repository for? ###
+## Frontend run instructions
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-### How do I get set up? ###
+Then open the local Vite URL shown in terminal (typically `http://localhost:5173`).
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+## Backend run instructions
 
-### Contribution guidelines ###
+```bash
+cd backend
+g++ -std=c++17 src/main.cpp -o backend_skeleton
+./backend_skeleton
+```
 
-* Writing tests
-* Code review
-* Other guidelines
+Expected output:
 
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+```text
+Backend skeleton ready
+```
