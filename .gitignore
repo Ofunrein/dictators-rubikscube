@@ -14,3 +14,4 @@ xcuserdata/
 # CMake build directories
 build/
 backend/build*/
+.idea/
