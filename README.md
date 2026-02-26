@@ -28,3 +28,6 @@ Expected output:
 ```text
 Backend skeleton ready
 ```
+CMake does not automatically detect new source files.
+
+(Whenever you add a new .cpp file to the project, you must explicitly list it in CMakeLists.txt. If you forget to do this, the file will not be compiled or linked into the executable.)
