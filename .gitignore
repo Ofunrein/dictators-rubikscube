@@ -1,1 +1,6 @@
 LANDING_PAGE_PROMPT.md
+node_modules
+dist
+.env
+.env.local
+*.local
