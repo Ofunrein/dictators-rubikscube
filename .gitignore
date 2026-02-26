@@ -10,3 +10,7 @@ xcuserdata/
 
 # macOS metadata
 .DS_Store
+
+# CMake build directories
+build/
+backend/build*/
