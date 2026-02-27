@@ -58,6 +58,10 @@ const stickerMap = FACE_ORDER.reduce((acc, face) => {
   return acc;
 }, {});
 
+/**
+ * Build a single sticker mesh with a neutral material. Color is applied later
+ * via `applyCubeState` to keep geometry and state concerns separate.
+ */
 function createStickerMesh() {
   return new THREE.Mesh(
     stickerGeometry,
@@ -65,6 +69,11 @@ function createStickerMesh() {
   );
 }
 
+/**
+ * Convert a sticker index (0-8) into row/column coordinates.
+ * @param {number} index
+ * @returns {{row: number, col: number}}
+ */
 function indexToRowCol(index) {
   return {
     row: Math.floor(index / 3),
@@ -72,6 +81,15 @@ function indexToRowCol(index) {
   };
 }
 
+/**
+ * Compute sticker position and rotation for a face/index pair.
+ * @param {'U'|'R'|'F'|'D'|'L'|'B'} face
+ * @param {number} index
+ * @param {number} step
+ * @param {number} half
+ * @param {number} epsilon
+ * @returns {{position: number[], rotation: number[]}}
+ */
 function stickerTransform(face, index, step, half, epsilon) {
   const { row, col } = indexToRowCol(index);
 
@@ -112,6 +130,10 @@ function stickerTransform(face, index, step, half, epsilon) {
   };
 }
 
+/**
+ * Build and cache sticker meshes for every face and index.
+ * This is a one-time scene graph setup step.
+ */
 function buildStickerMap() {
   const step = 1.08;
   const half = 1.675;
@@ -129,6 +151,13 @@ function buildStickerMap() {
   }
 }
 
+/**
+ * Normalize a sticker value into a THREE.Color instance.
+ * Accepts face tokens (e.g. 'W', 'R') or any color compatible with THREE.Color.
+ * @param {unknown} value
+ * @param {'U'|'R'|'F'|'D'|'L'|'B'} face
+ * @returns {THREE.Color|string}
+ */
 function resolveStickerColor(value, face) {
   if (typeof value === 'string') {
     const token = value.trim().toUpperCase();
@@ -150,6 +179,10 @@ function resolveStickerColor(value, face) {
   return FACE_DEFAULT_COLORS[face];
 }
 
+/**
+ * Validate cube state shape before applying colors.
+ * @param {object} state
+ */
 function validateCubeState(state) {
   if (!state || typeof state !== 'object') {
     throw new Error('Cube state must be an object with U, R, F, D, L, B faces.');
@@ -162,6 +195,11 @@ function validateCubeState(state) {
   }
 }
 
+/**
+ * Apply a cube state to a given sticker mesh map.
+ * @param {Record<string, THREE.Mesh[]>} nextStickerMap
+ * @param {object} state
+ */
 export function applyCubeState(nextStickerMap, state) {
   validateCubeState(state);
 
@@ -178,8 +216,12 @@ applyCubeState(stickerMap, CubeState.createSolvedState());
 cubeGroup.rotation.x = -0.52;
 cubeGroup.rotation.y = 0.68;
 
+// Expose a simple integration hook for external demos.
 window.setCubeState = (nextState) => applyCubeState(stickerMap, nextState);
 
+/**
+ * Animation loop for orbit controls and rendering.
+ */
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
