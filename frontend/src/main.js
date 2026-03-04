@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import './style.css';
 import { CubeState } from './cube/CubeState.js';
+import { initControls } from './ui/controls.js'; 
 
 const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 const FACE_DEFAULT_COLORS = {
@@ -212,9 +213,11 @@ export function applyCubeState(nextStickerMap, state) {
 }
 
 buildStickerMap();
-applyCubeState(stickerMap, CubeState.createSolvedState());
+const cubeState = new CubeState();
+applyCubeState(stickerMap, cubeState.getState());
 cubeGroup.rotation.x = -0.52;
 cubeGroup.rotation.y = 0.68;
+initControls(cubeState);
 
 // Expose a simple integration hook for external demos.
 window.setCubeState = (nextState) => applyCubeState(stickerMap, nextState);
