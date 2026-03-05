@@ -23,7 +23,7 @@ function rotateFaceCounterClockwise(face) {
 
 /**
  * Apply a move to a cube state.
- * Placeholder implementation until move logic is implemented.
+ * 
  * @param {object} cubeState
  * @param {string} move
  * @returns {object}

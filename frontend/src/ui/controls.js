@@ -1,42 +1,18 @@
 import {MOVES, applyMove} from '../cube/moves'
+import { initKeyboardControls } from './keyboardControls';
 
 /**
- * Initialize UI input controls (keyboard/touch).
- * Implementation is staged for a later sprint.
+ * Central move manager
+ * All controls (keyboard, buttons, etc.) will dispatch moves through this module
+ * No control methods should directly manipulate cube state or call renderer
+ * 
+ * @param {string} move - Move to apply (e.g. 'U', 'R'', etc.)
+ * @param {object} cubeState - Object with getState and setState methods
  */
 
-export function initControls(cubeState) {
+export function dispatchMove(move, cubeState) {
+  console.log(`[controls] dispatchMove called with move: ${move}`);
 
-  console.log('[conrtrols] initControls called - setting up event listeners');
-
-const keyToMove = {
-  U: 'U',
-  D: 'D',
-  L: 'L',
-  R: 'R',
-  F: 'F',
-  B: 'B',
-};
-
-window.addEventListener('keydown', (event) => {
-  console.log(`[controls] keydown event: ${event.key}, modifiers - shift: ${event.shiftKey}, alt: ${event.altKey}`);
-
-  const key = event.key.toUpperCase()
-  let move = keyToMove[key];
-  if(!move) {
-    console.log(`[controls] Invalid move key: ${event.key}`);
-    return; // Not a valid move key
-  } 
-
-  // Reverse rotation if modifier keys are held
-  if(event.shiftKey || event.altKey) {
-    move = move.endsWith("'") ? move.slice(0, -1) : move + "'";
-    console.log(`[controls] Modifier key detected - applying reverse move: ${move}`);
-  }
-
-  console.log(`[controls] Applying move: ${move}`);
-
-  // Apply the move to the current cube state and update
   const newState = applyMove(cubeState.getState(), move);
   cubeState.setState(newState);
 
@@ -44,10 +20,29 @@ window.addEventListener('keydown', (event) => {
 
   if(typeof window.setCubeState !== 'function') {
     console.error('[controls] window.setCubeState is NOT a function - renderer hook is missing');
+    return;
   }
 
-  // Update renderer with new state
   window.setCubeState(cubeState.getState());
   console.log('[controls] window.setCubeState called to update renderer successfully');
-});
+}
+
+/**
+ * Initialize all controls and event listeners
+ * 
+ * @param {object} cubeState
+ * @param {object} options - enables/disables specific control types (e.g. { keyboard: true, mkb: false })
+ * @param {boolean} [options.keyboard=true] - Enable keyboard controls
+ * @param {boolean} [options.mkb=false] - not yet implemented - placeholder for mouse/keyboard hybrid controls
+ */
+
+export function initControls(cubeState, options = {}) {
+  const { keyboard = true, mkb = false } = options;
+
+  console.log('[controls] initControls called with options:', options);
+
+  if (keyboard) {
+    initKeyboardControls(cubeState, dispatchMove);
+    console.log('[controls] Keyboard controls initialized');
+  }
 }
