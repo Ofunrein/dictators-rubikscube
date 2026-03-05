@@ -107,9 +107,9 @@ public:
     explicit PuzzleCube(int n);
 
     /**
-     * @brief Resets puzzle cube to its initial state
+     * @brief Resets puzzle cube to its initial state.
      * 
-     * Resets all the tiles on the cube to the initial state
+     * Resets all the tiles on the cube to when it was first initialized.
      */
     void reset();
 
