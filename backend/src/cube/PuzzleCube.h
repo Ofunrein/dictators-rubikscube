@@ -106,6 +106,13 @@ public:
      */
     explicit PuzzleCube(int n);
 
+    /**
+     * @brief Resets puzzle cube to its initial state
+     * 
+     * Resets all the tiles on the cube to the initial state
+     */
+    void reset();
+
      /**
       * @brief Returns the current state of the puzzle cube. 
       * 
