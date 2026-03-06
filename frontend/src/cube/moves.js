@@ -126,5 +126,24 @@ export function applyMove(cubeState, move) {
     [newState.R[2], newState.R[5], newState.R[8]] = temp;
   }
 
+  //Clockwise down face rotation (D)
+  if (move === 'D') {
+    newState.D = rotateFaceClockwise(newState.D);
+    const temp = [newState.F[6], newState.F[7], newState.F[8]];
+    [newState.F[6], newState.F[7], newState.F[8]] = [newState.R[6], newState.R[7], newState.R[8]];
+    [newState.R[6], newState.R[7], newState.R[8]] = [newState.B[6], newState.B[7], newState.B[8]];
+    [newState.B[6], newState.B[7], newState.B[8]] = [newState.L[6], newState.L[7], newState.L[8]];
+    [newState.L[6], newState.L[7], newState.L[8]] = temp;
+  }
+  //Counterclockwise down face rotation (D')
+  if (move === "D'") {
+    newState.D = rotateFaceCounterClockwise(newState.D);
+    const temp = [newState.F[6], newState.F[7], newState.F[8]];
+    [newState.F[6], newState.F[7], newState.F[8]] = [newState.L[6], newState.L[7], newState.L[8]];
+    [newState.L[6], newState.L[7], newState.L[8]] = [newState.B[6], newState.B[7], newState.B[8]];
+    [newState.B[6], newState.B[7], newState.B[8]] = [newState.R[6], newState.R[7], newState.R[8]];
+    [newState.R[6], newState.R[7], newState.R[8]] = temp;
+  }
+
   return(newState);
 }
