@@ -15,22 +15,16 @@ const KEY_TO_MOVE = {
    * @returns {Function} cleanup - Called to remove event listener
    */
 
-  export function initKeyboardControls(cubeState, dispatchMove) {
-    console.log('[keyboardControls] initKeyboardControls called - setting up keyboard event listener');
-
+export function initKeyboardControls(cubeState, dispatchMove) {
     function handleKeyDown(event) {
-        console.log(`[keyboardControls] keydown event: ${event.key}, modifiers - shift: ${event.shiftKey}, alt: ${event.altKey}`);
-
         const key = event.key.toUpperCase();
         let move = KEY_TO_MOVE[key];
         if (!move) {
-            console.log(`[keyboardControls] Invalid move key: ${event.key}`);
             return; // Not a valid move key
         }
 
         if (event.shiftKey || event.altKey) {
             move = move.endsWith("'") ? move.slice(0, -1) : move + "'";
-            console.log(`[keyboardControls] Modifier key detected - applying reverse move: ${move}`);
         }
 
         dispatchMove(move, cubeState);
@@ -39,7 +33,6 @@ const KEY_TO_MOVE = {
     window.addEventListener('keydown', handleKeyDown);
 
     return function cleanup() {
-        window.removeEventListener
-        console.log('[keyboardControls] Keyboard event listener removed');
+        window.removeEventListener('keydown', handleKeyDown);
     };
 }
