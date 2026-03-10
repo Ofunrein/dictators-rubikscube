@@ -1,1 +1,1 @@
-/usr/bin/c++ -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/cube.dir/src/main.cpp.o -o cube
+/usr/bin/c++  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/cube.dir/src/main.cpp.o -o cube
