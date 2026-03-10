@@ -14,3 +14,62 @@ body,
 canvas {
   display: block;
 }
+
+#practice-panel {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 20;
+  width: min(340px, calc(100vw - 32px));
+  padding: 14px 16px;
+  color: #f3f6ff;
+  background: rgba(10, 14, 24, 0.84);
+  border: 1px solid rgba(154, 176, 255, 0.35);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#practice-panel h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+#practice-panel .hint {
+  margin: 0 0 10px;
+  color: #bfc8e8;
+  font-size: 0.9rem;
+}
+
+#practice-panel .buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#practice-panel button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #0d1016;
+  background: #9ab0ff;
+}
+
+#practice-panel button:hover {
+  background: #b4c4ff;
+}
+
+#practice-panel p {
+  margin: 6px 0;
+  font-size: 0.92rem;
+}
+
+#status-text[data-solved="true"] {
+  color: #7bffa9;
+}
+
+#status-text[data-solved="false"] {
+  color: #ffd77b;
+}
