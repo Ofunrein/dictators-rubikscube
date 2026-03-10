@@ -12,7 +12,6 @@ const KEY_TO_MOVE = {
    * 
    * @param {object} cubeState - Passed to dispatchMove
    * @param {Function} dispatchMove - Central handler from controls.js
-   * @returns {Function} cleanup - Called to remove event listener
    */
 
   export function initKeyboardControls(cubeState, dispatchMove) {
