@@ -15,17 +15,6 @@ PuzzleCube::PuzzleCube(int n) : N(n) {
 
 }
 
-void PuzzleCube::reset() {
-    //same initialization as when the cube is first constructed
-    for(int f = 0; f < 6; f++) {
-        for(int r = 0; r < N; r++) {
-            for(int c = 0; c < N; c++) {
-                cube[f][r][c] = f;
-            }
-        }
-    }
-}
-
 const std::vector<std::vector<std::vector<int>>>& PuzzleCube::getState() const {
     return cube;
 }
