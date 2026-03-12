@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import gsap from 'gsap';
+import { useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navRef = useRef(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         // We use IntersectionObserver on the hero section to trigger the navbar morph
@@ -26,7 +28,7 @@ const Navbar = () => {
 
     const navLinks = [
         { label: 'Learn', href: '#learn' },
-        { label: 'Simulator', href: '#simulator' },
+        { label: 'Simulator', href: '/simulator', isRoute: true },
         { label: 'Compete', href: '#compete' },
         { label: 'Team', href: '#team' },
     ];
@@ -59,22 +61,37 @@ const Navbar = () => {
                     {/* Desktop Nav Links */}
                     <div className="hidden md:flex items-center gap-8">
                         {navLinks.map((link) => (
-                            <a
-                                key={link.label}
-                                href={link.href}
-                                className={`font-mono text-xs uppercase tracking-widest relative group transition-all duration-300 hover:-translate-y-[1px]
-                  ${isScrolled ? 'text-dictator-chrome hover:text-dictator-smoke' : 'text-white/70 hover:text-white'}
-                `}
-                            >
-                                {link.label}
-                                <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-dictator-red transition-all duration-300 group-hover:w-full"></span>
-                            </a>
+                            link.isRoute ? (
+                                <button
+                                    key={link.label}
+                                    onClick={() => navigate(link.href)}
+                                    className={`font-mono text-xs uppercase tracking-widest relative group transition-all duration-300 hover:-translate-y-[1px] bg-transparent border-none cursor-pointer
+                      ${isScrolled ? 'text-dictator-chrome hover:text-dictator-smoke' : 'text-white/70 hover:text-white'}
+                    `}
+                                >
+                                    {link.label}
+                                    <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-dictator-red transition-all duration-300 group-hover:w-full"></span>
+                                </button>
+                            ) : (
+                                <a
+                                    key={link.label}
+                                    href={link.href}
+                                    className={`font-mono text-xs uppercase tracking-widest relative group transition-all duration-300 hover:-translate-y-[1px]
+                      ${isScrolled ? 'text-dictator-chrome hover:text-dictator-smoke' : 'text-white/70 hover:text-white'}
+                    `}
+                                >
+                                    {link.label}
+                                    <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-dictator-red transition-all duration-300 group-hover:w-full"></span>
+                                </a>
+                            )
                         ))}
                     </div>
 
                     {/* CTA Button (Desktop) & Mobile Toggle */}
                     <div className="flex items-center gap-4">
-                        <button className="hidden md:block btn-magnetic bg-dictator-red text-white px-6 py-2 rounded-full font-body text-sm font-semibold tracking-wide border border-transparent hover:border-dictator-red/50">
+                        <button
+                            onClick={() => navigate('/simulator')}
+                            className="hidden md:block btn-magnetic bg-dictator-red text-white px-6 py-2 rounded-full font-body text-sm font-semibold tracking-wide border border-transparent hover:border-dictator-red/50">
                             <span>Start Solving</span>
                         </button>
 
@@ -106,7 +123,7 @@ const Navbar = () => {
                     </a>
                 ))}
                 <button
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={() => { setMobileMenuOpen(false); navigate('/simulator'); }}
                     className="mt-8 btn-magnetic bg-dictator-red text-white px-10 py-4 rounded-full font-body text-lg font-bold w-[200px]"
                     style={{ transitionDelay: '200ms', transform: mobileMenuOpen ? 'translateY(0)' : 'translateY(20px)', opacity: mobileMenuOpen ? 1 : 0 }}
                 >
