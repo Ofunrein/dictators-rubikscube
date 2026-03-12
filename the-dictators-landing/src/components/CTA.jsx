@@ -1,6 +1,8 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const CTA = () => {
+    const navigate = useNavigate();
     return (
         <section className="relative w-full bg-dictator-red py-24 px-6 md:px-12 rounded-[4rem] text-center flex flex-col items-center justify-center -mx-4 md:-mx-8 z-20 shadow-2xl">
 
@@ -20,7 +22,7 @@ const CTA = () => {
                     Free. No sign-up required to start learning.
                 </p>
 
-                <button className="btn-magnetic group bg-white text-dictator-red font-bold rounded-full px-12 py-5 shadow-xl transition-all hover:shadow-[#0D0D0D]/20 mb-6 border border-transparent">
+                <button onClick={() => navigate('/simulator')} className="btn-magnetic group bg-white text-dictator-red font-bold rounded-full px-12 py-5 shadow-xl transition-all hover:shadow-[#0D0D0D]/20 mb-6 border border-transparent">
                     {/* Default state */}
                     <span className="relative z-10 transition-colors duration-300 group-hover:text-white font-body text-xl tracking-wide">
                         Start Solving

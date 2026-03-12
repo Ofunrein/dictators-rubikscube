@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { Canvas } from '@react-three/fiber';
+import { useNavigate } from 'react-router-dom';
 import RubiksCube3D from './RubiksCube3D';
 
 const Hero = () => {
     const containerRef = useRef(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const ctx = gsap.context(() => {
@@ -87,7 +89,9 @@ const Hero = () => {
                 </p>
 
                 <div className="hero-stagger opacity-0 flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-16">
-                    <button className="btn-magnetic bg-dictator-red text-white px-8 py-4 rounded-full font-body text-lg font-bold tracking-wide">
+                    <button
+                        onClick={() => navigate('/simulator')}
+                        className="btn-magnetic bg-dictator-red text-white px-8 py-4 rounded-full font-body text-lg font-bold tracking-wide">
                         <span>Start Solving</span>
                     </button>
 
