@@ -13,7 +13,6 @@ const KEY_TO_MOVE = {
    * @param {object} cubeState - Passed to dispatchMove
    * @param {Function} dispatchMove - Central handler from controls.js
    */
-
   export function initKeyboardControls(cubeState, dispatchMove) {
     console.log('[keyboardControls] initKeyboardControls called - setting up keyboard event listener');
 
@@ -37,6 +36,7 @@ const KEY_TO_MOVE = {
 
     window.addEventListener('keydown', handleKeyDown);
 
+    // Returns cleanup funxction so event listeners are detached when this control scheme is terminated/switched
     return function cleanup() {
         window.removeEventListener
         console.log('[keyboardControls] Keyboard event listener removed');

@@ -1,5 +1,15 @@
 import * as THREE from 'three';
 
+/**
+ * Translate a selected sticker and arrow key into a cube move.
+ * 
+ * @param {string} face
+ * @param {string} arrowKey
+ * @param {number} row
+ * @param {number} col
+ * @param {THREE.PerspectiveCamera} camera
+ * @returns {string|null}
+ */
 function getMove(face, arrowKey, row, col, camera) {
     const hardCodedMap = {
         F: {
@@ -40,6 +50,16 @@ function getMove(face, arrowKey, row, col, camera) {
     return null;
 }
 
+/**
+ * For U/D face selection, determine move based on camera orientation to maintain intuitive controls.
+ * 
+ * @param {string} face
+ * @param {string} arrowKey
+ * @param {number} row
+ * @param {number} col
+ * @param {THREE.PerspectiveCamera} camera
+ * @returns {string|null}
+ */
 function getCameraRelativeMove(face, arrowKey, row, col, camera) {
     const cameraPosition = camera.position;
     const angle = Math.atan2(cameraPosition.x, cameraPosition.z);
@@ -130,7 +150,7 @@ export function initKeyboardMouseControls(cubeState, dispatchMove, camera, domEl
     let selectedIndex = null;
     let selectedMesh = null;
 
-
+    // Creates higlight mesh over selected sticker - starts invisible until selection
     const highlightGeo = new THREE.PlaneGeometry(0.85, 0.85);
     const highlightMat = new THREE.MeshBasicMaterial({
         color: 0xff69b4,
@@ -147,6 +167,7 @@ export function initKeyboardMouseControls(cubeState, dispatchMove, camera, domEl
     const mouse = new THREE.Vector2();
     
     function getAllStickers() {
+        // Flattens stickerMap to a single array of meshes for raycasting
         return Object.values(stickerMap).flat();
     }
 
@@ -166,6 +187,7 @@ export function initKeyboardMouseControls(cubeState, dispatchMove, camera, domEl
     }
 
     function handleClick(event) {
+        // Convert mouse click to normalized device coordinates for raycasting (Three.js expects NDC)
         const rect = event.target.getBoundingClientRect();
         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -178,6 +200,7 @@ export function initKeyboardMouseControls(cubeState, dispatchMove, camera, domEl
             return;
         }
 
+        // Hits sorted by distant so [0] is always frontmost sticker under cursor
         const hit = hits[0].object;
         const location = findMeshLocation(hit);
         if (!location) {
@@ -190,10 +213,14 @@ export function initKeyboardMouseControls(cubeState, dispatchMove, camera, domEl
         selectedFace = location.face;
         selectedIndex = location.index;
 
+        // Sync highlight position and orientation.
+        // Since sticker might be a child of rotating group, matrixWorld gives final real-world
+        // transform after al parent transformations are complete.
         hit.updateWorldMatrix(true, false);
         highlightMesh.position.setFromMatrixPosition(hit.matrixWorld);
         highlightMesh.quaternion.setFromRotationMatrix(hit.matrixWorld);
 
+        // Nudge highlight outward along sticker for visibility
         const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(highlightMesh.quaternion);
         highlightMesh.position.addScaledVector(normal, 0.01);
         highlightMesh.visible = true;
@@ -204,8 +231,9 @@ export function initKeyboardMouseControls(cubeState, dispatchMove, camera, domEl
     function handleKeydown(event) {
         if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
         if (!selectedFace) return;
-        event.preventDefault();
+        event.preventDefault(); // prevents arrow keys from scrolling the page
 
+        // stickerMap stores each face as flat 9-element array so int division gives row and modulo gives column
         const row = Math.floor(selectedIndex / 3);
         const col = selectedIndex % 3;
         console.log(`[mkb] face:${selectedFace} index:${selectedIndex} row:${row} col:${col}`);
@@ -227,7 +255,7 @@ export function initKeyboardMouseControls(cubeState, dispatchMove, camera, domEl
 
     console.log('[keyboardMouseControls] Event listeners for click and keydown added successfully');
 
-
+    // Returns cleanup funxction so event listeners are detached when this control scheme is terminated/switched
     return function cleanup() {
         window.removeEventListener('keydown', handleKeydown);
         domElement.removeEventListener('click', handleClick);

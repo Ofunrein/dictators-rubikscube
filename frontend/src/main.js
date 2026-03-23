@@ -61,6 +61,7 @@ const stickerMap = {
   B: new Array(9)
 };
 
+// Defines faces of cube and orientation
 const CUBIE_FACES_DEF = [
   {axis: 'x', sign: 1, face: 'R', rotation: [0, Math.PI / 2, 0]},
   {axis: 'x', sign: -1, face: 'L', rotation: [0, -Math.PI / 2, 0]},
@@ -70,6 +71,14 @@ const CUBIE_FACES_DEF = [
   {axis: 'z', sign: -1, face: 'B', rotation: [0, Math.PI, 0]}
 ];
 
+/**
+ * Get the index of a sticker based on its face and position.
+ * @param {string} face
+ * @param {number} gx
+ * @param {number} gy
+ * @param {number} gz
+ * @returns {number}
+ */
 function getStickerIndex( face, gx, gy, gz) {
   switch (face) {
     case 'U': return (1 - gz) * 3 + (gx + 1);
@@ -81,30 +90,43 @@ function getStickerIndex( face, gx, gy, gz) {
   }
 }
 
+/**
+ * Build the cubies that make up the Rubik's cube.
+ */
 function buildCubies() {
+  // Plane used for all stickers
   const stickerGeo = new THREE.PlaneGeometry(STICKER_SIZE, STICKER_SIZE);
+  // Cube used for every cubie (all share same geometry)
   const cubieGeo = new THREE.BoxGeometry(CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE);
+  // Dark inner body of all cubies (shared material)
   const cubieMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
 
   for (let gx = -1; gx <= 1; gx++) {
     for (let gy = -1; gy <= 1; gy++) {
       for (let gz = -1; gz <= 1; gz++) {
+        // Group allows move/rotate the cubie and stickers together as one
         const cubieGroup = new THREE.Group();
+        // Creates gap between cubies
         cubieGroup.position.set(gx * GAP, gy * GAP, gz * GAP);
         cubieGroup.add(new THREE.Mesh(cubieGeo, cubieMat));
 
+        // Check if each face of the cubie is exposed and add sticker if so
         for (const def of CUBIE_FACES_DEF) {
           const isExposed = (def.axis === 'x' && gx == def.sign) ||
                             (def.axis === 'y' && gy == def.sign) ||
                             (def.axis === 'z' && gz == def.sign);
           if (!isExposed) continue;
 
+          // Creates gray placeholder sticker - color will be applied later based on cube state
           const mat = new THREE.MeshBasicMaterial({ color: '#808080', side: THREE.FrontSide });
           const sticker = new THREE.Mesh(stickerGeo, mat);
+
+          // Position sticker slightly above cubie face
           sticker.position[def.axis] = def.sign * (CUBIE_SIZE / 2 + EPSILON);
           sticker.rotation.set(...def.rotation);
           cubieGroup.add(sticker);
 
+          // Map sticker to its face and index for easy access
           const index = getStickerIndex(def.face, gx, gy, gz);
           stickerMap[def.face][index] = sticker;
         }
