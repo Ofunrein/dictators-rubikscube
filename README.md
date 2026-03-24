@@ -73,3 +73,20 @@ Backend skeleton ready
 CMake does not automatically detect new source files.
 
 (Whenever you add a new .cpp file to the project, you must explicitly list it in CMakeLists.txt. If you forget to do this, the file will not be compiled or linked into the executable.)
+
+## API scaffold (Sprint 2)
+
+A contract-first API scaffold now lives at `backend/api` with:
+
+- OpenAPI contract: `backend/api/openapi.yaml`
+- Spec-driven mock server: `npm run mock` (port `4010`)
+- Validation + route skeleton server: `npm run serve` (port `4011`)
+
+Run it with:
+
+```bash
+cd backend/api
+npm run mock
+# or
+npm run serve
+```
