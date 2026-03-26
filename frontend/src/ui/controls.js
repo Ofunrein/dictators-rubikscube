@@ -1,5 +1,6 @@
 import {MOVES, applyMove} from '../cube/moves'
 import { initKeyboardControls } from './keyboardControls';
+import { initKeyboardMouseControls } from './keyboardMouseControls';
 
 /**
  * Central move manager
@@ -36,13 +37,16 @@ export function dispatchMove(move, cubeState) {
  * @param {boolean} [options.mkb=false] - not yet implemented - placeholder for mouse/keyboard hybrid controls
  */
 
-export function initControls(cubeState, options = {}) {
-  const { keyboard = true, mkb = false } = options;
-
+export function initControls(cubeState, options = {}, camera, domElement, StickerMap, scene) {
+  const { keyboard = false, mkb = true } = options;
   console.log('[controls] initControls called with options:', options);
 
   if (keyboard) {
     initKeyboardControls(cubeState, dispatchMove);
     console.log('[controls] Keyboard controls initialized');
+  }
+  if (mkb) {
+    initKeyboardMouseControls(cubeState, dispatchMove, camera, domElement, StickerMap, scene);
+    console.log('[controls] Mouse/Keyboard hybrid controls initialized');
   }
 }
