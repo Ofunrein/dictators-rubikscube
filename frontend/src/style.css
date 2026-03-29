@@ -1,0 +1,16 @@
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 20%, #1c2232 0%, transparent 35%),
+    radial-gradient(circle at 80% 10%, #24201f 0%, transparent 40%),
+    #0d1016;
+}
+
+canvas {
+  display: block;
+}

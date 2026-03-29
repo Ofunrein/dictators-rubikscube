@@ -1,6 +1,27 @@
-LANDING_PAGE_PROMPT.md
+# Dependencies and build output
+node_modules/
 node_modules
+dist/
 dist
+.vite/
+
+# Environment files
 .env
 .env.local
 *.local
+
+# Docs
+LANDING_PAGE_PROMPT.md
+
+# Xcode and Apple tooling artifacts
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# macOS metadata
+.DS_Store
+
+# CMake build directories
+build/
+backend/build*/
+.idea/
