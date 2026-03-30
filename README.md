@@ -5,7 +5,26 @@ This repository contains a Sprint-1-friendly scaffold for a 3D online Rubik's cu
 - `backend/`: C++ backend placeholders
 - `docs/`: architecture notes
 
-## Frontend run instructions
+## Run frontend + API together (recommended)
+
+```bash
+cd frontend
+npm install
+cd ..
+npm run dev
+```
+
+This starts:
+- frontend dev server on `http://localhost:5173`
+- API server on `http://localhost:4011`
+
+If needed, point the frontend at a different backend URL:
+
+```bash
+VITE_API_BASE_URL=http://localhost:5001 npm --prefix frontend run dev
+```
+
+## Frontend-only run instructions
 
 ```bash
 cd frontend
@@ -55,7 +74,11 @@ Visual sanity expectation:
 Local QA screenshot step (optional):
 - Run the frontend locally, apply the example in browser devtools, and capture `docs/cube-render.png` showing the updated front-center sticker.
 
-> Full frontend build was not run in this environment due to blocked npm registry access. Code is expected to work when dependencies are installed locally.
+Build check:
+
+```bash
+npm --prefix frontend run build
+```
 
 ## Backend run instructions
 
@@ -89,4 +112,10 @@ cd backend/api
 npm run mock
 # or
 npm run serve
+```
+
+Or run frontend + API together from repo root:
+
+```bash
+npm run dev
 ```

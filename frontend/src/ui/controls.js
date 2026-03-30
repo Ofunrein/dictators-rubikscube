@@ -1,5 +1,9 @@
-import { CubeState } from '../cube/CubeState';
-import { MOVES, applyMove } from '../cube/moves';
+import {
+  applyMoveRemote,
+  fetchSolvedState,
+  generateScrambleRemote,
+  pingBackend
+} from '../net/api.js';
 import { initKeyboardControls } from './keyboardControls';
 
 /**
@@ -11,15 +15,16 @@ import { initKeyboardControls } from './keyboardControls';
  * @param {object} cubeState - Object with getState and setState methods
  */
 
-export function dispatchMove(move, cubeState) {
-  const newState = applyMove(cubeState.getState(), move);
-  cubeState.setState(newState);
-
-  if (typeof window.setCubeState !== 'function') {
-    return;
+function syncRenderedState(cubeState) {
+  if (typeof window.setCubeState === 'function') {
+    window.setCubeState(cubeState.getState());
   }
+}
 
-  window.setCubeState(cubeState.getState());
+export async function dispatchMove(move, cubeState) {
+  const response = await applyMoveRemote(cubeState.getState(), move);
+  cubeState.setState(response.state);
+  syncRenderedState(cubeState);
 }
 
 function isSolvedState(state) {
@@ -27,40 +32,9 @@ function isSolvedState(state) {
   return faces.every((face) => state[face].every((sticker) => sticker === state[face][0]));
 }
 
-function getMoveFace(move) {
-  return move.replace("'", '');
-}
-
-function generateScramble(length = 25) {
-  const scramble = [];
-
-  while (scramble.length < length) {
-    const next = MOVES[Math.floor(Math.random() * MOVES.length)];
-    if (scramble.length === 0) {
-      scramble.push(next);
-      continue;
-    }
-
-    const prev = scramble[scramble.length - 1];
-    if (getMoveFace(prev) === getMoveFace(next)) {
-      continue;
-    }
-
-    scramble.push(next);
-  }
-
-  return scramble;
-}
-
-function applySequence(cubeState, moves) {
-  let nextState = cubeState.getState();
-  for (const move of moves) {
-    nextState = applyMove(nextState, move);
-  }
-  cubeState.setState(nextState);
-  if (typeof window.setCubeState === 'function') {
-    window.setCubeState(cubeState.getState());
-  }
+function setApiStatus(apiStatusText, message, isError = false) {
+  apiStatusText.textContent = message;
+  apiStatusText.dataset.error = isError ? 'true' : 'false';
 }
 
 function createOrGetPracticePanel() {
@@ -78,6 +52,7 @@ function createOrGetPracticePanel() {
       <button id="scramble-btn" type="button">Scramble</button>
       <button id="reset-btn" type="button">Reset</button>
     </div>
+    <p id="api-status" data-error="false">API: Connecting...</p>
     <p id="status-text">Status: Solved</p>
     <p id="move-count">Moves: 0</p>
     <p id="scramble-seq">Scramble: none</p>
@@ -100,11 +75,14 @@ export function initControls(cubeState, options = {}) {
   const panel = createOrGetPracticePanel();
   const scrambleButton = panel.querySelector('#scramble-btn');
   const resetButton = panel.querySelector('#reset-btn');
+  const apiStatusText = panel.querySelector('#api-status');
   const statusText = panel.querySelector('#status-text');
   const moveCountText = panel.querySelector('#move-count');
   const scrambleText = panel.querySelector('#scramble-seq');
 
   let moveCount = 0;
+  let actionQueue = Promise.resolve();
+  let pendingActions = 0;
 
   const refreshStatus = () => {
     const solved = isSolvedState(cubeState.getState());
@@ -113,30 +91,67 @@ export function initControls(cubeState, options = {}) {
     moveCountText.textContent = `Moves: ${moveCount}`;
   };
 
+  const setPendingState = (isPending) => {
+    scrambleButton.disabled = isPending;
+    resetButton.disabled = isPending;
+    panel.dataset.busy = isPending ? 'true' : 'false';
+  };
+
+  const queueAction = (action) => {
+    actionQueue = actionQueue.then(async () => {
+      pendingActions += 1;
+      setPendingState(true);
+
+      try {
+        await action();
+        setApiStatus(apiStatusText, 'API: Connected');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Request failed.';
+        setApiStatus(apiStatusText, `API: ${message}`, true);
+      } finally {
+        pendingActions -= 1;
+        setPendingState(pendingActions > 0);
+        refreshStatus();
+      }
+    });
+  };
+
   if (keyboard) {
     initKeyboardControls(cubeState, (move, stateRef) => {
-      dispatchMove(move, stateRef);
-      moveCount += 1;
-      refreshStatus();
+      queueAction(async () => {
+        await dispatchMove(move, stateRef);
+        moveCount += 1;
+      });
     });
   }
 
   scrambleButton.addEventListener('click', () => {
-    const scramble = generateScramble();
-    applySequence(cubeState, scramble);
-    moveCount = 0;
-    scrambleText.textContent = `Scramble: ${scramble.join(' ')}`;
-    refreshStatus();
+    queueAction(async () => {
+      const response = await generateScrambleRemote();
+      cubeState.setState(response.state);
+      syncRenderedState(cubeState);
+      moveCount = 0;
+      scrambleText.textContent = `Scramble: ${response.scramble.join(' ')}`;
+    });
   });
 
   resetButton.addEventListener('click', () => {
-    cubeState.setState(CubeState.createSolvedState());
-    if (typeof window.setCubeState === 'function') {
-      window.setCubeState(cubeState.getState());
-    }
+    queueAction(async () => {
+      const solvedState = await fetchSolvedState();
+      cubeState.setState(solvedState);
+      syncRenderedState(cubeState);
+      moveCount = 0;
+      scrambleText.textContent = 'Scramble: none';
+    });
+  });
+
+  queueAction(async () => {
+    await pingBackend();
+    const solvedState = await fetchSolvedState();
+    cubeState.setState(solvedState);
+    syncRenderedState(cubeState);
     moveCount = 0;
     scrambleText.textContent = 'Scramble: none';
-    refreshStatus();
   });
 
   refreshStatus();
