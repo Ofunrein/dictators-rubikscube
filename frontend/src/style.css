@@ -61,9 +61,22 @@ canvas {
   background: #b4c4ff;
 }
 
+#practice-panel button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 #practice-panel p {
   margin: 6px 0;
   font-size: 0.92rem;
+}
+
+#api-status[data-error="false"] {
+  color: #9ad3ff;
+}
+
+#api-status[data-error="true"] {
+  color: #ff9f9f;
 }
 
 #status-text[data-solved="true"] {

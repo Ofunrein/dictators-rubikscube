@@ -25,6 +25,12 @@ npm run mock   # OpenAPI example server on :4010
 npm run serve  # Validation + route skeleton server on :4011
 ```
 
+From repo root you can also run API + frontend together:
+
+```bash
+npm run dev
+```
+
 Optional ports:
 
 ```bash
