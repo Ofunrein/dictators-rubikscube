@@ -47,107 +47,92 @@ scene.add(keyLight);
 const cubeGroup = new THREE.Group();
 scene.add(cubeGroup);
 
-const cubeBody = new THREE.Mesh(
-  new THREE.BoxGeometry(3.35, 3.35, 3.35),
-  new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.05, roughness: 0.7 })
-);
-cubeGroup.add(cubeBody);
+const CUBIE_SIZE = 0.95;
+const STICKER_SIZE = 0.85;
+const GAP = 1.08;
+const EPSILON = 0.02;
 
-const stickerGeometry = new THREE.PlaneGeometry(0.95, 0.95);
-const stickerMap = FACE_ORDER.reduce((acc, face) => {
-  acc[face] = new Array(9);
-  return acc;
-}, {});
+const stickerMap = {
+  U: new Array(9),
+  R: new Array(9),
+  F: new Array(9),
+  D: new Array(9),
+  L: new Array(9),
+  B: new Array(9)
+};
+
+// Defines faces of cube and orientation
+const CUBIE_FACES_DEF = [
+  {axis: 'x', sign: 1, face: 'R', rotation: [0, Math.PI / 2, 0]},
+  {axis: 'x', sign: -1, face: 'L', rotation: [0, -Math.PI / 2, 0]},
+  {axis: 'y', sign: 1, face: 'U', rotation: [-Math.PI / 2, 0, 0]},
+  {axis: 'y', sign: -1, face: 'D', rotation: [Math.PI / 2, 0, 0]},
+  {axis: 'z', sign: 1, face: 'F', rotation: [0, 0, 0]},
+  {axis: 'z', sign: -1, face: 'B', rotation: [0, Math.PI, 0]}
+];
 
 /**
- * Build a single sticker mesh with a neutral material. Color is applied later
- * via `applyCubeState` to keep geometry and state concerns separate.
+ * Get the index of a sticker based on its face and position.
+ * @param {string} face
+ * @param {number} gx
+ * @param {number} gy
+ * @param {number} gz
+ * @returns {number}
  */
-function createStickerMesh() {
-  return new THREE.Mesh(
-    stickerGeometry,
-    new THREE.MeshBasicMaterial({ color: '#808080', side: THREE.DoubleSide })
-  );
+function getStickerIndex( face, gx, gy, gz) {
+  switch (face) {
+    case 'U': return (1 - gz) * 3 + (gx + 1);
+    case 'D': return (gz + 1) * 3 + (gx + 1);
+    case 'F': return (1 - gy) * 3 + (gx + 1);
+    case 'B': return (1 - gy) * 3 + (1 - gx);
+    case 'R': return (1 - gy) * 3 + (1 - gz);
+    case 'L': return (1 - gy) * 3 + (gz + 1);
+  }
 }
 
 /**
- * Convert a sticker index (0-8) into row/column coordinates.
- * @param {number} index
- * @returns {{row: number, col: number}}
+ * Build the cubies that make up the Rubik's cube.
  */
-function indexToRowCol(index) {
-  return {
-    row: Math.floor(index / 3),
-    col: index % 3
-  };
-}
+function buildCubies() {
+  // Plane used for all stickers
+  const stickerGeo = new THREE.PlaneGeometry(STICKER_SIZE, STICKER_SIZE);
+  // Cube used for every cubie (all share same geometry)
+  const cubieGeo = new THREE.BoxGeometry(CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE);
+  // Dark inner body of all cubies (shared material)
+  const cubieMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
 
-/**
- * Compute sticker position and rotation for a face/index pair.
- * @param {'U'|'R'|'F'|'D'|'L'|'B'} face
- * @param {number} index
- * @param {number} step
- * @param {number} half
- * @param {number} epsilon
- * @returns {{position: number[], rotation: number[]}}
- */
-function stickerTransform(face, index, step, half, epsilon) {
-  const { row, col } = indexToRowCol(index);
+  for (let gx = -1; gx <= 1; gx++) {
+    for (let gy = -1; gy <= 1; gy++) {
+      for (let gz = -1; gz <= 1; gz++) {
+        // Group allows move/rotate the cubie and stickers together as one
+        const cubieGroup = new THREE.Group();
+        // Creates gap between cubies
+        cubieGroup.position.set(gx * GAP, gy * GAP, gz * GAP);
+        cubieGroup.add(new THREE.Mesh(cubieGeo, cubieMat));
 
-  if (face === 'F') {
-    return {
-      position: [(col - 1) * step, (1 - row) * step, half + epsilon],
-      rotation: [0, 0, 0]
-    };
-  }
-  if (face === 'B') {
-    return {
-      position: [(1 - col) * step, (1 - row) * step, -half - epsilon],
-      rotation: [0, Math.PI, 0]
-    };
-  }
-  if (face === 'U') {
-    return {
-      position: [(col - 1) * step, half + epsilon, (row - 1) * step],
-      rotation: [-Math.PI / 2, 0, 0]
-    };
-  }
-  if (face === 'D') {
-    return {
-      position: [(col - 1) * step, -half - epsilon, (1 - row) * step],
-      rotation: [Math.PI / 2, 0, 0]
-    };
-  }
-  if (face === 'R') {
-    return {
-      position: [half + epsilon, (1 - row) * step, (1 - col) * step],
-      rotation: [0, Math.PI / 2, 0]
-    };
-  }
+        // Check if each face of the cubie is exposed and add sticker if so
+        for (const def of CUBIE_FACES_DEF) {
+          const isExposed = (def.axis === 'x' && gx == def.sign) ||
+                            (def.axis === 'y' && gy == def.sign) ||
+                            (def.axis === 'z' && gz == def.sign);
+          if (!isExposed) continue;
 
-  return {
-    position: [-half - epsilon, (1 - row) * step, (col - 1) * step],
-    rotation: [0, -Math.PI / 2, 0]
-  };
-}
+          // Creates gray placeholder sticker - color will be applied later based on cube state
+          const mat = new THREE.MeshBasicMaterial({ color: '#808080', side: THREE.FrontSide });
+          const sticker = new THREE.Mesh(stickerGeo, mat);
 
-/**
- * Build and cache sticker meshes for every face and index.
- * This is a one-time scene graph setup step.
- */
-function buildStickerMap() {
-  const step = 1.08;
-  const half = 1.675;
-  const epsilon = 0.02;
+          // Position sticker slightly above cubie face
+          sticker.position[def.axis] = def.sign * (CUBIE_SIZE / 2 + EPSILON);
+          sticker.rotation.set(...def.rotation);
+          cubieGroup.add(sticker);
 
-  for (const face of FACE_ORDER) {
-    for (let index = 0; index < 9; index += 1) {
-      const sticker = createStickerMesh();
-      const transform = stickerTransform(face, index, step, half, epsilon);
-      sticker.position.set(...transform.position);
-      sticker.rotation.set(...transform.rotation);
-      cubeGroup.add(sticker);
-      stickerMap[face][index] = sticker;
+          // Map sticker to its face and index for easy access
+          const index = getStickerIndex(def.face, gx, gy, gz);
+          stickerMap[def.face][index] = sticker;
+        }
+
+        cubeGroup.add(cubieGroup);
+      }
     }
   }
 }
@@ -212,12 +197,10 @@ export function applyCubeState(nextStickerMap, state) {
   }
 }
 
-buildStickerMap();
+buildCubies();
 const cubeState = new CubeState();
 applyCubeState(stickerMap, cubeState.getState());
-cubeGroup.rotation.x = -0.52;
-cubeGroup.rotation.y = 0.68;
-initControls(cubeState);
+initControls(cubeState, { keyboard: false, mkb: true }, camera, renderer.domElement, stickerMap, scene);
 
 // Expose a simple integration hook for external demos.
 window.setCubeState = (nextState) => applyCubeState(stickerMap, nextState);

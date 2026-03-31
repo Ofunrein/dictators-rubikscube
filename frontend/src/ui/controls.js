@@ -5,12 +5,13 @@ import {
   pingBackend
 } from '../net/api.js';
 import { initKeyboardControls } from './keyboardControls';
+import { initKeyboardMouseControls } from './keyboardMouseControls';
 
 /**
  * Central move manager
  * All controls (keyboard, buttons, etc.) will dispatch moves through this module
  * No control methods should directly manipulate cube state or call renderer
- * 
+ *
  * @param {string} move - Move to apply (e.g. 'U', 'R'', etc.)
  * @param {object} cubeState - Object with getState and setState methods
  */
@@ -63,15 +64,15 @@ function createOrGetPracticePanel() {
 
 /**
  * Initialize all controls and event listeners
- * 
+ *
  * @param {object} cubeState
  * @param {object} options - enables/disables specific control types (e.g. { keyboard: true, mkb: false })
  * @param {boolean} [options.keyboard=true] - Enable keyboard controls
- * @param {boolean} [options.mkb=false] - not yet implemented - placeholder for mouse/keyboard hybrid controls
+ * @param {boolean} [options.mkb=false] - Enable mouse/keyboard hybrid controls
  */
 
-export function initControls(cubeState, options = {}) {
-  const { keyboard = true } = options;
+export function initControls(cubeState, options = {}, camera, domElement, stickerMap, scene) {
+  const { keyboard = true, mkb = false } = options;
   const panel = createOrGetPracticePanel();
   const scrambleButton = panel.querySelector('#scramble-btn');
   const resetButton = panel.querySelector('#reset-btn');
@@ -123,6 +124,26 @@ export function initControls(cubeState, options = {}) {
         moveCount += 1;
       });
     });
+  }
+
+  if (mkb) {
+    if (!camera || !domElement || !stickerMap || !scene) {
+      console.warn('[controls] Missing camera/domElement/stickerMap/scene; mkb controls were not initialized.');
+    } else {
+      initKeyboardMouseControls(
+        cubeState,
+        (move, stateRef) => {
+          queueAction(async () => {
+            await dispatchMove(move, stateRef);
+            moveCount += 1;
+          });
+        },
+        camera,
+        domElement,
+        stickerMap,
+        scene
+      );
+    }
   }
 
   scrambleButton.addEventListener('click', () => {
