@@ -12,9 +12,7 @@ const KEY_TO_MOVE = {
    * 
    * @param {object} cubeState - Passed to dispatchMove
    * @param {Function} dispatchMove - Central handler from controls.js
-   * @returns {Function} cleanup - Called to remove event listener
    */
-
 export function initKeyboardControls(cubeState, dispatchMove) {
     function handleKeyDown(event) {
         const key = event.key.toUpperCase();
@@ -32,6 +30,7 @@ export function initKeyboardControls(cubeState, dispatchMove) {
 
     window.addEventListener('keydown', handleKeyDown);
 
+    // Returns cleanup funxction so event listeners are detached when this control scheme is terminated/switched
     return function cleanup() {
         window.removeEventListener('keydown', handleKeyDown);
     };
