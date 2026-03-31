@@ -1,4 +1,4 @@
-import { applyMove as applyFrontendMove, MOVES as FRONTEND_MOVES } from '../../../frontend/src/cube/moves.js';
+import { applyMove as applyFrontendMove, MOVES as FRONTEND_MOVES } from '../../../dicators-website/src/cube/moves.js';
 
 export const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 export const STICKER_TOKENS = ['W', 'R', 'G', 'Y', 'O', 'B'];

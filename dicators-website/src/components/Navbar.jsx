@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import gsap from 'gsap';
 import { useNavigate } from 'react-router-dom';
 
 const Navbar = () => {

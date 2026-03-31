@@ -3,17 +3,17 @@ import gsap from 'gsap';
 import { Canvas } from '@react-three/fiber';
 import RubiksCube3D from './RubiksCube3D';
 
+const ALGORITHMS = [
+    "> R U R' U' (T-Perm)",
+    "> F2 L' U' L U F2 (Cross)",
+    "> x' R U' R' D R U R' D' (A-Perm)"
+];
+
 const Features = () => {
     const containerRef = useRef(null);
     const [shufflerKey, setShufflerKey] = useState(0);
     const [typedText, setTypedText] = useState('');
     const [algoIndex, setAlgoIndex] = useState(0);
-
-    const algorithms = [
-        "> R U R' U' (T-Perm)",
-        "> F2 L' U' L U F2 (Cross)",
-        "> x' R U' R' D R U R' D' (A-Perm)"
-    ];
 
     // GSAP scroll reveal
     useEffect(() => {
@@ -48,7 +48,7 @@ const Features = () => {
     // Card 2: Telemetry Typewriter Effect
     useEffect(() => {
         let currentText = '';
-        const currentAlgo = algorithms[algoIndex];
+        const currentAlgo = ALGORITHMS[algoIndex];
         let charIndex = 0;
 
         // Typing simulation
@@ -61,7 +61,7 @@ const Features = () => {
                 clearInterval(typingInterval);
                 // Wait 2s before switching to next algo
                 setTimeout(() => {
-                    setAlgoIndex((prev) => (prev + 1) % algorithms.length);
+                    setAlgoIndex((prev) => (prev + 1) % ALGORITHMS.length);
                 }, 2000);
             }
         }, 50);

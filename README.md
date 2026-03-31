@@ -1,14 +1,15 @@
 # 3D Rubik's Cube - Sprint 1 Skeleton
 
 This repository contains a Sprint-1-friendly scaffold for a 3D online Rubik's cube game with:
-- `frontend/`: Vite + three.js Rubik's cube renderer
+- `dicators-website/`: current React + three.js website and simulator
+- `frontend/`: legacy Vite + three.js prototype renderer
 - `backend/`: C++ backend placeholders
 - `docs/`: architecture notes
 
 ## Run frontend + API together (recommended)
 
 ```bash
-cd frontend
+cd dicators-website
 npm install
 cd ..
 npm run dev
@@ -21,13 +22,13 @@ This starts:
 If needed, point the frontend at a different backend URL:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:5001 npm --prefix frontend run dev
+VITE_API_BASE_URL=http://localhost:5001 npm --prefix dicators-website run dev
 ```
 
 ## Frontend-only run instructions
 
 ```bash
-cd frontend
+cd dicators-website
 npm install
 npm run dev
 ```
@@ -77,7 +78,7 @@ Local QA screenshot step (optional):
 Build check:
 
 ```bash
-npm --prefix frontend run build
+npm --prefix dicators-website run build
 ```
 
 ## Backend run instructions

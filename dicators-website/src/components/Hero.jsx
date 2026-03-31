@@ -4,6 +4,14 @@ import { Canvas } from '@react-three/fiber';
 import { useNavigate } from 'react-router-dom';
 import RubiksCube3D from './RubiksCube3D';
 
+const BINARY_COLUMNS = [...Array(15)].map((_, i) => ({
+    key: i,
+    left: `${i * 7}%`,
+    animationDelay: `${Math.random() * 5}s`,
+    animationDuration: `${10 + Math.random() * 10}s`,
+    bits: Array(30).fill(0).map(() => Math.round(Math.random())).join('\n'),
+}));
+
 const Hero = () => {
     const containerRef = useRef(null);
     const navigate = useNavigate();
@@ -51,17 +59,17 @@ const Hero = () => {
 
             {/* Binary Rain CSS Animation */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden z-[1]">
-                {[...Array(15)].map((_, i) => (
+                {BINARY_COLUMNS.map((column) => (
                     <div
-                        key={i}
+                        key={column.key}
                         className="binary-column"
                         style={{
-                            left: `${i * 7}%`,
-                            animationDelay: `${Math.random() * 5}s`,
-                            animationDuration: `${10 + Math.random() * 10}s`
+                            left: column.left,
+                            animationDelay: column.animationDelay,
+                            animationDuration: column.animationDuration
                         }}
                     >
-                        {Array(30).fill(0).map(() => Math.round(Math.random())).join('\n')}
+                        {column.bits}
                     </div>
                 ))}
             </div>
