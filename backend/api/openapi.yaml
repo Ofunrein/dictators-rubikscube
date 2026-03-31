@@ -236,7 +236,13 @@
           "L'",
           "R'",
           "F'",
-          "B'"
+          "B'",
+          "M",
+          "M'",
+          "E",
+          "E'",
+          "S",
+          "S'"
         ]
       },
       "CubeFace": {
@@ -895,7 +901,7 @@
             "details": [
               {
                 "path": "move",
-                "message": "Move must be one of U, D, L, R, F, B, U', D', L', R', F', B'."
+                "message": "Move must be one of U, D, L, R, F, B, U', D', L', R', F', B', M, M', E, E', S, S'."
               }
             ]
           }
