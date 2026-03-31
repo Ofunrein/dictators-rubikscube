@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+﻿import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { Canvas } from '@react-three/fiber';
 import { useNavigate } from 'react-router-dom';
@@ -96,7 +96,7 @@ const Hero = () => {
                     </button>
 
                     <a href="#demo" className="text-dictator-chrome font-body font-medium hover:text-white transition-colors underline underline-offset-4 decoration-dictator-chrome/30 hover:decoration-white/70">
-                        Watch Demo →
+                        Watch Demo ΓåÆ
                     </a>
                 </div>
 
