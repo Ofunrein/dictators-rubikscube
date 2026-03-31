@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 const Footer = () => {
     return (
@@ -62,7 +62,7 @@ const Footer = () => {
                 <div className="border-t border-dictator-chrome/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-6">
 
                     <p className="font-mono text-xs text-dictator-chrome/50">
-                        © 2026 The Dictators. All rights reserved.
+                        ┬⌐ 2026 The Dictators. All rights reserved.
                     </p>
 
                     <div className="flex items-center gap-3 bg-[#1A1A1A] px-4 py-2 rounded-full border border-dictator-chrome/10">
