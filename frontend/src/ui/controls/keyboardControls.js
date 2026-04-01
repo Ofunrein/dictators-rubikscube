@@ -38,7 +38,7 @@ const KEY_TO_MOVE = {
 
     // Returns cleanup funxction so event listeners are detached when this control scheme is terminated/switched
     return function cleanup() {
-        window.removeEventListener
+        window.removeEventListener('keydown', handleKeyDown);
         console.log('[keyboardControls] Keyboard event listener removed');
     };
 }
