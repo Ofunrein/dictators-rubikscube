@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import './style.css';
 import { CubeState } from './cube/CubeState.js';
-import { initControls } from './ui/controls.js'; 
+import { initUI } from './ui/ui.js';
 
 const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 const FACE_DEFAULT_COLORS = {
@@ -200,7 +200,13 @@ export function applyCubeState(nextStickerMap, state) {
 buildCubies();
 const cubeState = new CubeState();
 applyCubeState(stickerMap, cubeState.getState());
-initControls(cubeState, { keyboard: false, mkb: true }, camera, renderer.domElement, stickerMap, scene);
+initUI({
+  cubeState,
+  scene,
+  camera,
+  renderer,
+  stickerMap
+});
 
 // Expose a simple integration hook for external demos.
 window.setCubeState = (nextState) => applyCubeState(stickerMap, nextState);
