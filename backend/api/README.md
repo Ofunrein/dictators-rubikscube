@@ -41,4 +41,4 @@ API_PORT=5001 npm run serve
 ## Notes
 
 - `openapi.yaml` is stored in JSON-compatible YAML so it can be loaded directly by Node without extra parser dependencies.
-- Move application and scramble state generation reuse the frontend move logic for contract parity during this scaffold phase.
+- Move application and scramble state generation reuse the `dicators-website` move logic for contract parity during this scaffold phase.
