@@ -1,26 +1,36 @@
-import { createSection } from './panel.js';
 import { initControls } from './controls/controls.js';
 
 let activeControl = null;
 
 export function initSettings(parent, context) {
 
-    const section = createSection('Settings');
-    const wrapper = document.createElement('div');
+    // Container
+    const container = document.createElement('div');
+    container.classList.add('settings-container');
 
-    const label = document.createElement('div');
+    //Title
+    const title = document.createElement('h2');
+    title.textContent = 'Settings';
+
+    // Control Method Wrapper
+    const controlGroup = document.createElement('div');
+    controlGroup.classList.add('settings-group');
+
+    const label = document.createElement('label');
     label.textContent = 'Cube Control Method';
-    label.style.marginBottom = '4px';
 
     const select = document.createElement('select');
 
     // ONLY valid control methods
-    const modes = ['mkb', 'key'];
+    const modes = [
+        { value: 'mkb', label: 'Mouse + Keyboard'},
+        { value: 'key', label: 'Keyboard Only' }
+    ];
 
     modes.forEach(mode => {
         const option = document.createElement('option');
-        option.value = mode;
-        option.textContent = mode;
+        option.value = mode.value;
+        option.textContent = mode.label;
         select.appendChild(option);
     });
 
@@ -40,8 +50,11 @@ export function initSettings(parent, context) {
         initControls(selected, context);
     };
 
-    wrapper.appendChild(label);
-    wrapper.appendChild(select);
-    section.appendChild(wrapper);
-    parent.appendChild(section);
+    controlGroup.appendChild(label);
+    controlGroup.appendChild(select);
+
+    container.appendChild(title);
+    container.appendChild(controlGroup);
+
+    parent.appendChild(container);
 }

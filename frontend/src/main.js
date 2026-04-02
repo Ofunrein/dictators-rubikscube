@@ -24,7 +24,7 @@ const TOKEN_COLORS = {
 
 const app = document.getElementById('app');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b0d12);
+scene.background = new THREE.Color(0x1f1f1f);
 
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(6, 5.5, 7.5);
@@ -49,7 +49,7 @@ scene.add(cubeGroup);
 
 const CUBIE_SIZE = 0.95;
 const STICKER_SIZE = 0.85;
-const GAP = 1.08;
+const GAP = 1.0;
 const EPSILON = 0.02;
 
 const stickerMap = {

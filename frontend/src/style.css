@@ -1,3 +1,7 @@
+/* Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+/* Base Layout */
 html,
 body,
 #app {
@@ -5,12 +9,171 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 20% 20%, #1c2232 0%, transparent 35%),
-    radial-gradient(circle at 80% 10%, #24201f 0%, transparent 40%),
-    #0d1016;
+
+  background:#141414;
+  font-family: 'Inter', sans-serif;
+  color: red;
 }
 
+/* Three.js Canvas */
 canvas {
   display: block;
+  width: 100%;
+  height: 100%;
 }
+
+
+#ui-root {
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    flex-direction: row;
+
+    pointer-events: none;
+}
+
+
+#left-panel {
+    width: clamp(180px, 18vw, 280px);
+    min-width: 180px;
+    max-width: 320px;
+    height: 100%;
+
+    flex-shrink: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    padding: 20px;
+
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(12px);
+
+    border-right: 1px solid rgba(255, 0, 0, 0.2);
+
+    pointer-events: auto;
+}
+
+#main-view {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+
+    pointer-events: none;
+}
+
+#hamburger-button {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+
+    z-index: 1000;
+
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 24px;
+
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+
+    color: red;
+    cursor: pointer;
+
+    pointer-events: auto;
+
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+#settings-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+
+    width: 200px;
+    height: 100%;
+
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(12px);
+
+    border-left: 1px solid rgba(255, 0, 0, 0.2);
+
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+
+    padding: 20px;
+
+    pointer-events: auto;
+
+    display: flex;
+    flex-direction: column;
+}
+
+#settings-panel.open {
+    transform: translateX(0);
+}
+
+/* ======================
+    Typography 
+====================== */
+
+/* Headers */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    margin: 0;
+}
+
+/* Body Text */
+p, span, div {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Buttons + Controls */
+button, select, input {
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ======================
+    Settings UI 
+====================== */
+
+.settings-container{
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.settings-container h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: red;
+}
+
+.settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.settings-group label {
+    font-size: 14px;
+    color: red;
+}
+
+.settings-group select {
+    padding: 5px;
+    background: #111;
+    color: red;
+    border: 1px solid rgba(255, 0, 0, 0.2);
+    outline: none;
+}
+
