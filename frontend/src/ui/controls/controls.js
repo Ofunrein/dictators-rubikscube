@@ -1,4 +1,4 @@
-import {MOVES, applyMove} from '../cube/moves'
+import {applyMove} from '../../cube/moves'
 import { initKeyboardControls } from './keyboardControls';
 import { initKeyboardMouseControls } from './keyboardMouseControls';
 
@@ -10,6 +10,9 @@ import { initKeyboardMouseControls } from './keyboardMouseControls';
  * @param {string} move - Move to apply (e.g. 'U', 'R'', etc.)
  * @param {object} cubeState - Object with getState and setState methods
  */
+
+let cleanupFn = null; // Store cleanup function for current controls to detach event listeners when switching controls
+
 
 export function dispatchMove(move, cubeState) {
   console.log(`[controls] dispatchMove called with move: ${move}`);
@@ -31,22 +34,37 @@ export function dispatchMove(move, cubeState) {
 /**
  * Initialize all controls and event listeners
  * 
- * @param {object} cubeState
- * @param {object} options - enables/disables specific control types (e.g. { keyboard: true, mkb: false })
- * @param {boolean} [options.keyboard=true] - Enable keyboard controls
- * @param {boolean} [options.mkb=false] - not yet implemented - placeholder for mouse/keyboard hybrid controls
+ * @param {string} method - enables/disables specific control types (e.g. { keyboard: true, mkb: false })
+ * @param {object} context - Additional context (e.g. camera, cubeState) for controls that need it
  */
 
-export function initControls(cubeState, options = {}, camera, domElement, StickerMap, scene) {
-  const { keyboard = false, mkb = true } = options;
-  console.log('[controls] initControls called with options:', options);
+export function initControls(method, context) {
+  console.log('[controls] initControls called with method:', method);
 
-  if (keyboard) {
-    initKeyboardControls(cubeState, dispatchMove);
+  // Cleanup old control listeners if they exist before initializing new ones
+  if(cleanupFn) {
+    cleanupFn();
+    cleanupFn = null;
+  }
+
+  const { cubeState, camera, renderer, stickerMap, scene } = context;
+
+  if (method === "key") {
+    cleanupFn =initKeyboardControls(cubeState, dispatchMove);
     console.log('[controls] Keyboard controls initialized');
   }
-  if (mkb) {
-    initKeyboardMouseControls(cubeState, dispatchMove, camera, domElement, StickerMap, scene);
+  else if (method === "mkb") {
+    cleanupFn = initKeyboardMouseControls(
+      cubeState,
+      dispatchMove,
+      camera,
+      renderer?.domElement,
+      stickerMap,
+      scene
+    );
     console.log('[controls] Mouse/Keyboard hybrid controls initialized');
+  }
+  else {
+    console.error(`[controls] Unknown control method: ${method}`);
   }
 }
