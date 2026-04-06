@@ -1,3 +1,9 @@
+/**
+ * Creates a stylized panel element for use as a fixed overlay element
+ * 
+ * @param {'left' | 'right'} side 
+ * @returns {HTMLDivElement}
+ */
 export function createSidePanel(side) {
     const panel = document.createElement('div');
 
@@ -17,6 +23,7 @@ export function createSidePanel(side) {
         backdropFilter: 'blur(5px)',
     });
 
+    // Align children to whicherver side panel is anchored
     if (side === 'left') {
         panel.style.alignItems = 'flex-start';
     } else {
@@ -26,6 +33,12 @@ export function createSidePanel(side) {
     return panel;
 }
 
+/**
+ * Creates a styled section contanier with bold title header
+ * 
+ * @param {string} title 
+ * @returns {HTMLDivElement}
+ */
 export function createSection(title) {
     const container = document.createElement('div');
 

@@ -1,5 +1,14 @@
 import { initSettings } from './settings.js';
 
+/**
+ * Initializes and structures UI layout in document body
+ * 
+ * Builds a full-viewport overlay cntaineing a left panel, main view,
+ * and toggleable settings panel controlled by a hamburger button
+ * 
+ * @param {object} context 
+ * @returns {{leftPanel: HTMLDivElement, mainView: HTMLDivElement, settings: HTMLDivElement}}
+ */
 export function initUI(context) {
     console.log('[ui] Initializing UI');
     const root = document.createElement('div');
@@ -33,6 +42,7 @@ export function initUI(context) {
 
     initSettings(settings, context);
 
+    // Toggle settings panel on click
     hamburger.onclick = () => {
         settings.classList.toggle('open');
     };
