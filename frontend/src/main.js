@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import './style.css';
 import { CubeState } from './cube/CubeState.js';
-import { initControls } from './ui/controls.js'; 
+import { initUI } from './ui/ui.js';
 
 const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 const FACE_DEFAULT_COLORS = {
@@ -24,7 +24,7 @@ const TOKEN_COLORS = {
 
 const app = document.getElementById('app');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b0d12);
+scene.background = new THREE.Color(0x1f1f1f);
 
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(6, 5.5, 7.5);
@@ -49,7 +49,7 @@ scene.add(cubeGroup);
 
 const CUBIE_SIZE = 0.95;
 const STICKER_SIZE = 0.85;
-const GAP = 1.08;
+const GAP = 1.0;
 const EPSILON = 0.02;
 
 const stickerMap = {
@@ -200,7 +200,13 @@ export function applyCubeState(nextStickerMap, state) {
 buildCubies();
 const cubeState = new CubeState();
 applyCubeState(stickerMap, cubeState.getState());
-initControls(cubeState, { keyboard: false, mkb: true }, camera, renderer.domElement, stickerMap, scene);
+initUI({
+  cubeState,
+  scene,
+  camera,
+  renderer,
+  stickerMap
+});
 
 // Expose a simple integration hook for external demos.
 window.setCubeState = (nextState) => applyCubeState(stickerMap, nextState);
