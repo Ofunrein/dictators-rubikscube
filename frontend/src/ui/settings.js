@@ -1,7 +1,14 @@
 import { initControls } from './controls/controls.js';
 
-let activeControl = null;
+let activeControl = null; // Currently active control method
 
+/**
+ * Populates settings panel with UI controls for changing app settings
+ * Currently exposes dropdown option to switch cube control methods
+ * 
+ * @param {HTMLElement}} parent 
+ * @param {object} context 
+ */
 export function initSettings(parent, context) {
 
     // Container
