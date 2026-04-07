@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:api": "npm --prefix backend/api run serve",
-    "dev:frontend": "npm --prefix dicators-website run dev",
+    "dev:frontend": "node scripts/dev-frontend.mjs",
     "dev:frontend:legacy": "npm --prefix frontend run dev"
   }
 }
