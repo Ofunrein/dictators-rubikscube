@@ -32,6 +32,7 @@ export function initKeyboardControls(cubeState, dispatchMove) {
 
     window.addEventListener('keydown', handleKeyDown);
 
+    // Returns cleanup funxction so event listeners are detached when this control scheme is terminated/switched
     return function cleanup() {
         window.removeEventListener('keydown', handleKeyDown);
     };
