@@ -41,6 +41,8 @@ function assertDependencies(frontendDir) {
       // eslint-disable-next-line no-console
       console.error(`  ${command}`);
     }
+    // eslint-disable-next-line no-console
+    console.error('Or run: npm run setup');
     process.exit(1);
   }
 }
