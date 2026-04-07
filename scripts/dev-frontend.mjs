@@ -28,6 +28,8 @@ const frontendNodeModules = resolve(repoRoot, frontendDir, 'node_modules');
 if (!existsSync(frontendNodeModules)) {
   // eslint-disable-next-line no-console
   console.error(`Missing dependencies. Run: npm --prefix ${frontendDir} install`);
+  // eslint-disable-next-line no-console
+  console.error('Or run: npm run setup');
   process.exit(1);
 }
 
