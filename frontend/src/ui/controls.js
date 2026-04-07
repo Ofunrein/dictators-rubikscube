@@ -5,6 +5,7 @@ import {
   pingBackend
 } from '../net/api.js';
 import { initKeyboardControls } from './keyboardControls';
+import { initKeyboardMouseControls } from './keyboardMouseControls';
 
 /**
  * Central move manager
@@ -62,16 +63,19 @@ function createOrGetPracticePanel() {
 }
 
 /**
- * Initialize all controls and event listeners
- * 
+ * Initialize all controls and event listeners.
+ *
  * @param {object} cubeState
- * @param {object} options - enables/disables specific control types (e.g. { keyboard: true, mkb: false })
+ * @param {object} options - enables/disables specific control types
  * @param {boolean} [options.keyboard=true] - Enable keyboard controls
- * @param {boolean} [options.mkb=false] - not yet implemented - placeholder for mouse/keyboard hybrid controls
+ * @param {boolean} [options.mkb=false] - Enable mouse+keyboard controls
+ * @param {object} camera
+ * @param {object} domElement
+ * @param {object} stickerMap
+ * @param {object} scene
  */
-
-export function initControls(cubeState, options = {}) {
-  const { keyboard = true } = options;
+export function initControls(cubeState, options = {}, camera, domElement, stickerMap, scene) {
+  const { keyboard = true, mkb = false } = options;
   const panel = createOrGetPracticePanel();
   const scrambleButton = panel.querySelector('#scramble-btn');
   const resetButton = panel.querySelector('#reset-btn');
@@ -116,13 +120,20 @@ export function initControls(cubeState, options = {}) {
     });
   };
 
-  if (keyboard) {
-    initKeyboardControls(cubeState, (move, stateRef) => {
-      queueAction(async () => {
-        await dispatchMove(move, stateRef);
-        moveCount += 1;
-      });
+  const queueMove = (move, stateRef) => {
+    const nextStateRef = stateRef ?? cubeState;
+    queueAction(async () => {
+      await dispatchMove(move, nextStateRef);
+      moveCount += 1;
     });
+  };
+
+  if (keyboard) {
+    initKeyboardControls(cubeState, queueMove);
+  }
+
+  if (mkb && camera && domElement && stickerMap && scene) {
+    initKeyboardMouseControls(cubeState, queueMove, camera, domElement, stickerMap, scene);
   }
 
   scrambleButton.addEventListener('click', () => {
