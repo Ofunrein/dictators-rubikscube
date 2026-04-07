@@ -1,7 +1,17 @@
 # Dependencies and build output
 node_modules/
+node_modules
 dist/
+dist
 .vite/
+
+# Environment files
+.env
+.env.local
+*.local
+
+# Docs
+LANDING_PAGE_PROMPT.md
 
 # Xcode and Apple tooling artifacts
 DerivedData/
