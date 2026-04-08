@@ -5,7 +5,17 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { CubeState } from '../cube/CubeState';
 import { applyMove, MOVES } from '../cube/moves';
-import { ArrowLeft, RotateCcw, Shuffle, Timer, ChevronRight } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Shuffle, Timer, ChevronRight, Check } from 'lucide-react';
+import {
+  CUBIE_LAYOUT,
+  IDLE_ROTATION_SPEED,
+  TURN_DURATION_SECONDS,
+  easeInOutCubic,
+  inverseMove,
+  mergeMoveIntoSolveStack,
+  normalizeMoveSequence,
+  parseMoveAnimation,
+} from './simulatorAnimation';
 
 // ─── Color token → hex mapping (matches team's CubeState tokens) ───────────
 const TOKEN_HEX = {
@@ -20,11 +30,16 @@ const TOKEN_HEX = {
 // ─── Face index → face name for sticker positioning ─────────────────────────
 const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 
+const AXIS_VECTORS = {
+  x: new THREE.Vector3(1, 0, 0),
+  y: new THREE.Vector3(0, 1, 0),
+  z: new THREE.Vector3(0, 0, 1),
+};
+
 // ─── Single cubelet mesh ─────────────────────────────────────────────────────
-const Cubelet = ({ position, materials }) => {
-  const meshRef = useRef();
-  return (
-    <mesh ref={meshRef} position={position} castShadow>
+const Cubelet = React.forwardRef(({ position, materials, highlighted }, ref) => (
+  <group ref={ref} position={position}>
+    <mesh castShadow receiveShadow scale={highlighted ? 1.02 : 1}>
       <boxGeometry args={[0.95, 0.95, 0.95]} />
       {materials.map((mat, i) => (
         <meshStandardMaterial
@@ -33,53 +48,112 @@ const Cubelet = ({ position, materials }) => {
           color={mat}
           roughness={0.25}
           metalness={0.6}
+          emissive={highlighted ? '#3D1200' : '#000000'}
+          emissiveIntensity={highlighted ? 0.45 : 0}
         />
       ))}
     </mesh>
-  );
-};
+  </group>
+));
+
+Cubelet.displayName = 'Cubelet';
 
 // ─── Full 3x3x3 cube driven by CubeState ─────────────────────────────────────
-const InteractiveCube = ({ cubeState, animating }) => {
+const InteractiveCube = ({ cubeState, activeMove, onMoveComplete }) => {
   const groupRef = useRef();
+  const cubieRefs = useRef([]);
+  const activeAnimationRef = useRef(null);
+  const onMoveCompleteRef = useRef(onMoveComplete);
 
-  useFrame(() => {
-    if (!groupRef.current) return;
-    if (animating) {
-      groupRef.current.rotation.y += 0.02;
+  useEffect(() => {
+    onMoveCompleteRef.current = onMoveComplete;
+  }, [onMoveComplete]);
+
+  useEffect(() => {
+    if (!activeMove) {
+      activeAnimationRef.current = null;
+      return;
     }
+
+    const config = parseMoveAnimation(activeMove);
+    if (!config) {
+      onMoveCompleteRef.current?.(activeMove);
+      return;
+    }
+
+    activeAnimationRef.current = {
+      move: activeMove,
+      config,
+      progress: 0,
+    };
+  }, [activeMove]);
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return;
+
+    const animation = activeAnimationRef.current;
+    if (!animation?.config) {
+      groupRef.current.rotation.y += delta * IDLE_ROTATION_SPEED;
+      return;
+    }
+
+    animation.progress = Math.min(1, animation.progress + delta / TURN_DURATION_SECONDS);
+    const easedProgress = easeInOutCubic(animation.progress);
+    const angle = animation.config.direction * (Math.PI / 2) * easedProgress;
+    const axisVector = AXIS_VECTORS[animation.config.axis];
+
+    CUBIE_LAYOUT.forEach((cubie, index) => {
+      const cubieGroup = cubieRefs.current[index];
+      if (!cubieGroup) return;
+      if (cubie[animation.config.axis] !== animation.config.layer) return;
+      cubieGroup.setRotationFromAxisAngle(axisVector, angle);
+    });
+
+    if (animation.progress < 1) return;
+
+    CUBIE_LAYOUT.forEach((_, index) => {
+      const cubieGroup = cubieRefs.current[index];
+      if (!cubieGroup) return;
+      cubieGroup.rotation.set(0, 0, 0);
+    });
+
+    const finishedMove = animation.move;
+    activeAnimationRef.current = null;
+    onMoveCompleteRef.current?.(finishedMove);
   });
+
+  const activeLayer = useMemo(() => parseMoveAnimation(activeMove), [activeMove]);
 
   const cubelets = useMemo(() => {
     const state = cubeState;
-    const offset = 1.0;
-    const items = [];
 
-    for (let x = -1; x <= 1; x++) {
-      for (let y = -1; y <= 1; y++) {
-        for (let z = -1; z <= 1; z++) {
-          // material order: +x, -x, +y, -y, +z, -z  (right, left, top, bottom, front, back)
-          const mats = [
-            x === 1  ? TOKEN_HEX[state.R[2 - (y + 1) * 3 + (1 - z)]] ?? '#111' : '#111',
-            x === -1 ? TOKEN_HEX[state.L[2 - (y + 1) * 3 + (z + 1)]] ?? '#111' : '#111',
-            y === 1  ? TOKEN_HEX[state.U[(1 - z) * 3 + (x + 1)]]     ?? '#111' : '#111',
-            y === -1 ? TOKEN_HEX[state.D[(z + 1) * 3 + (x + 1)]]     ?? '#111' : '#111',
-            z === 1  ? TOKEN_HEX[state.F[(1 - y) * 3 + (x + 1)]]     ?? '#111' : '#111',
-            z === -1 ? TOKEN_HEX[state.B[(1 - y) * 3 + (1 - x)]]     ?? '#111' : '#111',
-          ];
+    return CUBIE_LAYOUT.map((cubie, index) => {
+      const { x, y, z, position, key } = cubie;
+      // material order: +x, -x, +y, -y, +z, -z (right, left, top, bottom, front, back)
+      const materials = [
+        x === 1 ? TOKEN_HEX[state.R[2 - (y + 1) * 3 + (1 - z)]] ?? '#111' : '#111',
+        x === -1 ? TOKEN_HEX[state.L[2 - (y + 1) * 3 + (z + 1)]] ?? '#111' : '#111',
+        y === 1 ? TOKEN_HEX[state.U[(1 - z) * 3 + (x + 1)]] ?? '#111' : '#111',
+        y === -1 ? TOKEN_HEX[state.D[(z + 1) * 3 + (x + 1)]] ?? '#111' : '#111',
+        z === 1 ? TOKEN_HEX[state.F[(1 - y) * 3 + (x + 1)]] ?? '#111' : '#111',
+        z === -1 ? TOKEN_HEX[state.B[(1 - y) * 3 + (1 - x)]] ?? '#111' : '#111',
+      ];
 
-          items.push(
-            <Cubelet
-              key={`${x}-${y}-${z}`}
-              position={[x * offset, y * offset, z * offset]}
-              materials={mats}
-            />
-          );
-        }
-      }
-    }
-    return items;
-  }, [cubeState]);
+      const highlighted = Boolean(activeLayer && cubie[activeLayer.axis] === activeLayer.layer);
+
+      return (
+        <Cubelet
+          key={key}
+          ref={(node) => {
+            cubieRefs.current[index] = node;
+          }}
+          position={position}
+          materials={materials}
+          highlighted={highlighted}
+        />
+      );
+    });
+  }, [cubeState, activeLayer]);
 
   return (
     <group ref={groupRef} rotation={[0.4, -0.6, 0]}>
@@ -114,8 +188,9 @@ function generateScramble(length = 20) {
   let last = '';
   for (let i = 0; i < length; i++) {
     let move;
-    do { move = MOVES[Math.floor(Math.random() * MOVES.length)]; }
-    while (move.replace("'", '') === last.replace("'", ''));
+    do {
+      move = MOVES[Math.floor(Math.random() * MOVES.length)];
+    } while (move.replace("'", '') === last.replace("'", ''));
     result.push(move);
     last = move;
   }
@@ -137,7 +212,13 @@ const SimulatorPage = () => {
   const [displayState, setDisplayState] = useState(() => cubeStateObj.getState());
   const [moveHistory, setMoveHistory] = useState([]);
   const [scrambleSeq, setScrambleSeq] = useState([]);
-  const [animating, setAnimating] = useState(false);
+  const [activeMove, setActiveMove] = useState(null);
+  const [queuedMoveCount, setQueuedMoveCount] = useState(0);
+  const [solveDepth, setSolveDepth] = useState(0);
+
+  const moveQueueRef = useRef([]);
+  const activeMoveRef = useRef(null);
+  const solveStackRef = useRef([]);
 
   // Timer
   const [timerRunning, setTimerRunning] = useState(false);
@@ -156,73 +237,142 @@ const SimulatorPage = () => {
     { title: 'Permute Last Layer (PLL)', body: 'Move the top layer pieces into their correct positions. Common PLL: R U R′ U R U2 R′ (U-Perm).' },
   ];
 
-  // ── Dispatch a move ──────────────────────────────────────────────────────────
-  const dispatchMove = useCallback((move) => {
+  const queueActive = activeMove !== null || queuedMoveCount > 0;
+  const manualInputLocked = queueActive;
+
+  const startNextMove = useCallback(() => {
+    if (activeMoveRef.current || moveQueueRef.current.length === 0) {
+      setQueuedMoveCount(moveQueueRef.current.length);
+      return;
+    }
+
+    const nextMove = moveQueueRef.current.shift();
+    setQueuedMoveCount(moveQueueRef.current.length);
+    activeMoveRef.current = nextMove;
+    setActiveMove(nextMove);
+  }, []);
+
+  const enqueueMoves = useCallback((moves) => {
+    const normalized = normalizeMoveSequence(moves);
+    if (normalized.length === 0) return;
+
+    moveQueueRef.current.push(...normalized);
+    setQueuedMoveCount(moveQueueRef.current.length);
+    startNextMove();
+  }, [startNextMove]);
+
+  const handleMoveAnimationComplete = useCallback((move) => {
+    if (activeMoveRef.current !== move) return;
+
     const newState = applyMove(cubeStateObj.getState(), move);
     cubeStateObj.setState(newState);
     setDisplayState({ ...newState });
-    setMoveHistory(prev => [...prev.slice(-49), move]);
-  }, [cubeStateObj]);
+    setMoveHistory((prev) => [...prev.slice(-49), move]);
+
+    mergeMoveIntoSolveStack(solveStackRef.current, move);
+    setSolveDepth(solveStackRef.current.length);
+
+    activeMoveRef.current = null;
+    setActiveMove(null);
+    startNextMove();
+  }, [cubeStateObj, startNextMove]);
+
+  const dispatchManualMove = useCallback((move) => {
+    if (!move) return;
+    if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
+    enqueueMoves([move]);
+  }, [enqueueMoves]);
 
   // ── Keyboard controls ────────────────────────────────────────────────────────
   useEffect(() => {
     const handleKey = (e) => {
       if (e.target.tagName === 'INPUT') return;
+      if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
+
       const move = KEY_MAP[e.key];
-      if (move) dispatchMove(move);
+      if (move) dispatchManualMove(move);
     };
+
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [dispatchMove]);
-
-  // ── Scramble ─────────────────────────────────────────────────────────────────
-  const handleScramble = useCallback(() => {
-    const seq = generateScramble(20);
-    setScrambleSeq(seq);
-    // Reset to solved then apply all scramble moves
-    const fresh = CubeState.createSolvedState();
-    cubeStateObj.setState(fresh);
-    let state = fresh;
-    seq.forEach(m => { state = applyMove(state, m); });
-    cubeStateObj.setState(state);
-    setDisplayState({ ...state });
-    setMoveHistory([]);
-    setAnimating(true);
-    setTimeout(() => setAnimating(false), 800);
-  }, [cubeStateObj]);
-
-  // ── Reset ────────────────────────────────────────────────────────────────────
-  const handleReset = useCallback(() => {
-    const solved = CubeState.createSolvedState();
-    cubeStateObj.setState(solved);
-    setDisplayState({ ...solved });
-    setMoveHistory([]);
-    setScrambleSeq([]);
-    stopTimer();
-    setTimerMs(0);
-  }, [cubeStateObj]);
+  }, [dispatchManualMove]);
 
   // ── Timer controls ───────────────────────────────────────────────────────────
-  const startTimer = () => {
+  const startTimer = useCallback(() => {
     if (timerRunning) return;
     startTimeRef.current = Date.now() - timerMs;
     timerRef.current = setInterval(() => {
       setTimerMs(Date.now() - startTimeRef.current);
     }, 10);
     setTimerRunning(true);
-  };
+  }, [timerRunning, timerMs]);
 
-  const stopTimer = () => {
+  const stopTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     setTimerRunning(false);
     if (timerMs > 0) {
-      setBestTime(prev => prev === null || timerMs < prev ? timerMs : prev);
+      setBestTime((prev) => (prev === null || timerMs < prev ? timerMs : prev));
     }
-  };
+  }, [timerMs]);
 
-  const toggleTimer = () => timerRunning ? stopTimer() : startTimer();
+  const toggleTimer = useCallback(() => {
+    if (timerRunning) stopTimer();
+    else startTimer();
+  }, [timerRunning, startTimer, stopTimer]);
 
-  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+  useEffect(() => () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
+
+  // ── Cube helpers ─────────────────────────────────────────────────────────────
+  const resetCubeToSolved = useCallback(() => {
+    const solved = CubeState.createSolvedState();
+    cubeStateObj.setState(solved);
+    setDisplayState({ ...solved });
+  }, [cubeStateObj]);
+
+  // ── Scramble ─────────────────────────────────────────────────────────────────
+  const handleScramble = useCallback(() => {
+    if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
+
+    const seq = generateScramble(20);
+    setScrambleSeq(seq);
+
+    resetCubeToSolved();
+    setMoveHistory([]);
+    solveStackRef.current = [];
+    setSolveDepth(0);
+
+    enqueueMoves(seq);
+  }, [enqueueMoves, resetCubeToSolved]);
+
+  // ── Solve ────────────────────────────────────────────────────────────────────
+  const handleSolve = useCallback(() => {
+    if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
+    if (solveStackRef.current.length === 0) return;
+
+    const solution = [...solveStackRef.current].reverse().map(inverseMove);
+    enqueueMoves(solution);
+  }, [enqueueMoves]);
+
+  // ── Reset ────────────────────────────────────────────────────────────────────
+  const handleReset = useCallback(() => {
+    if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
+
+    moveQueueRef.current = [];
+    activeMoveRef.current = null;
+    setQueuedMoveCount(0);
+    setActiveMove(null);
+
+    solveStackRef.current = [];
+    setSolveDepth(0);
+    setMoveHistory([]);
+    setScrambleSeq([]);
+
+    resetCubeToSolved();
+    stopTimer();
+    setTimerMs(0);
+  }, [resetCubeToSolved, stopTimer]);
 
   // ── 2D face preview ──────────────────────────────────────────────────────────
   const FacePreview = ({ face, label }) => {
@@ -282,17 +432,39 @@ const SimulatorPage = () => {
         <aside className="w-full lg:w-[280px] xl:w-[320px] border-b lg:border-b-0 lg:border-r border-dictator-chrome/10 flex flex-col bg-[#0A0A0A] overflow-y-auto">
 
           {/* Action Buttons */}
-          <div className="p-6 border-b border-dictator-chrome/10 flex gap-3">
+          <div className="p-6 border-b border-dictator-chrome/10 grid grid-cols-3 gap-2">
             <button
               onClick={handleScramble}
-              className="flex-1 flex items-center justify-center gap-2 bg-dictator-red text-white font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl hover:bg-[#AA1515] transition-colors active:scale-95"
+              disabled={queueActive}
+              className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl transition-colors
+                ${queueActive
+                  ? 'bg-dictator-red/30 text-white/50 cursor-not-allowed'
+                  : 'bg-dictator-red text-white hover:bg-[#AA1515] active:scale-95'
+                }`}
             >
               <Shuffle size={14} />
               Scramble
             </button>
             <button
+              onClick={handleSolve}
+              disabled={queueActive || solveDepth === 0}
+              className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl border transition-all
+                ${queueActive || solveDepth === 0
+                  ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-dictator-chrome/40 cursor-not-allowed'
+                  : 'bg-[#1A1A1A] border-dictator-red/40 text-dictator-red hover:border-dictator-red hover:text-white active:scale-95'
+                }`}
+            >
+              <Check size={14} />
+              Solve
+            </button>
+            <button
               onClick={handleReset}
-              className="flex-1 flex items-center justify-center gap-2 bg-[#1A1A1A] text-dictator-chrome font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl border border-dictator-chrome/20 hover:border-dictator-chrome/50 hover:text-white transition-all active:scale-95"
+              disabled={queueActive}
+              className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl border transition-all
+                ${queueActive
+                  ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-dictator-chrome/40 cursor-not-allowed'
+                  : 'bg-[#1A1A1A] border-dictator-chrome/20 text-dictator-chrome hover:border-dictator-chrome/50 hover:text-white active:scale-95'
+                }`}
             >
               <RotateCcw size={14} />
               Reset
@@ -309,17 +481,27 @@ const SimulatorPage = () => {
 
           {/* Move Buttons */}
           <div className="p-6 border-b border-dictator-chrome/10">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome mb-4">Moves</p>
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome">Moves</p>
+              <span className={`font-mono text-[10px] uppercase tracking-widest ${manualInputLocked ? 'text-dictator-red' : 'text-dictator-chrome/40'}`}>
+                {manualInputLocked ? `Locked ${activeMove ? `· ${activeMove}` : ''}` : 'Ready'}
+              </span>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               {MOVE_GROUPS.map(({ label, moves }) => (
                 <div key={label} className="flex flex-col gap-1.5">
                   <span className="font-mono text-[9px] text-dictator-chrome/50 uppercase tracking-widest">{label}</span>
                   <div className="flex gap-1.5">
-                    {moves.map(move => (
+                    {moves.map((move) => (
                       <button
                         key={move}
-                        onClick={() => dispatchMove(move)}
-                        className="flex-1 font-mono text-xs font-bold py-2 rounded-lg bg-[#1A1A1A] border border-dictator-chrome/20 text-white hover:bg-dictator-red hover:border-dictator-red transition-all duration-150 active:scale-95"
+                        onClick={() => dispatchManualMove(move)}
+                        disabled={manualInputLocked}
+                        className={`flex-1 font-mono text-xs font-bold py-2 rounded-lg border transition-all duration-150
+                          ${manualInputLocked
+                            ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/30 cursor-not-allowed'
+                            : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:bg-dictator-red hover:border-dictator-red active:scale-95'
+                          }`}
                       >
                         {move}
                       </button>
@@ -384,7 +566,11 @@ const SimulatorPage = () => {
               <pointLight position={[-5, -5, -5]} color="#CC1A1A" intensity={0.4} distance={20} />
               <pointLight position={[5, 5, -5]} color="#1E90FF" intensity={0.2} distance={20} />
 
-              <InteractiveCube cubeState={displayState} animating={animating} />
+              <InteractiveCube
+                cubeState={displayState}
+                activeMove={activeMove}
+                onMoveComplete={handleMoveAnimationComplete}
+              />
               <OrbitControls
                 enablePan={false}
                 minDistance={4}
@@ -394,6 +580,15 @@ const SimulatorPage = () => {
                 enableDamping
               />
             </Canvas>
+
+            {queueActive && (
+              <div className="absolute top-4 right-4 bg-black/50 border border-dictator-red/30 rounded-full px-3 py-1.5 flex items-center gap-2 backdrop-blur">
+                <span className="w-2 h-2 rounded-full bg-dictator-red animate-pulse" />
+                <span className="font-mono text-[10px] uppercase tracking-widest text-dictator-red">
+                  {activeMove ? `Turning ${activeMove}` : `${queuedMoveCount} Queued`}
+                </span>
+              </div>
+            )}
 
             {/* Drag hint */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 font-mono text-[10px] text-dictator-chrome/40 uppercase tracking-widest pointer-events-none">
@@ -405,7 +600,7 @@ const SimulatorPage = () => {
           <div className="border-t border-dictator-chrome/10 bg-[#0A0A0A] px-6 py-5">
             <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome mb-4">Face Map</p>
             <div className="flex flex-wrap gap-6 justify-center">
-              {FACE_ORDER.map(face => (
+              {FACE_ORDER.map((face) => (
                 <FacePreview key={face} face={face} label={face} />
               ))}
             </div>
@@ -462,10 +657,10 @@ const SimulatorPage = () => {
                   <p className="font-mono text-[10px] text-dictator-chrome uppercase tracking-widest mb-1">{name}</p>
                   <p className="font-mono text-xs text-dictator-red font-bold">{algo}</p>
                   <button
-                    onClick={() => {
-                      algo.split(' ').forEach(m => dispatchMove(m));
-                    }}
-                    className="mt-2 flex items-center gap-1 font-mono text-[10px] text-dictator-chrome/50 hover:text-dictator-red transition-colors"
+                    onClick={() => enqueueMoves(algo.split(' '))}
+                    disabled={queueActive}
+                    className={`mt-2 flex items-center gap-1 font-mono text-[10px] transition-colors
+                      ${queueActive ? 'text-dictator-chrome/30 cursor-not-allowed' : 'text-dictator-chrome/50 hover:text-dictator-red'}`}
                   >
                     <ChevronRight size={10} />
                     Apply
