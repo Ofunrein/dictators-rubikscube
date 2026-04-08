@@ -1,0 +1,12 @@
+{
+  "name": "rubiks-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "dev:api": "npm --prefix backend/api run serve",
+    "dev:frontend": "node scripts/dev-frontend.mjs",
+    "dev:frontend:legacy": "npm --prefix frontend run dev"
+  }
+}

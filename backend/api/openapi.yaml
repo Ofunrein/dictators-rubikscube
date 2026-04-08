@@ -1,0 +1,947 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Rubik's Cube API",
+    "version": "0.1.0",
+    "description": "Sprint 2 API contract for cube state, move application, scramble generation, and solver wiring."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4011",
+      "description": "Validation skeleton server"
+    },
+    {
+      "url": "http://localhost:4010",
+      "description": "Spec-driven mock server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "System"
+    },
+    {
+      "name": "Cube"
+    }
+  ],
+  "paths": {
+    "/v1/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Health check",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Service heartbeat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/health_ok"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cube/state/solved": {
+      "get": {
+        "tags": [
+          "Cube"
+        ],
+        "summary": "Get solved cube state",
+        "operationId": "getSolvedState",
+        "responses": {
+          "200": {
+            "description": "Solved 3x3 state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolvedStateResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/solved_state"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cube/moves/apply": {
+      "post": {
+        "tags": [
+          "Cube"
+        ],
+        "summary": "Apply a single move to a cube state",
+        "operationId": "applyMove",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveApplyRequest"
+              },
+              "examples": {
+                "default": {
+                  "$ref": "#/components/examples/move_apply_request"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Move applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoveApplyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/move_apply_response"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/v1/cube/scramble": {
+      "post": {
+        "tags": [
+          "Cube"
+        ],
+        "summary": "Generate a scramble and resulting state",
+        "operationId": "generateScramble",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScrambleRequest"
+              },
+              "examples": {
+                "default": {
+                  "$ref": "#/components/examples/scramble_request"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Scramble generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScrambleResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/scramble_response"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/v1/cube/solve": {
+      "post": {
+        "tags": [
+          "Cube"
+        ],
+        "summary": "Request a solution sequence for a cube state",
+        "operationId": "solveCube",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolveRequest"
+              },
+              "examples": {
+                "default": {
+                  "$ref": "#/components/examples/solve_request"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mock solution payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolveResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/solve_response"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StickerToken": {
+        "type": "string",
+        "enum": [
+          "W",
+          "R",
+          "G",
+          "Y",
+          "O",
+          "B"
+        ]
+      },
+      "MoveToken": {
+        "type": "string",
+        "enum": [
+          "U",
+          "D",
+          "L",
+          "R",
+          "F",
+          "B",
+          "U'",
+          "D'",
+          "L'",
+          "R'",
+          "F'",
+          "B'"
+        ]
+      },
+      "CubeFace": {
+        "type": "array",
+        "minItems": 9,
+        "maxItems": 9,
+        "items": {
+          "$ref": "#/components/schemas/StickerToken"
+        }
+      },
+      "CubeState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "U",
+          "R",
+          "F",
+          "D",
+          "L",
+          "B"
+        ],
+        "properties": {
+          "U": {
+            "$ref": "#/components/schemas/CubeFace"
+          },
+          "R": {
+            "$ref": "#/components/schemas/CubeFace"
+          },
+          "F": {
+            "$ref": "#/components/schemas/CubeFace"
+          },
+          "D": {
+            "$ref": "#/components/schemas/CubeFace"
+          },
+          "L": {
+            "$ref": "#/components/schemas/CubeFace"
+          },
+          "B": {
+            "$ref": "#/components/schemas/CubeFace"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "service",
+          "version",
+          "timestamp"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "service": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SolvedStateResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state"
+        ],
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/CubeState"
+          }
+        }
+      },
+      "MoveApplyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "move"
+        ],
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/CubeState"
+          },
+          "move": {
+            "$ref": "#/components/schemas/MoveToken"
+          }
+        }
+      },
+      "MoveApplyResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "appliedMove"
+        ],
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/CubeState"
+          },
+          "appliedMove": {
+            "$ref": "#/components/schemas/MoveToken"
+          }
+        }
+      },
+      "ScrambleRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "length": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25
+          },
+          "seed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          }
+        }
+      },
+      "ScrambleResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scramble",
+          "state"
+        ],
+        "properties": {
+          "scramble": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/MoveToken"
+            }
+          },
+          "state": {
+            "$ref": "#/components/schemas/CubeState"
+          }
+        }
+      },
+      "SolveRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state"
+        ],
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/CubeState"
+          },
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "beginner",
+              "cfop"
+            ],
+            "default": "beginner"
+          }
+        }
+      },
+      "SolveResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "moves",
+          "estimatedMoveCount",
+          "isMock",
+          "note"
+        ],
+        "properties": {
+          "moves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MoveToken"
+            }
+          },
+          "estimatedMoveCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "isMock": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "ValidationErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "message"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "requestId"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationErrorDetail"
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorEnvelope"
+          }
+        }
+      }
+    },
+    "examples": {
+      "health_ok": {
+        "value": {
+          "ok": true,
+          "service": "rubiks-api",
+          "version": "0.1.0",
+          "timestamp": "2026-03-24T20:00:00.000Z"
+        }
+      },
+      "solved_state": {
+        "value": {
+          "state": {
+            "U": [
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W"
+            ],
+            "R": [
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R"
+            ],
+            "F": [
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G"
+            ],
+            "D": [
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y"
+            ],
+            "L": [
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O"
+            ],
+            "B": [
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B"
+            ]
+          }
+        }
+      },
+      "move_apply_request": {
+        "value": {
+          "state": {
+            "U": [
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W"
+            ],
+            "R": [
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R"
+            ],
+            "F": [
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G"
+            ],
+            "D": [
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y"
+            ],
+            "L": [
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O"
+            ],
+            "B": [
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B"
+            ]
+          },
+          "move": "R"
+        }
+      },
+      "move_apply_response": {
+        "value": {
+          "state": {
+            "U": [
+              "W",
+              "W",
+              "G",
+              "W",
+              "W",
+              "G",
+              "W",
+              "W",
+              "G"
+            ],
+            "R": [
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R"
+            ],
+            "F": [
+              "G",
+              "G",
+              "Y",
+              "G",
+              "G",
+              "Y",
+              "G",
+              "G",
+              "Y"
+            ],
+            "D": [
+              "Y",
+              "Y",
+              "B",
+              "Y",
+              "Y",
+              "B",
+              "Y",
+              "Y",
+              "B"
+            ],
+            "L": [
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O"
+            ],
+            "B": [
+              "W",
+              "B",
+              "B",
+              "W",
+              "B",
+              "B",
+              "W",
+              "B",
+              "B"
+            ]
+          },
+          "appliedMove": "R"
+        }
+      },
+      "scramble_request": {
+        "value": {
+          "length": 6,
+          "seed": 42
+        }
+      },
+      "scramble_response": {
+        "value": {
+          "scramble": [
+            "R",
+            "U",
+            "F'",
+            "L",
+            "D",
+            "B'"
+          ],
+          "state": {
+            "U": [
+              "O",
+              "O",
+              "G",
+              "B",
+              "W",
+              "W",
+              "R",
+              "R",
+              "R"
+            ],
+            "R": [
+              "B",
+              "G",
+              "B",
+              "Y",
+              "R",
+              "W",
+              "W",
+              "B",
+              "W"
+            ],
+            "F": [
+              "W",
+              "Y",
+              "Y",
+              "W",
+              "G",
+              "G",
+              "Y",
+              "R",
+              "R"
+            ],
+            "D": [
+              "O",
+              "O",
+              "O",
+              "Y",
+              "Y",
+              "O",
+              "O",
+              "R",
+              "Y"
+            ],
+            "L": [
+              "B",
+              "O",
+              "W",
+              "B",
+              "O",
+              "B",
+              "B",
+              "G",
+              "G"
+            ],
+            "B": [
+              "Y",
+              "Y",
+              "G",
+              "R",
+              "B",
+              "G",
+              "R",
+              "W",
+              "G"
+            ]
+          }
+        }
+      },
+      "solve_request": {
+        "value": {
+          "state": {
+            "U": [
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "G",
+              "R",
+              "R"
+            ],
+            "R": [
+              "B",
+              "G",
+              "Y",
+              "Y",
+              "R",
+              "R",
+              "Y",
+              "R",
+              "R"
+            ],
+            "F": [
+              "O",
+              "Y",
+              "Y",
+              "O",
+              "G",
+              "G",
+              "O",
+              "G",
+              "G"
+            ],
+            "D": [
+              "O",
+              "O",
+              "B",
+              "Y",
+              "Y",
+              "B",
+              "Y",
+              "Y",
+              "B"
+            ],
+            "L": [
+              "W",
+              "B",
+              "G",
+              "O",
+              "O",
+              "G",
+              "O",
+              "O",
+              "G"
+            ],
+            "B": [
+              "R",
+              "R",
+              "R",
+              "W",
+              "B",
+              "B",
+              "W",
+              "B",
+              "B"
+            ]
+          },
+          "strategy": "beginner"
+        }
+      },
+      "solve_response": {
+        "value": {
+          "moves": [
+            "R'",
+            "U'",
+            "F"
+          ],
+          "estimatedMoveCount": 3,
+          "isMock": true,
+          "note": "Solver implementation is stubbed in Sprint 2 and currently returns a placeholder response."
+        }
+      },
+      "bad_request_invalid_move": {
+        "value": {
+          "error": {
+            "code": "VALIDATION_ERROR",
+            "message": "Request body failed validation.",
+            "requestId": "req_123456",
+            "details": [
+              {
+                "path": "move",
+                "message": "Move must be one of U, D, L, R, F, B, U', D', L', R', F', B'."
+              }
+            ]
+          }
+        }
+      },
+      "not_found": {
+        "value": {
+          "error": {
+            "code": "NOT_FOUND",
+            "message": "Route not found.",
+            "requestId": "req_123456"
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "invalid_move": {
+                "$ref": "#/components/examples/bad_request_invalid_move"
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Route not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "default": {
+                "$ref": "#/components/examples/not_found"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
