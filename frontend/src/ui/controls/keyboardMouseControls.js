@@ -257,6 +257,7 @@ export function initKeyboardMouseControls(cubeState, dispatchMove, camera, domEl
 
     // Returns cleanup funxction so event listeners are detached when this control scheme is terminated/switched
     return function cleanup() {
+        clearSelection();
         window.removeEventListener('keydown', handleKeydown);
         domElement.removeEventListener('click', handleClick);
         console.log('[keyboardMouseControls] Keyboard & Mouse event listener removed');

@@ -1,3 +1,7 @@
+/* Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+/* Base Layout */
 html,
 body,
 #app {
@@ -5,84 +9,171 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 20% 20%, #1c2232 0%, transparent 35%),
-    radial-gradient(circle at 80% 10%, #24201f 0%, transparent 40%),
-    #0d1016;
+
+  background:#141414;
+  font-family: 'Inter', sans-serif;
+  color: red;
 }
 
+/* Three.js Canvas */
 canvas {
   display: block;
+  width: 100%;
+  height: 100%;
 }
 
-#practice-panel {
-  position: fixed;
-  top: 16px;
-  left: 16px;
-  z-index: 20;
-  width: min(340px, calc(100vw - 32px));
-  padding: 14px 16px;
-  color: #f3f6ff;
-  background: rgba(10, 14, 24, 0.84);
-  border: 1px solid rgba(154, 176, 255, 0.35);
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+#ui-root {
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    flex-direction: row;
+
+    pointer-events: none;
 }
 
-#practice-panel h2 {
-  margin: 0 0 8px;
-  font-size: 1.05rem;
+
+#left-panel {
+    width: clamp(180px, 18vw, 280px);
+    min-width: 180px;
+    max-width: 320px;
+    height: 100%;
+
+    flex-shrink: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    padding: 20px;
+
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(12px);
+
+    border-right: 1px solid rgba(255, 0, 0, 0.2);
+
+    pointer-events: auto;
 }
 
-#practice-panel .hint {
-  margin: 0 0 10px;
-  color: #bfc8e8;
-  font-size: 0.9rem;
+#main-view {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+
+    pointer-events: none;
 }
 
-#practice-panel .buttons {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+#hamburger-button {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+
+    z-index: 1000;
+
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 24px;
+
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+
+    color: red;
+    cursor: pointer;
+
+    pointer-events: auto;
+
+    font-family: 'IBM Plex Mono', monospace;
 }
 
-#practice-panel button {
-  border: 0;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-weight: 600;
-  cursor: pointer;
-  color: #0d1016;
-  background: #9ab0ff;
+#settings-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+
+    width: 200px;
+    height: 100%;
+
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(12px);
+
+    border-left: 1px solid rgba(255, 0, 0, 0.2);
+
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+
+    padding: 20px;
+
+    pointer-events: auto;
+
+    display: flex;
+    flex-direction: column;
 }
 
-#practice-panel button:hover {
-  background: #b4c4ff;
+#settings-panel.open {
+    transform: translateX(0);
 }
 
-#practice-panel button:disabled {
-  cursor: wait;
-  opacity: 0.62;
+/* ======================
+    Typography 
+====================== */
+
+/* Headers */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    margin: 0;
 }
 
-#practice-panel p {
-  margin: 6px 0;
-  font-size: 0.92rem;
+/* Body Text */
+p, span, div {
+    font-family: 'Inter', sans-serif;
 }
 
-#api-status[data-error="false"] {
-  color: #9ad3ff;
+/* Buttons + Controls */
+button, select, input {
+    font-family: 'IBM Plex Mono', monospace;
 }
 
-#api-status[data-error="true"] {
-  color: #ff9f9f;
+/* ======================
+    Settings UI 
+====================== */
+
+.settings-container{
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
-#status-text[data-solved="true"] {
-  color: #7bffa9;
+.settings-container h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: red;
 }
 
-#status-text[data-solved="false"] {
-  color: #ffd77b;
+.settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
+
+.settings-group label {
+    font-size: 14px;
+    color: red;
+}
+
+.settings-group select {
+    padding: 5px;
+    background: #111;
+    color: red;
+    border: 1px solid rgba(255, 0, 0, 0.2);
+    outline: none;
+}
+
