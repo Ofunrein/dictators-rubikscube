@@ -1,7 +1,7 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4011').replace(/\/+$/, '');
 const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(message, { status, code, requestId, details } = {}) {
     super(message);
     this.name = 'ApiError';
@@ -153,3 +153,4 @@ export async function solveCubeRemote(state, strategy = 'beginner') {
 
   return payload;
 }
+

@@ -1,0 +1,10 @@
+{
+  "name": "rubiks-api-scaffold",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "serve": "node src/server.js",
+    "mock": "node src/mockServer.js"
+  }
+}
