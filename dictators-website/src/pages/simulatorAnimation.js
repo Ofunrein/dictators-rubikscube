@@ -27,12 +27,21 @@ for (let x = -1; x <= 1; x += 1) {
 }
 
 export function parseMoveAnimation(move) {
-  const baseMove = move.replace("'", '');
+  if (typeof move !== 'string' || move.length === 0) {
+    return null;
+  }
+
+  const token = move.trim();
+  if (!token) {
+    return null;
+  }
+
+  const baseMove = token.replace("'", '');
   const config = MOVE_ANIMATIONS[baseMove];
   if (!config) return null;
   return {
     ...config,
-    direction: move.endsWith("'") ? -config.direction : config.direction,
+    direction: token.endsWith("'") ? -config.direction : config.direction,
   };
 }
 

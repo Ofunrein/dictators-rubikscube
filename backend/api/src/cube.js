@@ -1,4 +1,22 @@
-import { applyMove as applyFrontendMove, MOVES as FRONTEND_MOVES } from '../../../dicators-website/src/cube/moves.js';
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const frontendMoveModule = [
+  resolve(currentDir, '../../../dictators-website/src/cube/moves.js'),
+  resolve(currentDir, '../../../dicators-website/src/cube/moves.js'),
+].find((candidatePath) => existsSync(candidatePath));
+
+if (!frontendMoveModule) {
+  throw new Error(
+    'Could not find frontend cube move module. Expected one of: dictators-website/src/cube/moves.js or dicators-website/src/cube/moves.js.',
+  );
+}
+
+const { applyMove: applyFrontendMove, MOVES: FRONTEND_MOVES } = await import(
+  pathToFileURL(frontendMoveModule).href,
+);
 
 export const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 export const STICKER_TOKENS = ['W', 'R', 'G', 'Y', 'O', 'B'];

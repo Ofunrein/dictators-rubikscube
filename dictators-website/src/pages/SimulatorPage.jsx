@@ -36,6 +36,29 @@ const AXIS_VECTORS = {
   z: new THREE.Vector3(0, 0, 1),
 };
 
+class SimulatorCanvasBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, info) {
+    this.props.onError?.(error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback ?? null;
+    }
+
+    return this.props.children;
+  }
+}
+
 // ─── Single cubelet mesh ─────────────────────────────────────────────────────
 const Cubelet = React.forwardRef(({ position, materials, highlighted }, ref) => (
   <group ref={ref} position={position}>
@@ -215,6 +238,10 @@ const SimulatorPage = () => {
   const [activeMove, setActiveMove] = useState(null);
   const [queuedMoveCount, setQueuedMoveCount] = useState(0);
   const [solveDepth, setSolveDepth] = useState(0);
+  const [canvasFailed, setCanvasFailed] = useState(false);
+  const [canvasErrorMessage, setCanvasErrorMessage] = useState('');
+  const [canvasErrorDetails, setCanvasErrorDetails] = useState('');
+  const [canvasRetryKey, setCanvasRetryKey] = useState(0);
 
   const moveQueueRef = useRef([]);
   const activeMoveRef = useRef(null);
@@ -239,6 +266,60 @@ const SimulatorPage = () => {
 
   const queueActive = activeMove !== null || queuedMoveCount > 0;
   const manualInputLocked = queueActive;
+  const canAnimateMoves = !canvasFailed;
+
+  const applyMovesInstantly = useCallback((moves) => {
+    const normalized = normalizeMoveSequence(moves);
+    if (normalized.length === 0) return;
+
+    let nextState = cubeStateObj.getState();
+    for (const move of normalized) {
+      nextState = applyMove(nextState, move);
+      mergeMoveIntoSolveStack(solveStackRef.current, move);
+    }
+
+    cubeStateObj.setState(nextState);
+    setDisplayState({ ...nextState });
+    setMoveHistory((prev) => [...prev, ...normalized].slice(-50));
+    setSolveDepth(solveStackRef.current.length);
+  }, [cubeStateObj]);
+
+  const handleCanvasFailure = useCallback((error, info) => {
+    // Keep diagnostics in console for quick browser-side debugging.
+    console.error('Simulator 3D canvas failed; switching to fallback mode.', error);
+    setCanvasErrorMessage(error?.message || String(error) || 'Unknown renderer error');
+    setCanvasErrorDetails(
+      [error?.name, error?.stack, info?.componentStack]
+        .filter(Boolean)
+        .join('\n\n'),
+    );
+
+    setCanvasFailed((prev) => {
+      if (prev) return prev;
+
+      const pendingMoves = [];
+      if (activeMoveRef.current) pendingMoves.push(activeMoveRef.current);
+      if (moveQueueRef.current.length > 0) pendingMoves.push(...moveQueueRef.current);
+
+      activeMoveRef.current = null;
+      moveQueueRef.current = [];
+      setActiveMove(null);
+      setQueuedMoveCount(0);
+
+      if (pendingMoves.length > 0) {
+        applyMovesInstantly(pendingMoves);
+      }
+
+      return true;
+    });
+  }, [applyMovesInstantly]);
+
+  const handleCanvasRetry = useCallback(() => {
+    setCanvasFailed(false);
+    setCanvasErrorMessage('');
+    setCanvasErrorDetails('');
+    setCanvasRetryKey((prev) => prev + 1);
+  }, []);
 
   const startNextMove = useCallback(() => {
     if (activeMoveRef.current || moveQueueRef.current.length === 0) {
@@ -256,10 +337,15 @@ const SimulatorPage = () => {
     const normalized = normalizeMoveSequence(moves);
     if (normalized.length === 0) return;
 
+    if (!canAnimateMoves) {
+      applyMovesInstantly(normalized);
+      return;
+    }
+
     moveQueueRef.current.push(...normalized);
     setQueuedMoveCount(moveQueueRef.current.length);
     startNextMove();
-  }, [startNextMove]);
+  }, [startNextMove, canAnimateMoves, applyMovesInstantly]);
 
   const handleMoveAnimationComplete = useCallback((move) => {
     if (activeMoveRef.current !== move) return;
@@ -394,7 +480,7 @@ const SimulatorPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-dictator-void text-white flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-dictator-void text-white flex flex-col overflow-x-hidden">
 
       {/* ── Top Bar ─────────────────────────────────────────────────────────── */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-dictator-chrome/10 bg-dictator-void/90 backdrop-blur-xl sticky top-0 z-50">
@@ -426,10 +512,10 @@ const SimulatorPage = () => {
       </header>
 
       {/* ── Main Layout ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+      <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden">
 
         {/* ── Left Panel: Controls ─────────────────────────────────────────── */}
-        <aside className="w-full lg:w-[280px] xl:w-[320px] border-b lg:border-b-0 lg:border-r border-dictator-chrome/10 flex flex-col bg-[#0A0A0A] overflow-y-auto">
+        <aside className="w-full max-h-[42vh] lg:max-h-none lg:w-[280px] xl:w-[320px] border-b lg:border-b-0 lg:border-r border-dictator-chrome/10 flex flex-col bg-[#0A0A0A] overflow-y-auto">
 
           {/* Action Buttons */}
           <div className="p-6 border-b border-dictator-chrome/10 grid grid-cols-3 gap-2">
@@ -551,35 +637,95 @@ const SimulatorPage = () => {
         </aside>
 
         {/* ── Center: 3D Canvas ────────────────────────────────────────────── */}
-        <main className="flex-1 relative bg-dictator-void flex flex-col">
+        <main className="flex-1 min-h-[420px] lg:min-h-0 relative bg-dictator-void flex flex-col">
 
           {/* 3D Cube */}
           <div className="flex-1 min-h-[400px] relative">
-            <Canvas
-              camera={{ position: [4, 3.5, 5], fov: 45 }}
-              shadows
-              className="w-full h-full"
-            >
-              <color attach="background" args={['#0D0D0D']} />
-              <ambientLight intensity={0.5} />
-              <directionalLight position={[5, 8, 5]} intensity={1} castShadow />
-              <pointLight position={[-5, -5, -5]} color="#CC1A1A" intensity={0.4} distance={20} />
-              <pointLight position={[5, 5, -5]} color="#1E90FF" intensity={0.2} distance={20} />
+            {canAnimateMoves ? (
+              <SimulatorCanvasBoundary
+                onError={handleCanvasFailure}
+                fallback={
+                  <div className="absolute inset-0 flex items-center justify-center p-6">
+                    <div className="max-w-md rounded-2xl border border-dictator-red/30 bg-black/55 px-6 py-5 text-center backdrop-blur">
+                      <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-red mb-2">3D Renderer Disabled</p>
+                      <p className="font-body text-sm text-dictator-chrome leading-relaxed">
+                        The browser could not initialize WebGL for the animated cube. Move controls and solve tracking still work in fallback mode.
+                      </p>
+                      {canvasErrorMessage && (
+                        <p className="mt-3 rounded-lg border border-dictator-chrome/20 bg-black/40 px-3 py-2 font-mono text-[10px] leading-relaxed text-dictator-chrome/80 break-words">
+                          {canvasErrorMessage}
+                        </p>
+                      )}
+                      {canvasErrorDetails && (
+                        <pre className="mt-3 max-h-40 overflow-auto rounded-lg border border-dictator-chrome/20 bg-black/40 p-3 text-left font-mono text-[10px] leading-relaxed text-dictator-chrome/80 whitespace-pre-wrap break-words">
+                          {canvasErrorDetails}
+                        </pre>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleCanvasRetry}
+                        className="mt-3 inline-flex items-center justify-center rounded-lg border border-dictator-red/60 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-dictator-red transition-colors hover:bg-dictator-red hover:text-white"
+                      >
+                        Retry 3D
+                      </button>
+                    </div>
+                  </div>
+                }
+              >
+                <Canvas
+                  key={canvasRetryKey}
+                  camera={{ position: [4, 3.5, 5], fov: 45 }}
+                  shadows
+                  className="w-full h-full"
+                >
+                  <color attach="background" args={['#0D0D0D']} />
+                  <ambientLight intensity={0.5} />
+                  <directionalLight position={[5, 8, 5]} intensity={1} castShadow />
+                  <pointLight position={[-5, -5, -5]} color="#CC1A1A" intensity={0.4} distance={20} />
+                  <pointLight position={[5, 5, -5]} color="#1E90FF" intensity={0.2} distance={20} />
 
-              <InteractiveCube
-                cubeState={displayState}
-                activeMove={activeMove}
-                onMoveComplete={handleMoveAnimationComplete}
-              />
-              <OrbitControls
-                enablePan={false}
-                minDistance={4}
-                maxDistance={12}
-                autoRotate={false}
-                dampingFactor={0.08}
-                enableDamping
-              />
-            </Canvas>
+                  <InteractiveCube
+                    cubeState={displayState}
+                    activeMove={activeMove}
+                    onMoveComplete={handleMoveAnimationComplete}
+                  />
+                  <OrbitControls
+                    enablePan={false}
+                    minDistance={4}
+                    maxDistance={12}
+                    autoRotate={false}
+                    dampingFactor={0.08}
+                    enableDamping
+                  />
+                </Canvas>
+              </SimulatorCanvasBoundary>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center p-6">
+                <div className="max-w-md rounded-2xl border border-dictator-red/30 bg-black/55 px-6 py-5 text-center backdrop-blur">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-red mb-2">3D Renderer Disabled</p>
+                  <p className="font-body text-sm text-dictator-chrome leading-relaxed">
+                    The browser could not initialize WebGL for the animated cube. Move controls and solve tracking still work in fallback mode.
+                  </p>
+                  {canvasErrorMessage && (
+                    <p className="mt-3 rounded-lg border border-dictator-chrome/20 bg-black/40 px-3 py-2 font-mono text-[10px] leading-relaxed text-dictator-chrome/80 break-words">
+                      {canvasErrorMessage}
+                    </p>
+                  )}
+                  {canvasErrorDetails && (
+                    <pre className="mt-3 max-h-40 overflow-auto rounded-lg border border-dictator-chrome/20 bg-black/40 p-3 text-left font-mono text-[10px] leading-relaxed text-dictator-chrome/80 whitespace-pre-wrap break-words">
+                      {canvasErrorDetails}
+                    </pre>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleCanvasRetry}
+                    className="mt-3 inline-flex items-center justify-center rounded-lg border border-dictator-red/60 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-dictator-red transition-colors hover:bg-dictator-red hover:text-white"
+                  >
+                    Retry 3D
+                  </button>
+                </div>
+              </div>
+            )}
 
             {queueActive && (
               <div className="absolute top-4 right-4 bg-black/50 border border-dictator-red/30 rounded-full px-3 py-1.5 flex items-center gap-2 backdrop-blur">
@@ -592,7 +738,7 @@ const SimulatorPage = () => {
 
             {/* Drag hint */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 font-mono text-[10px] text-dictator-chrome/40 uppercase tracking-widest pointer-events-none">
-              Drag to rotate · Scroll to zoom
+              {canAnimateMoves ? 'Drag to rotate · Scroll to zoom' : 'Fallback mode · Use controls to apply moves'}
             </div>
           </div>
 
@@ -609,7 +755,7 @@ const SimulatorPage = () => {
         </main>
 
         {/* ── Right Panel: Tutorial ────────────────────────────────────────── */}
-        <aside className="w-full lg:w-[280px] xl:w-[320px] border-t lg:border-t-0 lg:border-l border-dictator-chrome/10 bg-[#0A0A0A] flex flex-col overflow-y-auto">
+        <aside className="w-full max-h-[42vh] lg:max-h-none lg:w-[280px] xl:w-[320px] border-t lg:border-t-0 lg:border-l border-dictator-chrome/10 bg-[#0A0A0A] flex flex-col overflow-y-auto">
 
           <div className="p-6 border-b border-dictator-chrome/10">
             <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome mb-1">// LEARN</p>
