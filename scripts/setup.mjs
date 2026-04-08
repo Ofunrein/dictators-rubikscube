@@ -5,6 +5,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const isWindows = process.platform === 'win32';
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const frontendCandidates = ['dictators-website', 'dicators-website'];
 
@@ -32,24 +33,48 @@ function runNpmInstall(cwd, label) {
     // eslint-disable-next-line no-console
     console.log(`Installing dependencies in ${label}...`);
 
-    const child = spawn(npmCommand, ['install'], {
-      cwd,
-      env: process.env,
-      stdio: 'inherit'
-    });
+    const spawnInstall = (useShellFallback = false) =>
+      spawn(
+        useShellFallback ? 'npm' : npmCommand,
+        useShellFallback ? ['install'] : ['install'],
+        {
+          cwd,
+          env: process.env,
+          stdio: 'inherit',
+          shell: useShellFallback
+        }
+      );
 
-    child.on('error', (error) => {
-      rejectInstall(error);
-    });
+    let attemptedShellFallback = false;
+    let child = spawnInstall();
 
-    child.on('exit', (code) => {
-      if (code === 0) {
-        resolveInstall();
-        return;
-      }
+    const attachHandlers = (currentChild) => {
+      currentChild.on('error', (error) => {
+        if (isWindows && !attemptedShellFallback) {
+          attemptedShellFallback = true;
+          // eslint-disable-next-line no-console
+          console.warn(
+            `${label} install failed with direct npm launch (${error.message}); retrying with Windows shell fallback...`
+          );
+          child = spawnInstall(true);
+          attachHandlers(child);
+          return;
+        }
 
-      rejectInstall(new Error(`npm install failed in ${label} (exit code ${code ?? 'unknown'})`));
-    });
+        rejectInstall(error);
+      });
+
+      currentChild.on('exit', (code) => {
+        if (code === 0) {
+          resolveInstall();
+          return;
+        }
+
+        rejectInstall(new Error(`npm install failed in ${label} (exit code ${code ?? 'unknown'})`));
+      });
+    };
+
+    attachHandlers(child);
   });
 }
 
