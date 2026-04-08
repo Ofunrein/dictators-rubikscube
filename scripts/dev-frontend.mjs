@@ -5,6 +5,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const isWindows = process.platform === 'win32';
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const frontendCandidates = ['dictators-website', 'dicators-website'];
 
@@ -33,18 +34,43 @@ if (!existsSync(frontendNodeModules)) {
   process.exit(1);
 }
 
-const child = spawn(npmCommand, ['run', 'dev'], {
-  cwd: resolve(repoRoot, frontendDir),
-  env: process.env,
-  stdio: 'inherit'
-});
+function spawnFrontend(useShellFallback = false) {
+  return spawn(
+    useShellFallback ? 'npm' : npmCommand,
+    useShellFallback ? ['run dev'] : ['run', 'dev'],
+    {
+      cwd: resolve(repoRoot, frontendDir),
+      env: process.env,
+      stdio: 'inherit',
+      shell: useShellFallback
+    }
+  );
+}
 
-child.on('error', (error) => {
-  // eslint-disable-next-line no-console
-  console.error(`Frontend failed to start: ${error.message}`);
-  process.exit(1);
-});
+let attemptedShellFallback = false;
+let child = spawnFrontend();
 
-child.on('exit', (code) => {
-  process.exit(typeof code === 'number' ? code : 1);
-});
+function attachHandlers(currentChild) {
+  currentChild.on('error', (error) => {
+    if (isWindows && !attemptedShellFallback) {
+      attemptedShellFallback = true;
+      // eslint-disable-next-line no-console
+      console.warn(
+        `Frontend failed with direct npm launch (${error.message}); retrying with Windows shell fallback...`
+      );
+      child = spawnFrontend(true);
+      attachHandlers(child);
+      return;
+    }
+
+    // eslint-disable-next-line no-console
+    console.error(`Frontend failed to start: ${error.message}`);
+    process.exit(1);
+  });
+
+  currentChild.on('exit', (code) => {
+    process.exit(typeof code === 'number' ? code : 1);
+  });
+}
+
+attachHandlers(child);
