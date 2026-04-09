@@ -127,6 +127,8 @@ public:
       */
     const std::vector<std::vector<std::vector<int>>>& getState() const;
 
+    std::vector<std::vector<std::vector<int>>>& getStateMutable() { return cube; }
+
     /**
      * @brief Checks if the puzzle cube is in a solved state. 
      * 

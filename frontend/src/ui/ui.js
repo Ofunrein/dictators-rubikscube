@@ -1,4 +1,6 @@
 import { initSettings } from './settings.js';
+import { initFeatures } from './features.js';
+import { initStopwatch } from './stopwatch.js';
 
 /**
  * Initializes and structures UI layout in document body
@@ -41,6 +43,8 @@ export function initUI(context) {
     settings.classList.add('hidden'); // Start hidden
 
     initSettings(settings, context);
+    initFeatures(leftPanel, context);
+    initStopwatch(leftPanel, context);
 
     // Toggle settings panel on click
     hamburger.onclick = () => {

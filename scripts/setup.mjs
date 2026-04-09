@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const isWindows = process.platform === 'win32';
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const frontendCandidates = ['dictators-website', 'dicators-website'];
+const frontendCandidates = ['frontend', 'dictators-website', 'dicators-website'];
 
 function resolveFrontendDir() {
   for (const dir of frontendCandidates) {
@@ -91,6 +91,7 @@ async function main() {
 
   await runNpmInstall(resolve(repoRoot, 'backend/api'), 'backend/api');
   await runNpmInstall(resolve(repoRoot, frontendDir), frontendDir);
+  await runNpmInstall(resolve(repoRoot, 'frontend'), 'frontend');
 
   // eslint-disable-next-line no-console
   console.log('Setup complete. Run: npm run dev');
