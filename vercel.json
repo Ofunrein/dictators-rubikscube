@@ -1,0 +1,8 @@
+{
+  "buildCommand": "cd dictators-website && npm install && npm run build",
+  "outputDirectory": "dictators-website/dist",
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/v1/:path*", "destination": "/api/v1/:path*" }
+  ]
+}
