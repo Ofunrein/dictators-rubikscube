@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
@@ -95,7 +95,7 @@ function resolveStickerColor(value) {
 }
 
 // ─── Single sticker plane (Kyle's approach) ──────────────────────────────────
-const Sticker = ({ face, index, color, position, rotation }) => {
+const Sticker = ({color, position, rotation }) => {
   return (
     <mesh position={position} rotation={rotation}>
       <planeGeometry args={[STICKER_SIZE, STICKER_SIZE]} />
@@ -152,6 +152,7 @@ StickerCubelet.displayName = 'StickerCubelet';
 const InteractiveCube = ({ cubeState, activeMove, onMoveComplete }) => {
   const groupRef = useRef();
   const cubieRefs = useRef([]);
+  const pivotRef = useRef(null);
   const activeAnimationRef = useRef(null);
   const onMoveCompleteRef = useRef(onMoveComplete);
 
@@ -171,6 +172,17 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete }) => {
       return;
     }
 
+    const pivot = new THREE.Group();
+    groupRef.current.add(pivot);
+    pivotRef.current = pivot;
+
+    CUBIE_LAYOUT.forEach((cubie, index) => {
+      if (cubie[config.axis] !== config.layer) return;
+      const cubieGroup = cubieRefs.current[index];
+      if (!cubieGroup) return;
+      pivot.attach(cubieGroup);
+    });
+
     activeAnimationRef.current = {
       move: activeMove,
       config,
@@ -189,52 +201,70 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete }) => {
 
     animation.progress = Math.min(1, animation.progress + delta / TURN_DURATION_SECONDS);
     const easedProgress = easeInOutCubic(animation.progress);
-    const angle = animation.config.direction * (Math.PI / 2) * easedProgress;
+    
+    let direction = animation.config.direction;
+
+    if (animation.config.axis === 'y') {
+      direction *= -1;
+    }
+
+    const totalAngle = direction * (Math.PI / 2);
     const axisVector = AXIS_VECTORS[animation.config.axis];
+
+    pivotRef.current.setRotationFromAxisAngle(axisVector, totalAngle * easedProgress);
+
+    if (animation.progress < 1) return;
+
+    pivotRef.current.setRotationFromAxisAngle(axisVector, totalAngle);
+
+    CUBIE_LAYOUT.forEach((cubie, index) => {
+      if (cubie[animation.config.axis] !== animation.config.layer) return;
+      const cubieGroup = cubieRefs.current[index];
+      if (!cubieGroup) return;
+      groupRef.current.attach(cubieGroup);
+    });
+
+    groupRef.current.remove(pivotRef.current);
+    pivotRef.current = null;
 
     CUBIE_LAYOUT.forEach((cubie, index) => {
       const cubieGroup = cubieRefs.current[index];
       if (!cubieGroup) return;
-      if (cubie[animation.config.axis] !== animation.config.layer) return;
-      cubieGroup.setRotationFromAxisAngle(axisVector, angle);
-    });
 
-    if (animation.progress < 1) return;
+      cubieGroup.position.set(
+        cubie.x * GAP,
+        cubie.y * GAP,
+        cubie.z * GAP
+      );
 
-    CUBIE_LAYOUT.forEach((_, index) => {
-      const cubieGroup = cubieRefs.current[index];
-      if (!cubieGroup) return;
-      cubieGroup.rotation.set(0, 0, 0);
-    });
+  cubieGroup.rotation.set(0, 0, 0);
+});
 
     const finishedMove = animation.move;
     activeAnimationRef.current = null;
     onMoveCompleteRef.current?.(finishedMove);
   });
 
-  const cubelets = useMemo(() => {
-    const items = [];
-    let index = 0;
-    for (let x = -1; x <= 1; x++) {
-      for (let y = -1; y <= 1; y++) {
-        for (let z = -1; z <= 1; z++) {
-          const i = index;
-          items.push(
-            <StickerCubelet
-              key={`${x}-${y}-${z}`}
-              ref={(node) => { cubieRefs.current[i] = node; }}
-              gx={x}
-              gy={y}
-              gz={z}
-              cubeState={cubeState}
-            />
-          );
-          index++;
-        }
+  const cubelets = [];
+  let index = 0;
+  for (let x = -1; x <= 1; x++) {
+    for (let y = -1; y <= 1; y++) {
+      for (let z = -1; z <= 1; z++) {
+        const i = index;
+        cubelets.push(
+          <StickerCubelet
+            key={`${x}-${y}-${z}`}
+            ref={(node) => { cubieRefs.current[i] = node; }}
+            gx={x}
+            gy={y}
+            gz={z}
+            cubeState={cubeState}
+          />
+        );
+        index++;
       }
     }
-    return items;
-  }, [cubeState]);
+  }
 
   return (
     <group ref={groupRef} rotation={[0.4, -0.6, 0]}>
