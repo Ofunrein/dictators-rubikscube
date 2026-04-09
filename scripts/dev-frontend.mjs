@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const isWindows = process.platform === 'win32';
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const frontendCandidates = ['dictators-website', 'dicators-website'];
+const frontendCandidates = ['frontend', 'dictators-website', 'dicators-website'];
 
 const frontendDir =
   frontendCandidates.find(

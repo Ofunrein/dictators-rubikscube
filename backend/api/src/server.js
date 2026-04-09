@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { applyMoveToState, applyMoves, createSolvedState, FACE_ORDER, generateScramble } from './cube.js';
+import { applyMoveToState, createSolvedState, FACE_ORDER } from './cube.js';
 import {
   validateMoveApplyRequest,
   validateScrambleRequest,
@@ -8,9 +8,24 @@ import {
 } from './validation.js';
 
 const PORT = Number(process.env.API_PORT ?? 4011);
+const CPP_SERVER_URL = process.env.CPP_SERVER_URL ?? 'http://localhost:4012';
 const SERVICE_NAME = 'rubiks-api';
 const VERSION = '0.1.0';
 const MAX_BODY_BYTES = 1_000_000;
+
+async function proxyCpp(path, body = {}) {
+  const response = await fetch(`${CPP_SERVER_URL}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    throw new Error(`C++ server error: ${response.status}`);
+  }
+
+  return response.json();
+}
 
 function withCorsHeaders(headers = {}) {
   return {
@@ -72,7 +87,6 @@ async function readJsonBody(req) {
         resolve({});
         return;
       }
-
       try {
         const raw = Buffer.concat(chunks).toString('utf-8');
         resolve(JSON.parse(raw));
@@ -139,10 +153,7 @@ async function handleRequest(req, res) {
 
     const { state, move } = validation.value;
     const nextState = applyMoveToState(state, move);
-    sendJson(res, 200, {
-      state: nextState,
-      appliedMove: move
-    });
+    sendJson(res, 200, { state: nextState, appliedMove: move });
     return;
   }
 
@@ -161,11 +172,13 @@ async function handleRequest(req, res) {
       return;
     }
 
-    const { length, seed } = validation.value;
-    const scramble = generateScramble(length, seed);
-    const state = applyMoves(createSolvedState(), scramble);
-
-    sendJson(res, 200, { scramble, state });
+    try {
+      const result = await proxyCpp('/scramble', {});
+      sendJson(res, 200, { scramble: [], state: result.state });
+    } catch (err) {
+      console.error('[server] C++ scramble failed:', err.message);
+      sendError(res, 502, requestId, 'CPP_SERVER_ERROR', 'C++ server unavailable.');
+    }
     return;
   }
 
@@ -185,16 +198,22 @@ async function handleRequest(req, res) {
     }
 
     const { state } = validation.value;
-    const alreadySolved = isSolvedState(state);
 
-    sendJson(res, 200, {
-      moves: alreadySolved ? [] : ["R'", "U'", 'F'],
-      estimatedMoveCount: alreadySolved ? 0 : 3,
-      isMock: true,
-      note: alreadySolved
-        ? 'Cube is already solved; returning an empty solution.'
-        : 'Solver implementation is stubbed in Sprint 2 and currently returns a placeholder response.'
-    });
+    if (isSolvedState(state)) {
+      sendJson(res, 200, { moves: [], solvedState: state });
+      return;
+    }
+
+    try {
+      const result = await proxyCpp('/solve', { state });
+      sendJson(res, 200, {
+        moves: result.moves ?? [],
+        solvedState: result.solvedState ?? null
+      });
+    } catch (err) {
+      console.error('[server] C++ solve failed:', err.message);
+      sendError(res, 502, requestId, 'CPP_SERVER_ERROR', 'C++ server unavailable.');
+    }
     return;
   }
 
@@ -209,6 +228,6 @@ const server = createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  // eslint-disable-next-line no-console
   console.log(`API skeleton listening on http://localhost:${PORT}`);
+  console.log(`Proxying solve/scramble to C++ server at ${CPP_SERVER_URL}`);
 });

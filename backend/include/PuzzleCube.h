@@ -106,6 +106,13 @@ public:
      */
     explicit PuzzleCube(int n);
 
+    /**
+     * @brief Resets puzzle cube to its initial state.
+     * 
+     * Resets all the tiles on the cube to when it was first initialized.
+     */
+    void reset();
+
      /**
       * @brief Returns the current state of the puzzle cube. 
       * 
@@ -119,6 +126,8 @@ public:
       * @return Const reference to the 3D state container.
       */
     const std::vector<std::vector<std::vector<int>>>& getState() const;
+
+    std::vector<std::vector<std::vector<int>>>& getStateMutable() { return cube; }
 
     /**
      * @brief Checks if the puzzle cube is in a solved state. 

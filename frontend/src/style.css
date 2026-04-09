@@ -10,7 +10,7 @@ body,
   height: 100%;
   overflow: hidden;
 
-  background:#141414;
+  background: #141414;
   font-family: 'Inter', sans-serif;
   color: red;
 }
@@ -22,6 +22,9 @@ canvas {
   height: 100%;
 }
 
+/* ======================
+   UI ROOT
+====================== */
 
 #ui-root {
     position: absolute;
@@ -33,6 +36,9 @@ canvas {
     pointer-events: none;
 }
 
+/* ======================
+   LEFT PANEL
+====================== */
 
 #left-panel {
     width: clamp(180px, 18vw, 280px);
@@ -44,17 +50,120 @@ canvas {
 
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 14px;
 
     padding: 20px;
 
-    background: rgba(20, 20, 20, 0.85);
+    background: rgba(20, 20, 20, 0.88);
     backdrop-filter: blur(12px);
 
     border-right: 1px solid rgba(255, 0, 0, 0.2);
 
     pointer-events: auto;
 }
+
+/* ======================
+   PANEL SECTIONS
+====================== */
+
+#left-panel > div {
+    width: 100%;
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    padding: 10px;
+
+    /* CENTER CARD EFFECT */
+    margin: 0 auto;
+
+    background: rgba(0, 0, 0, 0.25);
+
+    border: 1px solid rgba(255, 0, 0, 0.25);
+    border-radius: 6px;
+
+    backdrop-filter: blur(8px);
+}
+
+#left-panel > div:last-child {
+    border-bottom: none;
+}
+
+/* Section Titles (from createSection) */
+#left-panel h1,
+#left-panel h2,
+#left-panel h3,
+#left-panel div:first-child {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+
+    opacity: 0.85;
+
+    margin-bottom: 4px;
+}
+
+/* ======================
+   BUTTONS (UNIFIED)
+====================== */
+
+#left-panel button {
+    width: 100%;
+    padding: 8px 10px;
+
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 0, 0, 0.25);
+
+    color: red;
+
+    cursor: pointer;
+
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+
+    transition: all 0.15s ease;
+}
+
+#left-panel button:hover {
+    background: rgba(255, 0, 0, 0.08);
+    border-color: rgba(255, 0, 0, 0.5);
+}
+
+#left-panel button:active {
+    transform: scale(0.98);
+}
+
+/* Optional: disabled state */
+#left-panel button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ======================
+   TEXT ELEMENTS
+====================== */
+
+#left-panel div {
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Stopwatch display */
+#left-panel .stopwatch-display {
+    font-size: 18px;
+    letter-spacing: 1px;
+}
+
+/* Status text */
+#left-panel .stopwatch-status {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* ======================
+   MAIN VIEW
+====================== */
 
 #main-view {
     flex: 1;
@@ -63,6 +172,10 @@ canvas {
 
     pointer-events: none;
 }
+
+/* ======================
+   HAMBURGER BUTTON
+====================== */
 
 #hamburger-button {
     position: absolute;
@@ -91,6 +204,10 @@ canvas {
 
     font-family: 'IBM Plex Mono', monospace;
 }
+
+/* ======================
+   SETTINGS PANEL
+====================== */
 
 #settings-panel {
     position: absolute;
@@ -121,10 +238,9 @@ canvas {
 }
 
 /* ======================
-    Typography 
+   TYPOGRAPHY
 ====================== */
 
-/* Headers */
 h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', sans-serif;
     font-weight: 600;
@@ -132,21 +248,15 @@ h1, h2, h3, h4, h5, h6 {
     margin: 0;
 }
 
-/* Body Text */
 p, span, div {
     font-family: 'Inter', sans-serif;
 }
 
-/* Buttons + Controls */
-button, select, input {
-    font-family: 'IBM Plex Mono', monospace;
-}
-
 /* ======================
-    Settings UI 
+   SETTINGS UI
 ====================== */
 
-.settings-container{
+.settings-container {
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -176,4 +286,3 @@ button, select, input {
     border: 1px solid rgba(255, 0, 0, 0.2);
     outline: none;
 }
-
