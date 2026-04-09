@@ -28,7 +28,6 @@ const Navbar = () => {
 
     const navLinks = [
         { label: 'Learn', href: '#learn' },
-        { label: 'Simulator', href: '/simulator', isRoute: true },
         { label: 'Compete', href: '#compete' },
         { label: 'Team', href: '#team' },
     ];

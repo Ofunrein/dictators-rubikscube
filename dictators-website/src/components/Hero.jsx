@@ -96,7 +96,7 @@ const Hero = () => {
                     </button>
 
                     <a href="#demo" className="text-dictator-chrome font-body font-medium hover:text-white transition-colors underline underline-offset-4 decoration-dictator-chrome/30 hover:decoration-white/70">
-                        Watch Demo ΓåÆ
+                        Watch Demo
                     </a>
                 </div>
 

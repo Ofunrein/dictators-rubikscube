@@ -29,7 +29,7 @@ const Footer = () => {
                     {/* Column 2: Platform Links */}
                     <div className="col-span-1 flex flex-col items-start gap-4">
                         <h4 className="font-heading text-lg font-bold text-white mb-2">Platform</h4>
-                        {['Learn', 'Simulator', 'Compete', 'Progress'].map(link => (
+                        {['Learn', 'Compete', 'Progress'].map(link => (
                             <a key={link} href={`#${link.toLowerCase()}`} className="font-mono text-xs text-dictator-chrome hover:text-white transition-all duration-300 hover:-translate-y-[1px]">
                                 {link}
                             </a>
