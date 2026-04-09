@@ -193,6 +193,9 @@ const MOVE_GROUPS = [
   { label: 'L Face', moves: ['L', "L'"] },
   { label: 'F Face', moves: ['F', "F'"] },
   { label: 'B Face', moves: ['B', "B'"] },
+  { label: 'M Slice', moves: ['M', "M'"] },
+  { label: 'E Slice', moves: ['E', "E'"] },
+  { label: 'S Slice', moves: ['S', "S'"] },
 ];
 
 // ─── Keyboard map ─────────────────────────────────────────────────────────────
@@ -203,6 +206,9 @@ const KEY_MAP = {
   l: 'L', L: "L'",
   f: 'F', F: "F'",
   b: 'B', B: "B'",
+  m: 'M', M: "M'",
+  e: 'E', E: "E'",
+  s: 'S', S: "S'",
 };
 
 // ─── Scramble generator ───────────────────────────────────────────────────────
