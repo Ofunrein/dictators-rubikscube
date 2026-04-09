@@ -433,6 +433,20 @@ const SimulatorPage = () => {
     enqueueMoves([move]);
   }, [enqueueMoves]);
 
+  // ── Watchdog: force-complete a stalled animation ─────────────────────────────
+  useEffect(() => {
+    if (!activeMove) return;
+    const timeout = setTimeout(() => {
+      // If activeMove is still set after 4× the animation window, the
+      // useFrame render loop stalled (tab hidden, low memory, etc.).
+      // Force-complete so the queue and controls don't stay locked.
+      if (activeMoveRef.current === activeMove) {
+        handleMoveAnimationComplete(activeMove);
+      }
+    }, TURN_DURATION_SECONDS * 4 * 1000);
+    return () => clearTimeout(timeout);
+  }, [activeMove, handleMoveAnimationComplete]);
+
   // ── Keyboard controls ────────────────────────────────────────────────────────
   useEffect(() => {
     const handleKey = (e) => {
