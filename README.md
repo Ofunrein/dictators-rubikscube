@@ -1,122 +1,131 @@
-# 3D Rubik's Cube - Sprint 1 Skeleton
+# The Dictators — 3D Rubik's Cube Platform
 
-This repository contains a Sprint-1-friendly scaffold for a 3D online Rubik's cube game with:
-- `dicators-website/`: current React + three.js website and simulator
-- `frontend/`: legacy Vite + three.js prototype renderer
-- `backend/`: C++ backend placeholders
-- `docs/`: architecture notes
+> **Team 5** · CS 3398 Software Engineering · Spring 2026 · Texas State University
 
-## Run frontend + API together (recommended)
+An interactive, browser-based 3D Rubik's Cube platform with real-time manipulation, guided tutorials, and a full-stack API.
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **3D Simulator** | Sticker-mesh Rubik's Cube with smooth move animations |
+| **18-Move Engine** | Full notation — U, D, L, R, F, B plus M, E, S slices |
+| **Tutorial System** | Step-by-step learning: cross → F2L → OLL → PLL |
+| **Algorithm Reference** | Quick-apply sequences (Sexy Move, Sune, U-Perm, etc.) |
+| **REST API** | 5 endpoints: health, solved state, apply move, scramble, solve |
+| **C++ Solver** | 7-step algorithmic solver (white cross method) |
+| **Branded Landing Page** | GSAP animations, React Three Fiber hero, responsive design |
+| **Timer & History** | Move counting, best-time tracking, full move log |
+| **2D Face Map** | Real-time unfolded cube visualization |
+| **Keyboard Shortcuts** | Full notation mapped to keyboard (u/d/l/r/f/b/m/e/s) |
+
+## Quick Start
 
 ```bash
-cd dicators-website
+cd dictators-website
 npm install
-cd ..
 npm run dev
 ```
 
-This starts:
-- frontend dev server on `http://localhost:5173`
+Opens at `http://localhost:5173`. Navigate to `/simulator` for the cube.
+
+## Run Frontend + API Together
+
+```bash
+npm install
+npm run dev
+```
+
+Starts:
+- Frontend dev server on `http://localhost:5173`
 - API server on `http://localhost:4011`
 
-If needed, point the frontend at a different backend URL:
+## Project Structure
 
-```bash
-VITE_API_BASE_URL=http://localhost:5001 npm --prefix dicators-website run dev
+```
+the-dictators/
+├── api/                        ← Vercel serverless functions
+│   └── v1/[...path].js        ← Catch-all API handler
+├── dictators-website/          ← React + Vite + Tailwind (primary app)
+│   ├── src/
+│   │   ├── components/         ← Landing page components
+│   │   ├── pages/
+│   │   │   ├── SimulatorPage.jsx    ← Interactive 3D simulator
+│   │   │   └── simulatorAnimation.js ← Move animation engine
+│   │   ├── cube/
+│   │   │   ├── CubeState.js    ← Face-keyed state model
+│   │   │   └── moves.js        ← 18-move engine (U/D/L/R/F/B + M/E/S)
+│   │   └── net/api.js          ← API client
+│   └── package.json
+├── frontend/                   ← Three.js prototype (Kyle's sticker-mesh renderer)
+├── backend/
+│   ├── api/                    ← Node.js API server
+│   │   ├── openapi.yaml        ← OpenAPI 3.1 contract
+│   │   └── src/                ← server.js, cube.js, validation.js
+│   ├── src/cube/               ← C++ engine
+│   │   ├── PuzzleCube.h/.cpp   ← N×N×N state model
+│   │   ├── CubeOperations.cpp  ← Solver (7-step white cross)
+│   │   └── CubeMoves.hpp       ← Move definitions
+│   └── tests/                  ← 100-iteration stress test
+├── docs/                       ← Architecture & contribution docs
+├── scripts/                    ← Dev tooling (setup, dev runner)
+├── vercel.json                 ← Vercel build config + API rewrites
+└── package.json                ← Workspace root
 ```
 
-## Frontend-only run instructions
+## API Endpoints
 
-```bash
-cd dicators-website
-npm install
-npm run dev
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/health` | Service heartbeat |
+| GET | `/v1/cube/state/solved` | Returns solved 3×3 state |
+| POST | `/v1/cube/moves/apply` | Apply a move to a state |
+| POST | `/v1/cube/scramble` | Generate scramble + resulting state |
+| POST | `/v1/cube/solve` | Request solution sequence |
+
+## Cube State Contract
+
+Faces: `U`, `R`, `F`, `D`, `L`, `B` — each an array of 9 sticker tokens.
+
 ```
-
-Then open the local Vite URL shown in terminal (typically `http://localhost:5173`).
-
-## Cube State API (frontend)
-
-The frontend exposes:
-
-```js
-window.setCubeState(state)
-```
-
-Expected `state` shape:
-- Faces: `U`, `R`, `F`, `D`, `L`, `B`
-- Each face is an array of length `9`
-- Face order contract: `U R F D L B`
-
-Index layout for every face (row-major):
-
-```text
+Index layout (row-major):
 0 1 2
 3 4 5
 6 7 8
 ```
 
-Example:
+Sticker tokens: `W` (white), `R` (red), `G` (green), `Y` (yellow), `O` (orange), `B` (blue).
 
-```js
-window.setCubeState({
-  U: Array(9).fill('white'),
-  R: Array(9).fill('red'),
-  F: ['green', 'green', 'green', 'green', 'black', 'green', 'green', 'green', 'green'],
-  D: Array(9).fill('yellow'),
-  L: Array(9).fill('orange'),
-  B: Array(9).fill('blue')
-});
-```
-
-Visual sanity expectation:
-- The front-center sticker (`F[4]`) should visibly change (black in the example above).
-
-Local QA screenshot step (optional):
-- Run the frontend locally, apply the example in browser devtools, and capture `docs/cube-render.png` showing the updated front-center sticker.
-
-Build check:
+## Build
 
 ```bash
-npm --prefix dicators-website run build
+cd dictators-website
+npm run build
 ```
 
-## Backend run instructions
+## Backend (C++)
 
 ```bash
 cd backend
-g++ -std=c++17 src/main.cpp -o backend_skeleton
-./backend_skeleton
+g++ -std=c++17 src/main.cpp src/cube/PuzzleCube.cpp src/cube/CubeOperations.cpp -o rubiks_solver
+./rubiks_solver
 ```
 
-Expected output:
+## Deployment
 
-```text
-Backend skeleton ready
-```
-CMake does not automatically detect new source files.
+The project is configured for **Vercel**:
+- `dictators-website/` builds as the static site
+- `api/v1/` routes map to serverless functions
+- `vercel.json` configures build output and API rewrites
 
-(Whenever you add a new .cpp file to the project, you must explicitly list it in CMakeLists.txt. If you forget to do this, the file will not be compiled or linked into the executable.)
+## Tech Stack
 
-## API scaffold (Sprint 2)
-
-A contract-first API scaffold now lives at `backend/api` with:
-
-- OpenAPI contract: `backend/api/openapi.yaml`
-- Spec-driven mock server: `npm run mock` (port `4010`)
-- Validation + route skeleton server: `npm run serve` (port `4011`)
-
-Run it with:
-
-```bash
-cd backend/api
-npm run mock
-# or
-npm run serve
-```
-
-Or run frontend + API together from repo root:
-
-```bash
-npm run dev
-```
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, Vite, Tailwind CSS, React Three Fiber, Three.js |
+| Animations | GSAP, ScrollTrigger, eased quaternion interpolation |
+| API | Node.js, OpenAPI 3.1, Vercel Serverless Functions |
+| Engine | C++17 |
+| Version Control | Git, Bitbucket |
+| Project Management | Jira |
+| Documentation | Confluence |

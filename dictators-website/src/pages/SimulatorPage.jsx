@@ -59,29 +59,96 @@ class SimulatorCanvasBoundary extends React.Component {
   }
 }
 
-// ─── Single cubelet mesh ─────────────────────────────────────────────────────
-const Cubelet = React.forwardRef(({ position, materials, highlighted }, ref) => (
-  <group ref={ref} position={position}>
-    <mesh castShadow receiveShadow scale={highlighted ? 1.02 : 1}>
-      <boxGeometry args={[0.95, 0.95, 0.95]} />
-      {materials.map((mat, i) => (
-        <meshStandardMaterial
-          key={i}
-          attach={`material-${i}`}
-          color={mat}
-          roughness={0.25}
-          metalness={0.6}
-          emissive={highlighted ? '#3D1200' : '#000000'}
-          emissiveIntensity={highlighted ? 0.45 : 0}
-        />
-      ))}
+// ─── Kyle's sticker-mesh constants (from frontend/src/main.js) ───────────────
+const CUBIE_SIZE = 0.95;
+const STICKER_SIZE = 0.85;
+const GAP = 1.0;
+const EPSILON = 0.02;
+
+const CUBIE_FACES_DEF = [
+  { axis: 'x', sign: 1, face: 'R', rotation: [0, Math.PI / 2, 0] },
+  { axis: 'x', sign: -1, face: 'L', rotation: [0, -Math.PI / 2, 0] },
+  { axis: 'y', sign: 1, face: 'U', rotation: [-Math.PI / 2, 0, 0] },
+  { axis: 'y', sign: -1, face: 'D', rotation: [Math.PI / 2, 0, 0] },
+  { axis: 'z', sign: 1, face: 'F', rotation: [0, 0, 0] },
+  { axis: 'z', sign: -1, face: 'B', rotation: [0, Math.PI, 0] },
+];
+
+function getStickerIndex(face, gx, gy, gz) {
+  switch (face) {
+    case 'U': return (1 - gz) * 3 + (gx + 1);
+    case 'D': return (gz + 1) * 3 + (gx + 1);
+    case 'F': return (1 - gy) * 3 + (gx + 1);
+    case 'B': return (1 - gy) * 3 + (1 - gx);
+    case 'R': return (1 - gy) * 3 + (1 - gz);
+    case 'L': return (1 - gy) * 3 + (gz + 1);
+    default: return 0;
+  }
+}
+
+function resolveStickerColor(value) {
+  if (typeof value === 'string') {
+    const token = value.trim().toUpperCase();
+    if (TOKEN_HEX[token]) return TOKEN_HEX[token];
+  }
+  return '#808080';
+}
+
+// ─── Single sticker plane (Kyle's approach) ──────────────────────────────────
+const Sticker = ({ face, index, color, position, rotation }) => {
+  return (
+    <mesh position={position} rotation={rotation}>
+      <planeGeometry args={[STICKER_SIZE, STICKER_SIZE]} />
+      <meshBasicMaterial color={color} side={THREE.FrontSide} />
     </mesh>
-  </group>
-));
+  );
+};
 
-Cubelet.displayName = 'Cubelet';
+// ─── Single cubie with dark body + sticker planes (Kyle's buildCubies) ───────
+const StickerCubelet = React.forwardRef(({ gx, gy, gz, cubeState }, ref) => {
+  const stickers = [];
 
-// ─── Full 3x3x3 cube driven by CubeState ─────────────────────────────────────
+  for (const def of CUBIE_FACES_DEF) {
+    const isExposed =
+      (def.axis === 'x' && gx === def.sign) ||
+      (def.axis === 'y' && gy === def.sign) ||
+      (def.axis === 'z' && gz === def.sign);
+    if (!isExposed) continue;
+
+    const stickerIndex = getStickerIndex(def.face, gx, gy, gz);
+    const tokenValue = cubeState[def.face]?.[stickerIndex];
+    const color = resolveStickerColor(tokenValue);
+
+    const stickerPosition = [0, 0, 0];
+    stickerPosition[def.axis === 'x' ? 0 : def.axis === 'y' ? 1 : 2] =
+      def.sign * (CUBIE_SIZE / 2 + EPSILON);
+
+    stickers.push(
+      <Sticker
+        key={def.face}
+        face={def.face}
+        index={stickerIndex}
+        color={color}
+        position={stickerPosition}
+        rotation={def.rotation}
+      />
+    );
+  }
+
+  return (
+    <group ref={ref} position={[gx * GAP, gy * GAP, gz * GAP]}>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE]} />
+        <meshStandardMaterial color="#111111" roughness={0.8} />
+      </mesh>
+      {stickers}
+    </group>
+  );
+});
+
+StickerCubelet.displayName = 'StickerCubelet';
+
+// ─── Full 3x3x3 cube using Kyle's sticker-mesh rendering ─────────────────────
 const InteractiveCube = ({ cubeState, activeMove, onMoveComplete }) => {
   const groupRef = useRef();
   const cubieRefs = useRef([]);
@@ -145,38 +212,29 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete }) => {
     onMoveCompleteRef.current?.(finishedMove);
   });
 
-  const activeLayer = useMemo(() => parseMoveAnimation(activeMove), [activeMove]);
-
   const cubelets = useMemo(() => {
-    const state = cubeState;
-
-    return CUBIE_LAYOUT.map((cubie, index) => {
-      const { x, y, z, position, key } = cubie;
-      // material order: +x, -x, +y, -y, +z, -z (right, left, top, bottom, front, back)
-      const materials = [
-        x === 1 ? TOKEN_HEX[state.R[2 - (y + 1) * 3 + (1 - z)]] ?? '#111' : '#111',
-        x === -1 ? TOKEN_HEX[state.L[2 - (y + 1) * 3 + (z + 1)]] ?? '#111' : '#111',
-        y === 1 ? TOKEN_HEX[state.U[(1 - z) * 3 + (x + 1)]] ?? '#111' : '#111',
-        y === -1 ? TOKEN_HEX[state.D[(z + 1) * 3 + (x + 1)]] ?? '#111' : '#111',
-        z === 1 ? TOKEN_HEX[state.F[(1 - y) * 3 + (x + 1)]] ?? '#111' : '#111',
-        z === -1 ? TOKEN_HEX[state.B[(1 - y) * 3 + (1 - x)]] ?? '#111' : '#111',
-      ];
-
-      const highlighted = Boolean(activeLayer && cubie[activeLayer.axis] === activeLayer.layer);
-
-      return (
-        <Cubelet
-          key={key}
-          ref={(node) => {
-            cubieRefs.current[index] = node;
-          }}
-          position={position}
-          materials={materials}
-          highlighted={highlighted}
-        />
-      );
-    });
-  }, [cubeState, activeLayer]);
+    const items = [];
+    let index = 0;
+    for (let x = -1; x <= 1; x++) {
+      for (let y = -1; y <= 1; y++) {
+        for (let z = -1; z <= 1; z++) {
+          const i = index;
+          items.push(
+            <StickerCubelet
+              key={`${x}-${y}-${z}`}
+              ref={(node) => { cubieRefs.current[i] = node; }}
+              gx={x}
+              gy={y}
+              gz={z}
+              cubeState={cubeState}
+            />
+          );
+          index++;
+        }
+      }
+    }
+    return items;
+  }, [cubeState]);
 
   return (
     <group ref={groupRef} rotation={[0.4, -0.6, 0]}>
@@ -193,6 +251,9 @@ const MOVE_GROUPS = [
   { label: 'L Face', moves: ['L', "L'"] },
   { label: 'F Face', moves: ['F', "F'"] },
   { label: 'B Face', moves: ['B', "B'"] },
+  { label: 'M Slice', moves: ['M', "M'"] },
+  { label: 'E Slice', moves: ['E', "E'"] },
+  { label: 'S Slice', moves: ['S', "S'"] },
 ];
 
 // ─── Keyboard map ─────────────────────────────────────────────────────────────
@@ -203,6 +264,9 @@ const KEY_MAP = {
   l: 'L', L: "L'",
   f: 'F', F: "F'",
   b: 'B', B: "B'",
+  m: 'M', M: "M'",
+  e: 'E', E: "E'",
+  s: 'S', S: "S'",
 };
 
 // ─── Scramble generator ───────────────────────────────────────────────────────
@@ -368,6 +432,20 @@ const SimulatorPage = () => {
     if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
     enqueueMoves([move]);
   }, [enqueueMoves]);
+
+  // ── Watchdog: force-complete a stalled animation ─────────────────────────────
+  useEffect(() => {
+    if (!activeMove) return;
+    const timeout = setTimeout(() => {
+      // If activeMove is still set after 4× the animation window, the
+      // useFrame render loop stalled (tab hidden, low memory, etc.).
+      // Force-complete so the queue and controls don't stay locked.
+      if (activeMoveRef.current === activeMove) {
+        handleMoveAnimationComplete(activeMove);
+      }
+    }, TURN_DURATION_SECONDS * 4 * 1000);
+    return () => clearTimeout(timeout);
+  }, [activeMove, handleMoveAnimationComplete]);
 
   // ── Keyboard controls ────────────────────────────────────────────────────────
   useEffect(() => {
