@@ -8,7 +8,6 @@ import { applyMove, MOVES } from '../cube/moves';
 import { ArrowLeft, RotateCcw, Shuffle, Timer, ChevronRight, Check } from 'lucide-react';
 import {
   CUBIE_LAYOUT,
-  IDLE_ROTATION_SPEED,
   TURN_DURATION_SECONDS,
   easeInOutCubic,
   inverseMove,
@@ -86,6 +85,19 @@ function getStickerIndex(face, gx, gy, gz) {
   }
 }
 
+// ─── Move lookup for mouse+keyboard sticker selection ────────────────────────
+function getStickerMove(face, arrowKey, row, col) {
+  const map = {
+    F: { ArrowUp: ["L'", "M'", 'R'][col], ArrowDown: ['L', 'M', "R'"][col], ArrowLeft: ['U', "E'", "D'"][row], ArrowRight: ["U'", 'E', 'D'][row] },
+    B: { ArrowUp: ["R'", 'M', 'L'][col], ArrowDown: ['R', "M'", "L'"][col], ArrowLeft: ['U', "E'", "D'"][row], ArrowRight: ["U'", 'E', 'D'][row] },
+    R: { ArrowUp: ["F'", "S'", 'B'][col], ArrowDown: ['F', 'S', "B'"][col], ArrowLeft: ['U', "E'", "D'"][row], ArrowRight: ["U'", 'E', 'D'][row] },
+    L: { ArrowUp: ["B'", 'S', 'F'][col], ArrowDown: ['B', "S'", "F'"][col], ArrowLeft: ['U', "E'", "D'"][row], ArrowRight: ["U'", 'E', 'D'][row] },
+    U: { ArrowUp: ["F'", "S'", 'B'][row], ArrowDown: ['F', 'S', "B'"][row], ArrowLeft: ["L'", "M'", 'R'][col], ArrowRight: ['L', 'M', "R'"][col] },
+    D: { ArrowUp: ["B'", 'S', 'F'][row], ArrowDown: ['B', "S'", "F'"][row], ArrowLeft: ['L', 'M', "R'"][col], ArrowRight: ["L'", "M'", 'R'][col] },
+  };
+  return map[face]?.[arrowKey] ?? null;
+}
+
 function resolveStickerColor(value) {
   if (typeof value === 'string') {
     const token = value.trim().toUpperCase();
@@ -95,17 +107,25 @@ function resolveStickerColor(value) {
 }
 
 // ─── Single sticker plane (Kyle's approach) ──────────────────────────────────
-const Sticker = ({color, position, rotation }) => {
+const Sticker = ({ color, position, rotation, onPointerDown, isSelected }) => {
   return (
-    <mesh position={position} rotation={rotation}>
-      <planeGeometry args={[STICKER_SIZE, STICKER_SIZE]} />
-      <meshBasicMaterial color={color} side={THREE.FrontSide} />
-    </mesh>
+    <group position={position} rotation={rotation}>
+      <mesh onPointerDown={onPointerDown}>
+        <planeGeometry args={[STICKER_SIZE, STICKER_SIZE]} />
+        <meshBasicMaterial color={color} side={THREE.FrontSide} />
+      </mesh>
+      {isSelected && (
+        <mesh renderOrder={1}>
+          <planeGeometry args={[STICKER_SIZE, STICKER_SIZE]} />
+          <meshBasicMaterial color="#ff69b4" transparent opacity={0.5} side={THREE.FrontSide} depthTest={false} />
+        </mesh>
+      )}
+    </group>
   );
 };
 
 // ─── Single cubie with dark body + sticker planes (Kyle's buildCubies) ───────
-const StickerCubelet = React.forwardRef(({ gx, gy, gz, cubeState }, ref) => {
+const StickerCubelet = React.forwardRef(({ gx, gy, gz, cubeState, onStickerSelect, selectedSticker }, ref) => {
   const stickers = [];
 
   for (const def of CUBIE_FACES_DEF) {
@@ -123,6 +143,8 @@ const StickerCubelet = React.forwardRef(({ gx, gy, gz, cubeState }, ref) => {
     stickerPosition[def.axis === 'x' ? 0 : def.axis === 'y' ? 1 : 2] =
       def.sign * (CUBIE_SIZE / 2 + EPSILON);
 
+    const isSelected = selectedSticker?.face === def.face && selectedSticker?.index === stickerIndex;
+
     stickers.push(
       <Sticker
         key={def.face}
@@ -131,6 +153,13 @@ const StickerCubelet = React.forwardRef(({ gx, gy, gz, cubeState }, ref) => {
         color={color}
         position={stickerPosition}
         rotation={def.rotation}
+        isSelected={isSelected}
+        onPointerDown={onStickerSelect ? (e) => {
+          e.stopPropagation();
+          const row = Math.floor(stickerIndex / 3);
+          const col = stickerIndex % 3;
+          onStickerSelect({ face: def.face, index: stickerIndex, row, col });
+        } : undefined}
       />
     );
   }
@@ -149,7 +178,7 @@ const StickerCubelet = React.forwardRef(({ gx, gy, gz, cubeState }, ref) => {
 StickerCubelet.displayName = 'StickerCubelet';
 
 // ─── Full 3x3x3 cube using Kyle's sticker-mesh rendering ─────────────────────
-const InteractiveCube = ({ cubeState, activeMove, onMoveComplete }) => {
+const InteractiveCube = ({ cubeState, activeMove, onMoveComplete, onUserMove }) => {
   const groupRef = useRef();
   const cubieRefs = useRef([]);
   const pivotRef = useRef(null);
@@ -159,6 +188,31 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete }) => {
   useEffect(() => {
     onMoveCompleteRef.current = onMoveComplete;
   }, [onMoveComplete]);
+
+  // ─── Mouse+keyboard sticker selection ───────────────────────────────────────
+  const [selectedSticker, setSelectedSticker] = useState(null); // { face, index, row, col }
+
+  const handleStickerSelect = useCallback((info) => {
+    setSelectedSticker((prev) =>
+      prev?.face === info.face && prev?.index === info.index ? null : info
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!onUserMove) return;
+    function handleArrowKey(e) {
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      if (!selectedSticker) return;
+      e.preventDefault();
+      const move = getStickerMove(selectedSticker.face, e.key, selectedSticker.row, selectedSticker.col);
+      if (move) {
+        onUserMove(move);
+        setSelectedSticker(null);
+      }
+    }
+    window.addEventListener('keydown', handleArrowKey);
+    return () => window.removeEventListener('keydown', handleArrowKey);
+  }, [selectedSticker, onUserMove]);
 
   useEffect(() => {
     if (!activeMove) {
@@ -194,10 +248,7 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete }) => {
     if (!groupRef.current) return;
 
     const animation = activeAnimationRef.current;
-    if (!animation?.config) {
-      groupRef.current.rotation.y += delta * IDLE_ROTATION_SPEED;
-      return;
-    }
+    if (!animation?.config) return;
 
     animation.progress = Math.min(1, animation.progress + delta / TURN_DURATION_SECONDS);
     const easedProgress = easeInOutCubic(animation.progress);
@@ -259,6 +310,8 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete }) => {
             gy={y}
             gz={z}
             cubeState={cubeState}
+            selectedSticker={selectedSticker}
+            onStickerSelect={onUserMove ? handleStickerSelect : undefined}
           />
         );
         index++;
@@ -491,6 +544,17 @@ const SimulatorPage = () => {
     return () => window.removeEventListener('keydown', handleKey);
   }, [dispatchManualMove]);
 
+  // ── Auto-stop timer on solve ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!timerRunning) return;
+    const isSolved = FACE_ORDER.every(f => displayState[f].every(s => s === displayState[f][0]));
+    if (isSolved) {
+      clearInterval(timerRef.current);
+      setTimerRunning(false);
+      setBestTime(prev => timerMs > 0 && (prev === null || timerMs < prev) ? timerMs : prev);
+    }
+  }, [displayState, timerRunning, timerMs]);
+
   // ── Timer controls ───────────────────────────────────────────────────────────
   const startTimer = useCallback(() => {
     if (timerRunning) return;
@@ -547,7 +611,8 @@ const SimulatorPage = () => {
 
     const solution = [...solveStackRef.current].reverse().map(inverseMove);
     enqueueMoves(solution);
-  }, [enqueueMoves]);
+    stopTimer();
+  }, [enqueueMoves, stopTimer]);
 
   // ── Reset ────────────────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
@@ -573,7 +638,7 @@ const SimulatorPage = () => {
     const faceColors = displayState[face] || Array(9).fill('W');
     return (
       <div className="flex flex-col items-center gap-1">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome">{label}</span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-white">{label}</span>
         <div className="grid grid-cols-3 gap-[2px]">
           {faceColors.map((token, i) => (
             <div
@@ -594,7 +659,7 @@ const SimulatorPage = () => {
       <header className="flex items-center justify-between px-6 py-4 border-b border-dictator-chrome/10 bg-dictator-void/90 backdrop-blur-xl sticky top-0 z-50">
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-dictator-chrome hover:text-white transition-colors hover:-translate-x-1 duration-200"
+          className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-white hover:text-white transition-colors hover:-translate-x-1 duration-200"
         >
           <ArrowLeft size={14} />
           Back
@@ -611,7 +676,7 @@ const SimulatorPage = () => {
           className={`flex items-center gap-2 font-mono text-sm font-bold px-4 py-2 rounded-full border transition-all duration-200
             ${timerRunning
               ? 'bg-dictator-red/20 border-dictator-red text-dictator-red'
-              : 'bg-[#1A1A1A] border-dictator-chrome/20 text-dictator-chrome hover:border-dictator-red/50 hover:text-white'
+              : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-red/50 hover:text-white'
             }`}
         >
           <Timer size={14} />
@@ -632,7 +697,7 @@ const SimulatorPage = () => {
               disabled={queueActive}
               className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl transition-colors
                 ${queueActive
-                  ? 'bg-dictator-red/30 text-white/50 cursor-not-allowed'
+                  ? 'bg-dictator-red/30 text-white/70 cursor-not-allowed'
                   : 'bg-dictator-red text-white hover:bg-[#AA1515] active:scale-95'
                 }`}
             >
@@ -644,7 +709,7 @@ const SimulatorPage = () => {
               disabled={queueActive || solveDepth === 0}
               className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl border transition-all
                 ${queueActive || solveDepth === 0
-                  ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-dictator-chrome/40 cursor-not-allowed'
+                  ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
                   : 'bg-[#1A1A1A] border-dictator-red/40 text-dictator-red hover:border-dictator-red hover:text-white active:scale-95'
                 }`}
             >
@@ -656,8 +721,8 @@ const SimulatorPage = () => {
               disabled={queueActive}
               className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl border transition-all
                 ${queueActive
-                  ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-dictator-chrome/40 cursor-not-allowed'
-                  : 'bg-[#1A1A1A] border-dictator-chrome/20 text-dictator-chrome hover:border-dictator-chrome/50 hover:text-white active:scale-95'
+                  ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
+                  : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-chrome/50 hover:text-white active:scale-95'
                 }`}
             >
               <RotateCcw size={14} />
@@ -668,7 +733,7 @@ const SimulatorPage = () => {
           {/* Scramble display */}
           {scrambleSeq.length > 0 && (
             <div className="p-6 border-b border-dictator-chrome/10">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome mb-2">Scramble</p>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-white mb-2">Scramble</p>
               <p className="font-mono text-xs text-white/70 leading-relaxed break-all">{scrambleSeq.join(' ')}</p>
             </div>
           )}
@@ -676,15 +741,15 @@ const SimulatorPage = () => {
           {/* Move Buttons */}
           <div className="p-6 border-b border-dictator-chrome/10">
             <div className="flex items-center justify-between mb-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome">Moves</p>
-              <span className={`font-mono text-[10px] uppercase tracking-widest ${manualInputLocked ? 'text-dictator-red' : 'text-dictator-chrome/40'}`}>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-white">Moves</p>
+              <span className={`font-mono text-[10px] uppercase tracking-widest ${manualInputLocked ? 'text-dictator-red' : 'text-white/60'}`}>
                 {manualInputLocked ? `Locked ${activeMove ? `· ${activeMove}` : ''}` : 'Ready'}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {MOVE_GROUPS.map(({ label, moves }) => (
                 <div key={label} className="flex flex-col gap-1.5">
-                  <span className="font-mono text-[9px] text-dictator-chrome/50 uppercase tracking-widest">{label}</span>
+                  <span className="font-mono text-[9px] text-white/70 uppercase tracking-widest">{label}</span>
                   <div className="flex gap-1.5">
                     {moves.map((move) => (
                       <button
@@ -708,12 +773,12 @@ const SimulatorPage = () => {
 
           {/* Keyboard hint */}
           <div className="p-6 border-b border-dictator-chrome/10">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome mb-3">Keyboard</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white mb-3">Keyboard</p>
             <div className="grid grid-cols-3 gap-1.5">
               {Object.entries(KEY_MAP).map(([key, move]) => (
                 <div key={key} className="flex items-center gap-1.5">
-                  <kbd className="font-mono text-[10px] bg-[#1A1A1A] border border-dictator-chrome/20 px-1.5 py-0.5 rounded text-dictator-chrome">{key}</kbd>
-                  <span className="font-mono text-[10px] text-white/50">→ {move}</span>
+                  <kbd className="font-mono text-[10px] bg-[#1A1A1A] border border-dictator-chrome/20 px-1.5 py-0.5 rounded text-white">{key}</kbd>
+                  <span className="font-mono text-[10px] text-white/70">→ {move}</span>
                 </div>
               ))}
             </div>
@@ -722,19 +787,19 @@ const SimulatorPage = () => {
           {/* Best time */}
           {bestTime !== null && (
             <div className="p-6 border-b border-dictator-chrome/10">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome mb-1">Best Time</p>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-white mb-1">Best Time</p>
               <p className="font-mono text-2xl font-bold text-dictator-red">{formatTime(bestTime)}</p>
             </div>
           )}
 
           {/* Move History */}
           <div className="p-6 flex-1">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome mb-3">
-              Move History <span className="text-dictator-chrome/40">({moveHistory.length})</span>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white mb-3">
+              Move History <span className="text-white/60">({moveHistory.length})</span>
             </p>
             <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
               {moveHistory.length === 0
-                ? <span className="font-mono text-[10px] text-dictator-chrome/30">No moves yet</span>
+                ? <span className="font-mono text-[10px] text-white/70">No moves yet</span>
                 : moveHistory.map((m, i) => (
                   <span key={i} className="font-mono text-[10px] bg-[#1A1A1A] border border-dictator-chrome/10 px-2 py-1 rounded text-white/70">{m}</span>
                 ))
@@ -756,16 +821,16 @@ const SimulatorPage = () => {
                   <div className="absolute inset-0 flex items-center justify-center p-6">
                     <div className="max-w-md rounded-2xl border border-dictator-red/30 bg-black/55 px-6 py-5 text-center backdrop-blur">
                       <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-red mb-2">3D Renderer Disabled</p>
-                      <p className="font-body text-sm text-dictator-chrome leading-relaxed">
+                      <p className="font-body text-sm text-white leading-relaxed">
                         The browser could not initialize WebGL for the animated cube. Move controls and solve tracking still work in fallback mode.
                       </p>
                       {canvasErrorMessage && (
-                        <p className="mt-3 rounded-lg border border-dictator-chrome/20 bg-black/40 px-3 py-2 font-mono text-[10px] leading-relaxed text-dictator-chrome/80 break-words">
+                        <p className="mt-3 rounded-lg border border-dictator-chrome/20 bg-black/40 px-3 py-2 font-mono text-[10px] leading-relaxed text-white/90 break-words">
                           {canvasErrorMessage}
                         </p>
                       )}
                       {canvasErrorDetails && (
-                        <pre className="mt-3 max-h-40 overflow-auto rounded-lg border border-dictator-chrome/20 bg-black/40 p-3 text-left font-mono text-[10px] leading-relaxed text-dictator-chrome/80 whitespace-pre-wrap break-words">
+                        <pre className="mt-3 max-h-40 overflow-auto rounded-lg border border-dictator-chrome/20 bg-black/40 p-3 text-left font-mono text-[10px] leading-relaxed text-white/90 whitespace-pre-wrap break-words">
                           {canvasErrorDetails}
                         </pre>
                       )}
@@ -796,6 +861,7 @@ const SimulatorPage = () => {
                     cubeState={displayState}
                     activeMove={activeMove}
                     onMoveComplete={handleMoveAnimationComplete}
+                    onUserMove={dispatchManualMove}
                   />
                   <OrbitControls
                     enablePan={false}
@@ -811,16 +877,16 @@ const SimulatorPage = () => {
               <div className="absolute inset-0 flex items-center justify-center p-6">
                 <div className="max-w-md rounded-2xl border border-dictator-red/30 bg-black/55 px-6 py-5 text-center backdrop-blur">
                   <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-red mb-2">3D Renderer Disabled</p>
-                  <p className="font-body text-sm text-dictator-chrome leading-relaxed">
+                  <p className="font-body text-sm text-white leading-relaxed">
                     The browser could not initialize WebGL for the animated cube. Move controls and solve tracking still work in fallback mode.
                   </p>
                   {canvasErrorMessage && (
-                    <p className="mt-3 rounded-lg border border-dictator-chrome/20 bg-black/40 px-3 py-2 font-mono text-[10px] leading-relaxed text-dictator-chrome/80 break-words">
+                    <p className="mt-3 rounded-lg border border-dictator-chrome/20 bg-black/40 px-3 py-2 font-mono text-[10px] leading-relaxed text-white/90 break-words">
                       {canvasErrorMessage}
                     </p>
                   )}
                   {canvasErrorDetails && (
-                    <pre className="mt-3 max-h-40 overflow-auto rounded-lg border border-dictator-chrome/20 bg-black/40 p-3 text-left font-mono text-[10px] leading-relaxed text-dictator-chrome/80 whitespace-pre-wrap break-words">
+                    <pre className="mt-3 max-h-40 overflow-auto rounded-lg border border-dictator-chrome/20 bg-black/40 p-3 text-left font-mono text-[10px] leading-relaxed text-white/90 whitespace-pre-wrap break-words">
                       {canvasErrorDetails}
                     </pre>
                   )}
@@ -845,14 +911,14 @@ const SimulatorPage = () => {
             )}
 
             {/* Drag hint */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 font-mono text-[10px] text-dictator-chrome/40 uppercase tracking-widest pointer-events-none">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 font-mono text-[10px] text-white/60 uppercase tracking-widest pointer-events-none">
               {canAnimateMoves ? 'Drag to rotate · Scroll to zoom' : 'Fallback mode · Use controls to apply moves'}
             </div>
           </div>
 
           {/* 2D Face Map */}
           <div className="border-t border-dictator-chrome/10 bg-[#0A0A0A] px-6 py-5">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome mb-4">Face Map</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white mb-4">Face Map</p>
             <div className="flex flex-wrap gap-6 justify-center">
               {FACE_ORDER.map((face) => (
                 <FacePreview key={face} face={face} label={face} />
@@ -866,7 +932,7 @@ const SimulatorPage = () => {
         <aside className="w-full max-h-[42vh] lg:max-h-none lg:w-[280px] xl:w-[320px] border-t lg:border-t-0 lg:border-l border-dictator-chrome/10 bg-[#0A0A0A] flex flex-col overflow-y-auto">
 
           <div className="p-6 border-b border-dictator-chrome/10">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome mb-1">// LEARN</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white mb-1">// LEARN</p>
             <h2 className="font-heading text-xl font-bold text-white">Step-by-Step Guide</h2>
           </div>
 
@@ -879,15 +945,15 @@ const SimulatorPage = () => {
                 className={`text-left p-5 transition-all duration-200 flex items-start gap-3 hover:bg-white/5
                   ${tutorialStep === i ? 'bg-dictator-red/10 border-l-2 border-dictator-red' : 'border-l-2 border-transparent'}`}
               >
-                <span className={`font-mono text-xs font-bold mt-0.5 shrink-0 ${tutorialStep === i ? 'text-dictator-red' : 'text-dictator-chrome/40'}`}>
+                <span className={`font-mono text-xs font-bold mt-0.5 shrink-0 ${tutorialStep === i ? 'text-dictator-red' : 'text-white/60'}`}>
                   {String(i + 1).padStart(2, '0')}
                 </span>
                 <div>
-                  <p className={`font-heading text-sm font-bold mb-1 ${tutorialStep === i ? 'text-white' : 'text-dictator-chrome'}`}>
+                  <p className={`font-heading text-sm font-bold mb-1 ${tutorialStep === i ? 'text-white' : 'text-white'}`}>
                     {step.title}
                   </p>
                   {tutorialStep === i && (
-                    <p className="font-body text-xs text-dictator-chrome leading-relaxed">
+                    <p className="font-body text-xs text-white leading-relaxed">
                       {step.body}
                     </p>
                   )}
@@ -898,7 +964,7 @@ const SimulatorPage = () => {
 
           {/* Algorithm quick-ref */}
           <div className="p-6 border-t border-dictator-chrome/10 mt-auto">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-chrome mb-4">Quick Algorithms</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white mb-4">Quick Algorithms</p>
             <div className="flex flex-col gap-3">
               {[
                 { name: 'Sexy Move', algo: "R U R' U'" },
@@ -908,13 +974,13 @@ const SimulatorPage = () => {
                 { name: 'T-Perm', algo: "R U R' U' R' F R2 U' R' U' R U R' F'" },
               ].map(({ name, algo }) => (
                 <div key={name} className="bg-[#111] rounded-xl p-3 border border-dictator-chrome/10">
-                  <p className="font-mono text-[10px] text-dictator-chrome uppercase tracking-widest mb-1">{name}</p>
+                  <p className="font-mono text-[10px] text-white uppercase tracking-widest mb-1">{name}</p>
                   <p className="font-mono text-xs text-dictator-red font-bold">{algo}</p>
                   <button
                     onClick={() => enqueueMoves(algo.split(' '))}
                     disabled={queueActive}
                     className={`mt-2 flex items-center gap-1 font-mono text-[10px] transition-colors
-                      ${queueActive ? 'text-dictator-chrome/30 cursor-not-allowed' : 'text-dictator-chrome/50 hover:text-dictator-red'}`}
+                      ${queueActive ? 'text-white/70 cursor-not-allowed' : 'text-white/70 hover:text-dictator-red'}`}
                   >
                     <ChevronRight size={10} />
                     Apply
