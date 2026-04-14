@@ -53,19 +53,19 @@ export function applyMove(cubeState, move) {
   // Clockwise right face rotation (R)
   if (move === 'R') {
     newState.R = rotateFaceClockwise(newState.R);
-    const temp = [newState.F[2], newState.F[5], newState.F[8]];
-    [newState.F[2], newState.F[5], newState.F[8]] = [newState.D[2], newState.D[5], newState.D[8]];
-    [newState.D[2], newState.D[5], newState.D[8]] = [newState.B[6], newState.B[3], newState.B[0]];
-    [newState.B[6], newState.B[3], newState.B[0]] = [newState.U[2], newState.U[5], newState.U[8]];
+    const temp = [newState.F[8], newState.F[5], newState.F[2]];
+    [newState.F[8], newState.F[5], newState.F[2]] = [newState.D[2], newState.D[5], newState.D[8]];
+    [newState.D[2], newState.D[5], newState.D[8]] = [newState.B[0], newState.B[3], newState.B[6]];
+    [newState.B[0], newState.B[3], newState.B[6]] = [newState.U[2], newState.U[5], newState.U[8]];
     [newState.U[2], newState.U[5], newState.U[8]] = temp;
   }
   // Counterclockwise right face rotation (R')
   if (move === "R'") {
     newState.R = rotateFaceCounterClockwise(newState.R);
-    const temp = [newState.F[2], newState.F[5], newState.F[8]];
-    [newState.F[2], newState.F[5], newState.F[8]] = [newState.U[2], newState.U[5], newState.U[8]];
-    [newState.U[2], newState.U[5], newState.U[8]] = [newState.B[6], newState.B[3], newState.B[0]];
-    [newState.B[6], newState.B[3], newState.B[0]] = [newState.D[2], newState.D[5], newState.D[8]];
+    const temp = [newState.F[8], newState.F[5], newState.F[2]];
+    [newState.F[8], newState.F[5], newState.F[2]] = [newState.U[2], newState.U[5], newState.U[8]];
+    [newState.U[2], newState.U[5], newState.U[8]] = [newState.B[0], newState.B[3], newState.B[6]];
+    [newState.B[0], newState.B[3], newState.B[6]] = [newState.D[2], newState.D[5], newState.D[8]];
     [newState.D[2], newState.D[5], newState.D[8]] = temp;
   }
 
@@ -73,19 +73,19 @@ export function applyMove(cubeState, move) {
   if (move === 'L') {
     newState.L = rotateFaceClockwise(newState.L);
     const temp = [newState.F[0], newState.F[3], newState.F[6]];
-    [newState.F[0], newState.F[3], newState.F[6]] = [newState.U[0], newState.U[3], newState.U[6]];
-    [newState.U[0], newState.U[3], newState.U[6]] = [newState.B[8], newState.B[5], newState.B[2]];
-    [newState.B[8], newState.B[5], newState.B[2]] = [newState.D[0], newState.D[3], newState.D[6]];
-    [newState.D[0], newState.D[3], newState.D[6]] = temp;
+    [newState.F[0], newState.F[3], newState.F[6]] = [newState.U[6], newState.U[3], newState.U[0]];
+    [newState.U[6], newState.U[3], newState.U[0]] = [newState.B[8], newState.B[5], newState.B[2]];
+    [newState.B[8], newState.B[5], newState.B[2]] = [newState.D[6], newState.D[3], newState.D[0]];
+    [newState.D[6], newState.D[3], newState.D[0]] = temp;
   }
   //Counterclockwise left face rotation (L')
   if (move === "L'") {
     newState.L = rotateFaceCounterClockwise(newState.L);
     const temp = [newState.F[0], newState.F[3], newState.F[6]];
-    [newState.F[0], newState.F[3], newState.F[6]] = [newState.D[0], newState.D[3], newState.D[6]];
-    [newState.D[0], newState.D[3], newState.D[6]] = [newState.B[8], newState.B[5], newState.B[2]];
-    [newState.B[8], newState.B[5], newState.B[2]] = [newState.U[0], newState.U[3], newState.U[6]];
-    [newState.U[0], newState.U[3], newState.U[6]] = temp;
+    [newState.F[0], newState.F[3], newState.F[6]] = [newState.D[6], newState.D[3], newState.D[0]];
+    [newState.D[6], newState.D[3], newState.D[0]] = [newState.B[8], newState.B[5], newState.B[2]];
+    [newState.B[8], newState.B[5], newState.B[2]] = [newState.U[6], newState.U[3], newState.U[0]];
+    [newState.U[6], newState.U[3], newState.U[0]] = temp;
   }
 
   //Clockwise front face rotation (F)
