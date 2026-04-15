@@ -1,7 +1,7 @@
 /**
  * Supported move tokens for a basic 3x3 cube.
  */
-export const MOVES = ['U', 'D', 'L', 'R', 'F', 'B', "U'", "D'", "L'", "R'", "F'", "B'", 'M', "M'", 'E', "E'", 'S', "S'"];
+export const MOVES = ['U', 'D', 'L', 'R', 'F', 'B', "U'", "D'", "L'", "R'", "F'", "B'", 'M', "M'", 'E', "E'", 'S', "S'", 'x', "x'", 'y', "y'", 'z', "z'"];
 
 // Helper function to rotate a face clockwise (used for basic moves)
 function rotateFaceClockwise(face) {
@@ -19,6 +19,10 @@ function rotateFaceCounterClockwise(face) {
     face[1], face[4], face[7],
     face[0], face[3], face[6]
   ];
+}
+
+function applyMoveSequence(cubeState, moves) {
+  return moves.reduce((state, token) => applyMove(state, token), cubeState);
 }
 
 /**
@@ -194,6 +198,25 @@ export function applyMove(cubeState, move) {
     [newState.R[7], newState.R[4], newState.R[1]] = [newState.D[5], newState.D[4], newState.D[3]];
     [newState.D[5], newState.D[4], newState.D[3]] = [newState.L[1], newState.L[4], newState.L[7]];
     [newState.L[1], newState.L[4], newState.L[7]] = temp;
+  }
+
+  if (move === 'x') {
+    return applyMoveSequence(newState, ['R', "M'", "L'"]);
+  }
+  if (move === "x'") {
+    return applyMoveSequence(newState, ["R'", 'M', 'L']);
+  }
+  if (move === 'y') {
+    return applyMoveSequence(newState, ['U', "E'", "D'"]);
+  }
+  if (move === "y'") {
+    return applyMoveSequence(newState, ["U'", 'E', 'D']);
+  }
+  if (move === 'z') {
+    return applyMoveSequence(newState, ['F', 'S', "B'"]);
+  }
+  if (move === "z'") {
+    return applyMoveSequence(newState, ["F'", "S'", 'B']);
   }
 
   return(newState);
