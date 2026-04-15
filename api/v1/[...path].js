@@ -1,25 +1,3 @@
-/**
- * [...path].js — Vercel serverless API handler (catches all /api/v1/* routes)
- *
- * This is the production API that runs on Vercel. Every request to /api/v1/...
- * gets routed here. The square brackets in the filename are Vercel's way of
- * saying "match any path after /api/v1/".
- *
- * Routes:
- *   GET  /health              → simple "am I alive?" check
- *   GET  /cube/state/solved   → returns the solved cube state
- *   POST /cube/moves/apply    → apply a single move to a given state
- *   POST /cube/scramble       → scramble using Eric's C++ WASM (falls back to JS)
- *   POST /cube/solve          → solve using Eric's C++ WASM solver
- *
- * Both scramble and solve use Eric's compiled C++ code through WebAssembly.
- * The scramble route falls back to a JS scramble if WASM is unavailable.
- * The solve route returns an API error if WASM fails so the frontend can
- * decide whether to use its local inverse-history fallback.
- *
- * Imports cube logic from backend/api/src/ (shared with the local dev server).
- */
-
 import { createSolvedState, FACE_ORDER } from '../../../backend/api/src/cube.js';
 import {
   validateMoveApplyRequest,
@@ -27,7 +5,6 @@ import {
   validateSolveRequest
 } from '../../../backend/api/src/validation.js';
 import { applyMoveToState, applyMoves, generateScramble } from '../../../backend/api/src/cube.js';
-import { scrambleCubeWithWasm, solveCubeMoveListWithWasm, solveCubeStateWithWasm } from '../../../backend/api/src/wasmSolver.js';
 
 const SERVICE_NAME = 'rubiks-api';
 const VERSION = '0.1.0';
@@ -102,20 +79,10 @@ export default async function handler(req, res) {
       sendError(res, 400, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
       return;
     }
-    const { length } = validation.value;
-
-    // Try Eric's C++ scramble via WASM first — better randomness and anti-cancel logic.
-    try {
-      const state = await scrambleCubeWithWasm(length);
-      sendJson(res, 200, { scramble: [], state, scrambler: 'eric-cpp-wasm' });
-      return;
-    } catch (wasmError) {
-      // Keep production usable even if the WASM module fails to load.
-    }
-
-    const scramble = generateScramble(length);
+    const { length, seed } = validation.value;
+    const scramble = generateScramble(length, seed);
     const state = applyMoves(createSolvedState(), scramble);
-    sendJson(res, 200, { scramble, state, scrambler: 'js-fallback' });
+    sendJson(res, 200, { scramble, state });
     return;
   }
 
@@ -127,46 +94,15 @@ export default async function handler(req, res) {
       return;
     }
     const { state } = validation.value;
-
-    if (isSolvedState(state)) {
-      sendJson(res, 200, { moves: [], estimatedMoveCount: 0, state });
-      return;
-    }
-
-    try {
-      // Match the local dev server behavior: prefer replayable solve moves first
-      // so the frontend can show the actual sequence instead of an instant snap.
-      const solveMoves = await solveCubeMoveListWithWasm(state);
-      if (solveMoves.length > 0) {
-        const replayedState = applyMoves(state, solveMoves);
-        if (isSolvedState(replayedState)) {
-          sendJson(res, 200, {
-            moves: solveMoves,
-            estimatedMoveCount: solveMoves.length,
-            state: replayedState,
-            solver: 'eric-cpp-wasm-moves'
-          });
-          return;
-        }
-      }
-
-      // Keep a solved-state fallback for cases where the move-list export is not
-      // usable even though the backend solver can still produce the right result.
-      const solvedState = await solveCubeStateWithWasm(state);
-      sendJson(res, 200, {
-        moves: [],
-        estimatedMoveCount: 0,
-        state: solvedState,
-        solver: 'eric-cpp-wasm'
-      });
-    } catch (error) {
-      sendError(
-        res,
-        500,
-        'SOLVER_FAILURE',
-        error instanceof Error ? error.message : 'WASM solver failed unexpectedly.'
-      );
-    }
+    const alreadySolved = isSolvedState(state);
+    sendJson(res, 200, {
+      moves: alreadySolved ? [] : ["R'", "U'", 'F'],
+      estimatedMoveCount: alreadySolved ? 0 : 3,
+      isMock: true,
+      note: alreadySolved
+        ? 'Cube is already solved; returning an empty solution.'
+        : 'Solver is stubbed in Sprint 2.',
+    });
     return;
   }
 
