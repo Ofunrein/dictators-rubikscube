@@ -6,7 +6,7 @@ import {
   validateScrambleRequest,
   validateSolveRequest
 } from './validation.js';
-import { solveCubeStateWithWasm } from './wasmSolver.js';
+import { solveCubeMoveListWithWasm, solveCubeStateWithWasm } from './wasmSolver.js';
 
 const PORT = Number(process.env.API_PORT ?? 5200);
 const SERVICE_NAME = 'rubiks-api';
@@ -209,6 +209,20 @@ async function handleRequest(req, res) {
     }
 
     try {
+      const solveMoves = await solveCubeMoveListWithWasm(state);
+      if (solveMoves.length > 0) {
+        const replayedState = applyMoves(state, solveMoves);
+        if (isSolvedState(replayedState)) {
+          sendJson(res, 200, {
+            moves: solveMoves,
+            estimatedMoveCount: solveMoves.length,
+            state: replayedState,
+            solver: 'eric-cpp-wasm-moves'
+          });
+          return;
+        }
+      }
+
       const solvedState = await solveCubeStateWithWasm(state);
       sendJson(res, 200, {
         moves: [],

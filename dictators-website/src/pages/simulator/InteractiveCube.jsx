@@ -62,6 +62,9 @@ function getStickerSelectionInfo(face, stickerIndex) {
 }
 
 function isCubieInAnimatedLayer(cubie, config) {
+  if (config.layer === 'all') {
+    return true;
+  }
   return cubie[config.axis] === config.layer;
 }
 

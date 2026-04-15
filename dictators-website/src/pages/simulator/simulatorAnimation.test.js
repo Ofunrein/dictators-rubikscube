@@ -3,7 +3,9 @@ import {
   CUBIE_LAYOUT,
   easeInOutCubic,
   expandMoveToken,
+  invertMoveSequence,
   inverseMove,
+  isSliceMove,
   mergeMoveIntoSolveStack,
   normalizeMoveSequence,
   parseMoveAnimation,
@@ -19,6 +21,8 @@ describe('simulatorAnimation helpers', () => {
     expect(parseMoveAnimation('M')).toEqual({ axis: 'x', layer: 0, direction: 1 });
     expect(parseMoveAnimation("E'")).toEqual({ axis: 'y', layer: 0, direction: 1 });
     expect(parseMoveAnimation('S')).toEqual({ axis: 'z', layer: 0, direction: -1 });
+    expect(parseMoveAnimation('x')).toEqual({ axis: 'x', layer: 'all', direction: -1 });
+    expect(parseMoveAnimation("y'")).toEqual({ axis: 'y', layer: 'all', direction: -1 });
     expect(parseMoveAnimation('BAD')).toBeNull();
   });
 
@@ -51,12 +55,21 @@ describe('simulatorAnimation helpers', () => {
   it('expands and normalizes move tokens', () => {
     expect(expandMoveToken('R2')).toEqual(['R', 'R']);
     expect(expandMoveToken('M2')).toEqual(['M', 'M']);
+    expect(expandMoveToken('x2')).toEqual(['x', 'x']);
     expect(expandMoveToken("U'")).toEqual(["U'"]);
     expect(expandMoveToken('  F  ')).toEqual(['F']);
-    expect(expandMoveToken('x')).toEqual([]);
+    expect(expandMoveToken('x')).toEqual(['x']);
     expect(expandMoveToken('')).toEqual([]);
 
-    expect(normalizeMoveSequence(['R2', 'M2', "U'", 'x', ' B '])).toEqual(['R', 'R', 'M', 'M', "U'", 'B']);
+    expect(normalizeMoveSequence(['R2', 'M2', "U'", 'x', 'y2', ' B '])).toEqual(['R', 'R', 'M', 'M', "U'", 'x', 'y', 'y', 'B']);
+  });
+
+  it('detects slice turns and inverts normalized sequences', () => {
+    expect(isSliceMove('M')).toBe(true);
+    expect(isSliceMove("E'")).toBe(true);
+    expect(isSliceMove('R')).toBe(false);
+
+    expect(invertMoveSequence(['R', 'U', "M'", 'F2'])).toEqual(["F'", "F'", 'M', "U'", "R'"]);
   });
 
   it('rotates cubie coordinates consistently across axes', () => {

@@ -50,14 +50,9 @@ namespace {
     struct MoveRecorder {
         bool enabled = false;
         std::vector<std::string> moves;
-        std::array<char, 6> localToWorld = { 'U', 'L', 'F', 'R', 'B', 'D' };
     };
 
     MoveRecorder gRecorder;
-
-    constexpr int faceIndex(Face face) {
-        return static_cast<int>(face);
-    }
 
     std::string tokenFor(char face, bool clockwise) {
         std::string token(1, face);
@@ -72,8 +67,26 @@ namespace {
             return;
         }
 
-        const auto worldFace = gRecorder.localToWorld[faceIndex(face)];
-        gRecorder.moves.push_back(tokenFor(worldFace, clockwise));
+        switch (face) {
+            case Face::Up:
+                gRecorder.moves.push_back(tokenFor('U', clockwise));
+                break;
+            case Face::Left:
+                gRecorder.moves.push_back(tokenFor('L', clockwise));
+                break;
+            case Face::Front:
+                gRecorder.moves.push_back(tokenFor('F', clockwise));
+                break;
+            case Face::Right:
+                gRecorder.moves.push_back(tokenFor('R', clockwise));
+                break;
+            case Face::Back:
+                gRecorder.moves.push_back(tokenFor('B', clockwise));
+                break;
+            case Face::Down:
+                gRecorder.moves.push_back(tokenFor('D', clockwise));
+                break;
+        }
     }
 
     void recordLayerTurn(RotationAxis axis, int layer, bool clockwise, int size) {
@@ -100,67 +113,17 @@ namespace {
         gRecorder.moves.push_back(token);
     }
 
-    void rotateOrientation(RotationAxis axis, bool clockwise) {
+    void recordCubeRotation(RotationAxis axis, bool clockwise) {
         if (!gRecorder.enabled) {
             return;
         }
 
-        const auto previous = gRecorder.localToWorld;
-
-        if (axis == RotationAxis::X && clockwise) {
-            gRecorder.localToWorld = {
-                previous[faceIndex(Face::Front)],
-                previous[faceIndex(Face::Left)],
-                previous[faceIndex(Face::Down)],
-                previous[faceIndex(Face::Right)],
-                previous[faceIndex(Face::Up)],
-                previous[faceIndex(Face::Back)],
-            };
-        } else if (axis == RotationAxis::X) {
-            gRecorder.localToWorld = {
-                previous[faceIndex(Face::Back)],
-                previous[faceIndex(Face::Left)],
-                previous[faceIndex(Face::Up)],
-                previous[faceIndex(Face::Right)],
-                previous[faceIndex(Face::Down)],
-                previous[faceIndex(Face::Front)],
-            };
-        } else if (axis == RotationAxis::Y && clockwise) {
-            gRecorder.localToWorld = {
-                previous[faceIndex(Face::Up)],
-                previous[faceIndex(Face::Front)],
-                previous[faceIndex(Face::Right)],
-                previous[faceIndex(Face::Back)],
-                previous[faceIndex(Face::Left)],
-                previous[faceIndex(Face::Down)],
-            };
+        if (axis == RotationAxis::X) {
+            gRecorder.moves.push_back(tokenFor('x', clockwise));
         } else if (axis == RotationAxis::Y) {
-            gRecorder.localToWorld = {
-                previous[faceIndex(Face::Up)],
-                previous[faceIndex(Face::Back)],
-                previous[faceIndex(Face::Left)],
-                previous[faceIndex(Face::Front)],
-                previous[faceIndex(Face::Right)],
-                previous[faceIndex(Face::Down)],
-            };
-        } else if (clockwise) {
-            gRecorder.localToWorld = {
-                previous[faceIndex(Face::Left)],
-                previous[faceIndex(Face::Down)],
-                previous[faceIndex(Face::Front)],
-                previous[faceIndex(Face::Up)],
-                previous[faceIndex(Face::Back)],
-                previous[faceIndex(Face::Right)],
-            };
+            gRecorder.moves.push_back(tokenFor('y', clockwise));
         } else {
-            gRecorder.localToWorld = {
-                previous[faceIndex(Face::Right)],
-                previous[faceIndex(Face::Up)],
-                previous[faceIndex(Face::Front)],
-                previous[faceIndex(Face::Down)],
-                previous[faceIndex(Face::Back)],
-                previous[faceIndex(Face::Left)],
-            };
+            gRecorder.moves.push_back(tokenFor('z', clockwise));
         }
     }
 
@@ -206,10 +169,10 @@ namespace CubeOperations {
 
     void rotateCube(PuzzleCube& cube, PuzzleCube::RotationAxis axis, bool clockwise) {
         //Applying a rotation to every layer on an axis is equivalent to rotating the cube itself
+        recordCubeRotation(axis, clockwise);
         for(int l = cube.size()-1; l >= 0; l--) {
             cube.rotate(axis, l, clockwise);
         }
-        rotateOrientation(axis, clockwise);
     }
 
     void rotateFace(PuzzleCube& cube, PuzzleCube::Face face, bool clockwise) {
@@ -899,7 +862,6 @@ namespace CubeOperations {
     std::vector<std::string> solve3x3WithMoves(PuzzleCube& cube) {
         gRecorder.enabled = true;
         gRecorder.moves.clear();
-        gRecorder.localToWorld = { 'U', 'L', 'F', 'R', 'B', 'D' };
 
         solve3x3(cube);
 
