@@ -3,6 +3,165 @@
 **Branch:** `sprint-3-martin`  
 **Scope updated:** April 15, 2026
 
+## Plain-English summary
+
+This sprint connected the website's Rubik's Cube simulator to Eric's real C++ solving code instead of relying only on frontend-only behavior.
+
+In simple terms:
+- the user turns or scrambles the cube in the website
+- the website sends the current cube state to the backend
+- the backend passes that state into Eric's C++ solver through a WASM bridge
+- the solver returns either a move list or a solved state
+- the frontend animates the returned solve moves when that replay is valid
+
+Two other important UX changes also shipped:
+- the cube flashing / color popping bug during turns was fixed
+- `Undo` and `Undo All` were added so "undo history" is separate from "solve the cube"
+
+## What was causing the cube flashing?
+
+The flashing was not because Three.js itself was broken.
+
+The real problem was the connection between:
+- the visual 3D cubies on screen
+- the logical cube state in code
+
+Before the fix:
+- a turn animation would visually rotate a layer
+- but after that turn, the renderer snapped cubies back onto a static layout
+- this made stickers appear to pop or flash because the model and the logical state were briefly out of sync
+
+After the fix:
+- the app keeps track of the cubies' updated positions after every move
+- the cubies are reattached in their new rotated layout instead of being reset to an old one
+- that keeps the 3D model and the cube state aligned
+
+Short version:
+- not a "Three.js is bad" issue
+- it was a state-sync / animation-layout issue in how we were using Three.js
+
+## How the whole system fits together
+
+### Human explanation
+
+Think of the app as four layers:
+
+1. Frontend UI
+- buttons, 3D cube, move history, timer
+- this is what the user sees and clicks
+
+2. Frontend networking layer
+- takes the cube state and sends it to the backend API
+
+3. Backend API + WASM adapter
+- receives the cube state
+- converts it into the exact format Eric's solver expects
+- calls the compiled solver bundle
+
+4. Eric's C++ solver
+- does the actual solving work
+- returns moves or a solved cube state
+
+### System flow diagram
+
+```mermaid
+flowchart LR
+    A[User clicks Scramble / Solve / Undo] --> B[SimulatorPage.jsx]
+    B --> C[dictators-website/src/net/api.js]
+    C --> D[backend/api/src/server.js]
+    D --> E[backend/api/src/wasmSolver.js]
+    E --> F[api/solver.js<br/>compiled Emscripten bundle]
+    F --> G[backend/src/cube/solver_bridge.cpp]
+    G --> H[CubeOperations.cpp / PuzzleCube.cpp<br/>Eric's C++ solver]
+    H --> G
+    G --> F
+    F --> E
+    E --> D
+    D --> C
+    C --> B
+    B --> I[InteractiveCube.jsx animates result]
+```
+
+### Solve request sequence diagram
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant S as SimulatorPage.jsx
+    participant N as api.js
+    participant A as server.js
+    participant W as wasmSolver.js
+    participant B as solver_bridge.cpp
+    participant C as Eric C++ solver
+
+    U->>S: Press Solve
+    S->>N: solveCubeRemote(state)
+    N->>A: POST /api/v1/cube/solve
+    A->>W: solveCubeMoveListWithWasm(state)
+    W->>B: ccall("solveCubeMoves", flatState)
+    B->>C: solve3x3WithMoves(cube)
+    C-->>B: move list
+    B-->>W: space-separated move string
+    W-->>A: JS move array
+    A-->>N: JSON { moves, state, solver }
+    N-->>S: parsed payload
+    S->>S: queue moves for animation
+    S-->>U: cube shows solve step-by-step
+```
+
+### High-level component map
+
+```mermaid
+classDiagram
+    class SimulatorPage {
+      owns queue state
+      handles Solve / Undo / Reset
+      calls backend
+    }
+
+    class InteractiveCube {
+      renders 3D cube
+      animates turns
+      keeps cubie layout synced
+    }
+
+    class SimulatorControls {
+      action buttons
+      move buttons
+      history controls
+    }
+
+    class server {
+      validates requests
+      chooses solve path
+      returns moves/state
+    }
+
+    class wasmSolver {
+      flattens cube state
+      calls WASM exports
+      normalizes results
+    }
+
+    class solver_bridge {
+      converts JS input to C++
+      exports solveCube/solveCubeMoves
+    }
+
+    class EricSolver {
+      CubeOperations.cpp
+      PuzzleCube.cpp
+      real solving logic
+    }
+
+    SimulatorPage --> InteractiveCube
+    SimulatorPage --> SimulatorControls
+    SimulatorPage --> server
+    server --> wasmSolver
+    wasmSolver --> solver_bridge
+    solver_bridge --> EricSolver
+```
+
 ## What shipped
 
 ### 1. Live simulator now uses Eric's C++ solver through the API
@@ -43,14 +202,31 @@ Delivered fix:
 - `dictators-website/src/pages/simulator/SimulatorPage.jsx`
   - solved-state resets rebuild layout cleanly
 
-### 3. Timer / interaction polish that remains active
+### 3. Solve playback was slowed slightly for readability
+
+The solve animation was intentionally made a little slower so users can follow what the solver is doing.
+
+Delivered change:
+- `dictators-website/src/pages/simulator/simulatorAnimation.js`
+  - manual turn duration stays fast at `0.24s`
+  - automated solve playback now runs at `0.46s` per move
+- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
+  - move queue can now carry a per-sequence animation speed
+- `dictators-website/src/pages/simulator/InteractiveCube.jsx`
+  - animation loop now accepts the requested move duration
+
+Result:
+- normal cube interaction still feels responsive
+- solver playback is easier to watch step-by-step
+
+### 4. Timer / interaction polish that remains active
 
 The simulator still includes the earlier timer improvements:
 - timer starts on first user move after scramble
 - timer starts from a fresh solved/reset cube on first move
 - best time persists in `localStorage`
 
-### 4. Control panel now separates solving from undo history
+### 5. Control panel now separates solving from undo history
 
 The simulator action panel now keeps solve and undo as different concepts instead of mixing them together.
 
@@ -70,7 +246,7 @@ Behavior decision:
 - `Undo All` means "reverse the tracked history"
 - slice states still use inverse-history behavior under solve fallback because the backend solver can still wedge on `M`, `E`, `S`
 
-### 5. Simulator page refactor for readability and teammate handoff
+### 6. Simulator page refactor for readability and teammate handoff
 
 The simulator feature was split into a dedicated feature folder so the main page is no longer carrying all rendering, timer, controls, tutorial, and animation code in one file.
 
@@ -125,6 +301,25 @@ Because of that, the frontend currently:
 This means scramble-button states and normal manual face-turn states now go through Eric's algorithm and animate the returned solve sequence instead of snapping directly to solved.
 
 The new explicit undo controls are there so history reversal does not have to be overloaded onto the `Solve` button.
+
+## When the app uses Eric's solver vs reverse history
+
+The current rule is:
+
+- `Solve` on standard face-turn states:
+  - use Eric's C++ solver
+- `Undo`:
+  - reverse one move from tracked history
+- `Undo All`:
+  - reverse the full tracked history
+- slice-heavy states involving `M`, `E`, `S`:
+  - still rely on reverse history in some paths because the backend solver can wedge there
+
+That separation is important because:
+- "solve this cube" and
+- "undo what the user just did"
+
+are not the same action.
 
 ## Architecture decisions to keep
 
@@ -234,6 +429,7 @@ dictators-website/src/pages/simulator/
 - Verified simulator and backend scramble generators now stay face-turn only
 - Verified whole-cube rotations returned by Eric's solver are accepted by move normalization and animation helpers
 - Verified new `Undo` / `Undo All` control wiring builds cleanly and keeps the action panel layout consistent
+- Verified slower solve playback build/test path after increasing solver animation tempo to `0.46s` per move
 
 ## Files touched for this sprint delivery
 
