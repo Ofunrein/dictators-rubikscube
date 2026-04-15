@@ -7,6 +7,7 @@ import {
   mergeMoveIntoSolveStack,
   normalizeMoveSequence,
   parseMoveAnimation,
+  rotateCubiePosition,
 } from './simulatorAnimation';
 
 describe('simulatorAnimation helpers', () => {
@@ -15,6 +16,9 @@ describe('simulatorAnimation helpers', () => {
     expect(parseMoveAnimation("U'")).toEqual({ axis: 'y', layer: 1, direction: -1 });
     expect(parseMoveAnimation('R')).toEqual({ axis: 'x', layer: 1, direction: -1 });
     expect(parseMoveAnimation("R'")).toEqual({ axis: 'x', layer: 1, direction: 1 });
+    expect(parseMoveAnimation('M')).toEqual({ axis: 'x', layer: 0, direction: 1 });
+    expect(parseMoveAnimation("E'")).toEqual({ axis: 'y', layer: 0, direction: 1 });
+    expect(parseMoveAnimation('S')).toEqual({ axis: 'z', layer: 0, direction: -1 });
     expect(parseMoveAnimation('BAD')).toBeNull();
   });
 
@@ -46,12 +50,20 @@ describe('simulatorAnimation helpers', () => {
 
   it('expands and normalizes move tokens', () => {
     expect(expandMoveToken('R2')).toEqual(['R', 'R']);
+    expect(expandMoveToken('M2')).toEqual(['M', 'M']);
     expect(expandMoveToken("U'")).toEqual(["U'"]);
     expect(expandMoveToken('  F  ')).toEqual(['F']);
     expect(expandMoveToken('x')).toEqual([]);
     expect(expandMoveToken('')).toEqual([]);
 
-    expect(normalizeMoveSequence(['R2', "U'", 'x', ' B '])).toEqual(['R', 'R', "U'", 'B']);
+    expect(normalizeMoveSequence(['R2', 'M2', "U'", 'x', ' B '])).toEqual(['R', 'R', 'M', 'M', "U'", 'B']);
+  });
+
+  it('rotates cubie coordinates consistently across axes', () => {
+    expect(rotateCubiePosition({ x: 1, y: 1, z: 0 }, 'z', 1)).toEqual({ x: -1, y: 1, z: 0 });
+    expect(rotateCubiePosition({ x: 1, y: 1, z: 0 }, 'z', -1)).toEqual({ x: 1, y: -1, z: 0 });
+    expect(rotateCubiePosition({ x: 1, y: 0, z: 1 }, 'y', 1)).toEqual({ x: 1, y: 0, z: -1 });
+    expect(rotateCubiePosition({ x: 0, y: 1, z: 1 }, 'x', -1)).toEqual({ x: 0, y: 1, z: -1 });
   });
 
   it('builds a full 3x3x3 cubie layout', () => {

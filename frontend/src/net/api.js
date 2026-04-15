@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4011').replace(/\/+$/, '');
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5200').replace(/\/+$/, '');
 const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 
 class ApiError extends Error {
@@ -139,12 +139,17 @@ export async function generateScrambleRemote({ length = 25, seed } = {}) {
   return payload;
 }
 
-export async function solveCubeRemote(state, strategy = 'beginner') {
+export async function solveCubeRemote(state, { scrambleMoves, strategy = 'beginner' } = {}) {
   validateCubeState(state);
+
+  const body = { state, strategy };
+  if (Array.isArray(scrambleMoves) && scrambleMoves.length > 0) {
+    body.scrambleMoves = scrambleMoves;
+  }
 
   const payload = await request('/v1/cube/solve', {
     method: 'POST',
-    body: { state, strategy }
+    body
   });
 
   if (!Array.isArray(payload.moves)) {

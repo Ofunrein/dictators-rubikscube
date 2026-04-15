@@ -8,4 +8,4 @@ An API contract + mock/skeleton server scaffold is available in [`backend/api`](
 
 - `openapi.yaml`: contract and examples
 - `npm run mock`: spec-driven mock server (`:4010`)
-- `npm run serve`: validation + route skeleton server (`:4011`)
+- `npm run serve`: validation + route skeleton server (`:5200`)
