@@ -10,6 +10,7 @@ import {
   inverseMove,
   invertMoveSequence,
   isSliceMove,
+  SOLVE_TURN_DURATION_SECONDS,
   TURN_DURATION_SECONDS,
   mergeMoveIntoSolveStack,
   normalizeMoveSequence,
@@ -38,6 +39,7 @@ const SimulatorPage = () => {
   const [moveHistory, setMoveHistory] = useState([]);
   const [scrambleSeq, setScrambleSeq] = useState([]);
   const [activeMove, setActiveMove] = useState(null);
+  const [activeMoveDurationSeconds, setActiveMoveDurationSeconds] = useState(TURN_DURATION_SECONDS);
   const [queuedMoveCount, setQueuedMoveCount] = useState(0);
   const [solveDepth, setSolveDepth] = useState(0);
   const [canvasFailed, setCanvasFailed] = useState(false);
@@ -127,11 +129,14 @@ const SimulatorPage = () => {
 
       const pendingMoves = [];
       if (activeMoveRef.current) pendingMoves.push(activeMoveRef.current);
-      if (moveQueueRef.current.length > 0) pendingMoves.push(...moveQueueRef.current);
+      if (moveQueueRef.current.length > 0) {
+        pendingMoves.push(...moveQueueRef.current.map((queuedMove) => queuedMove.move));
+      }
 
       activeMoveRef.current = null;
       moveQueueRef.current = [];
       setActiveMove(null);
+      setActiveMoveDurationSeconds(TURN_DURATION_SECONDS);
       setQueuedMoveCount(0);
 
       if (pendingMoves.length > 0) {
@@ -157,11 +162,12 @@ const SimulatorPage = () => {
 
     const nextMove = moveQueueRef.current.shift();
     setQueuedMoveCount(moveQueueRef.current.length);
-    activeMoveRef.current = nextMove;
-    setActiveMove(nextMove);
+    activeMoveRef.current = nextMove.move;
+    setActiveMove(nextMove.move);
+    setActiveMoveDurationSeconds(nextMove.durationSeconds);
   }, []);
 
-  const enqueueMoves = useCallback((moves) => {
+  const enqueueMoves = useCallback((moves, { durationSeconds = TURN_DURATION_SECONDS } = {}) => {
     const normalized = normalizeMoveSequence(moves);
     if (normalized.length === 0) return;
 
@@ -170,7 +176,12 @@ const SimulatorPage = () => {
       return;
     }
 
-    moveQueueRef.current.push(...normalized);
+    moveQueueRef.current.push(
+      ...normalized.map((move) => ({
+        move,
+        durationSeconds,
+      })),
+    );
     setQueuedMoveCount(moveQueueRef.current.length);
     startNextMove();
   }, [applyMovesInstantly, canAnimateMoves, startNextMove]);
@@ -188,6 +199,7 @@ const SimulatorPage = () => {
 
     activeMoveRef.current = null;
     setActiveMove(null);
+    setActiveMoveDurationSeconds(TURN_DURATION_SECONDS);
     startNextMove();
   }, [cubeStateObj, startNextMove]);
 
@@ -217,10 +229,10 @@ const SimulatorPage = () => {
       if (activeMoveRef.current === activeMove) {
         handleMoveAnimationComplete(activeMove);
       }
-    }, TURN_DURATION_SECONDS * 4 * 1000);
+    }, activeMoveDurationSeconds * 4 * 1000);
 
     return () => clearTimeout(timeout);
-  }, [activeMove, handleMoveAnimationComplete]);
+  }, [activeMove, activeMoveDurationSeconds, handleMoveAnimationComplete]);
 
   const resetCubeToSolved = useCallback(() => {
     const solved = CubeState.createSolvedState();
@@ -252,7 +264,7 @@ const SimulatorPage = () => {
     const needsLocalHistorySolve = solveStackSnapshot.some(isSliceMove);
 
     if (needsLocalHistorySolve) {
-      enqueueMoves(inverseSolveMoves);
+      enqueueMoves(inverseSolveMoves, { durationSeconds: SOLVE_TURN_DURATION_SECONDS });
       return;
     }
 
@@ -264,9 +276,10 @@ const SimulatorPage = () => {
       activeMoveRef.current = null;
       setQueuedMoveCount(0);
       setActiveMove(null);
+      setActiveMoveDurationSeconds(TURN_DURATION_SECONDS);
 
       if (Array.isArray(payload.moves) && payload.moves.length > 0) {
-        enqueueMoves(payload.moves);
+        enqueueMoves(payload.moves, { durationSeconds: SOLVE_TURN_DURATION_SECONDS });
         return;
       }
 
@@ -285,7 +298,7 @@ const SimulatorPage = () => {
     } catch (error) {
       console.error('Remote solve failed.', error);
       if (inverseSolveMoves.length > 0) {
-        enqueueMoves(inverseSolveMoves);
+        enqueueMoves(inverseSolveMoves, { durationSeconds: SOLVE_TURN_DURATION_SECONDS });
         return;
       }
 
@@ -303,6 +316,7 @@ const SimulatorPage = () => {
     waitingForFirstMoveRef.current = false;
     setQueuedMoveCount(0);
     setActiveMove(null);
+    setActiveMoveDurationSeconds(TURN_DURATION_SECONDS);
 
     solveStackRef.current = [];
     setSolveDepth(0);
@@ -424,6 +438,7 @@ const SimulatorPage = () => {
 
                   <InteractiveCube
                     activeMove={activeMove}
+                    turnDurationSeconds={activeMoveDurationSeconds}
                     cubeState={displayState}
                     onMoveComplete={handleMoveAnimationComplete}
                     onStickerSelect={handleStickerSelect}
