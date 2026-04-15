@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { ArrowLeft, Timer } from 'lucide-react';
-import { CubeState } from '../cube/CubeState';
-import { applyMove } from '../cube/moves';
-import { solveCubeRemote } from '../net/api';
+import { CubeState } from '../../cube/CubeState';
+import { applyMove } from '../../cube/moves';
+import { solveCubeRemote } from '../../net/api';
 import {
   TURN_DURATION_SECONDS,
   mergeMoveIntoSolveStack,
@@ -15,18 +15,18 @@ import {
   FACE_ORDER,
   formatTime,
   generateScramble,
-} from './simulator/simulatorConstants';
-import { useCubeControls } from './simulator/useCubeControls';
-import { useTimer } from './simulator/useTimer';
+} from './simulatorConstants';
+import { useCubeControls } from './useCubeControls';
+import { useTimer } from './useTimer';
 import {
   InteractiveCube,
   ResponsiveSceneCamera,
   SimulatorCanvasBoundary,
-} from './simulator/InteractiveCube';
-import SimulatorControls from './simulator/SimulatorControls';
-import TutorialPanel from './simulator/TutorialPanel';
-import SimulatorFaceMap from './simulator/SimulatorFaceMap';
-import CanvasFallbackPanel from './simulator/CanvasFallbackPanel';
+} from './InteractiveCube';
+import SimulatorControls from './SimulatorControls';
+import TutorialPanel from './TutorialPanel';
+import SimulatorFaceMap from './SimulatorFaceMap';
+import CanvasFallbackPanel from './CanvasFallbackPanel';
 
 const SimulatorPage = () => {
   const navigate = useNavigate();

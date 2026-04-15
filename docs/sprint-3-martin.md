@@ -1,7 +1,7 @@
 # Sprint 3 — Martin Ofunrein — Delivered Changes
 
 **Branch:** `sprint-3-martin`  
-**Scope updated:** April 14, 2026
+**Scope updated:** April 15, 2026
 
 ## What shipped
 
@@ -25,7 +25,7 @@ Delivered pieces:
   - production/Vercel API route also calls the real WASM solver
 - `dictators-website/src/net/api.js`
   - solve response now accepts solved cube state from the backend
-- `dictators-website/src/pages/SimulatorPage.jsx`
+- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
   - solve button now calls the API
   - solved state is applied from the backend response
   - reverse-history solving was removed
@@ -35,12 +35,13 @@ Delivered pieces:
 The live simulator was snapping cubies back onto a static layout after each turn, which caused sticker/color popping during turns, especially slice moves.
 
 Delivered fix:
-- `dictators-website/src/pages/simulatorAnimation.js`
+- `dictators-website/src/pages/simulator/simulatorAnimation.js`
   - added slice move animation support for `M`, `E`, `S`
   - added `rotateCubiePosition(...)`
-- `dictators-website/src/pages/SimulatorPage.jsx`
+- `dictators-website/src/pages/simulator/InteractiveCube.jsx`
   - `InteractiveCube` now tracks mutable cubie layout state
   - animated cubies are reattached and kept in their rotated positions after each move
+- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
   - solved-state resets rebuild layout cleanly
 
 ### 3. Timer / interaction polish that remains active
@@ -49,6 +50,41 @@ The simulator still includes the earlier timer improvements:
 - timer starts on first user move after scramble
 - timer starts from a fresh solved/reset cube on first move
 - best time persists in `localStorage`
+
+### 4. Simulator page refactor for readability and teammate handoff
+
+The simulator feature was split into a dedicated feature folder so the main page is no longer carrying all rendering, timer, controls, tutorial, and animation code in one file.
+
+Delivered refactor:
+- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
+  - now acts as the feature coordinator only
+  - owns page layout, move queue state, solve/reset/scramble handlers, timer wiring, and canvas fallback wiring
+- `dictators-website/src/pages/simulator/InteractiveCube.jsx`
+  - contains the 3D cube renderer and move animation flow
+  - was cleaned up further with small local helpers for layout sync and layer animation
+- `dictators-website/src/pages/simulator/SimulatorControls.jsx`
+  - left panel controls and move buttons
+- `dictators-website/src/pages/simulator/TutorialPanel.jsx`
+  - right panel algorithm help / tutorial actions
+- `dictators-website/src/pages/simulator/SimulatorFaceMap.jsx`
+  - flat face-state readout
+- `dictators-website/src/pages/simulator/CanvasFallbackPanel.jsx`
+  - renderer failure fallback panel
+- `dictators-website/src/pages/simulator/useTimer.js`
+  - timer and best-time persistence
+- `dictators-website/src/pages/simulator/useCubeControls.js`
+  - keyboard + sticker-selection controls
+- `dictators-website/src/pages/simulator/simulatorConstants.js`
+  - feature constants and helpers
+- `dictators-website/src/pages/simulator/simulatorAnimation.js`
+  - animation helpers and cubie rotation math
+- `dictators-website/src/pages/simulator/simulatorAnimation.test.js`
+  - coverage for animation helpers
+
+Folder decision:
+- all simulator-only code now lives under `dictators-website/src/pages/simulator/`
+- this keeps simulator logic together and makes ownership clearer for teammates
+- `SimulatorPage.jsx` still exists because the route needs a page-level coordinator, but it is no longer the only simulator file
 
 ## Important solver note
 
@@ -66,6 +102,77 @@ Because of that, the frontend currently:
 
 This is intentional until move-sequence export is stable enough to animate a full solver replay safely.
 
+## Architecture decisions to keep
+
+### 1. Keep both `backend/api/` and repo-root `api/`
+
+We intentionally need both folders.
+
+- `backend/api/`
+  - local Node API for development
+  - easy to run directly with `npm --prefix backend/api run serve`
+  - used behind the Vite dev proxy
+- `api/v1/`
+  - Vercel production/serverless entrypoint
+  - required because Vercel expects API routes at the repo root `api/` convention
+
+Decision:
+- do not delete either one
+- they serve different runtimes
+- local dev and deployed production would be harder to reason about if they were merged incorrectly
+
+### 2. Keep the C++ solver behind the WASM adapter
+
+Current live solve flow:
+- C++ source lives in `backend/src/cube/`
+- `backend/src/cube/solver_bridge.cpp` exports `solveCube` and `solveCubeMoves`
+- `api/solver.js` is the generated Emscripten bundle used by Node/serverless code
+- `backend/api/src/wasmSolver.js` is the shared JS adapter used by both local and production API routes
+
+Decision:
+- keep the C++ solver as the solving engine
+- keep the JS/WASM adapter as the only integration point for API code
+- do not call the C++ layer directly from frontend code
+
+### 3. Keep solved-state solving live, not move-list replay
+
+Decision:
+- `solveCube` is the live path
+- `solveCubeMoves` stays non-live until its move sequences are trustworthy
+- this avoids animating incorrect solve sequences in front of users
+
+### 4. Keep `SimulatorPage.jsx` as the coordinator
+
+`SimulatorPage.jsx` is still around because it is the route-level entrypoint and has to assemble:
+- layout
+- timer wiring
+- solve/reset/scramble handlers
+- move queue state
+- canvas failure handling
+- child simulator panels
+
+Decision:
+- do not split it just for line count alone
+- only extract more if a future chunk becomes independently reusable or test-worthy
+- prefer simple local coordination over over-abstracted hooks
+
+## Current simulator file layout
+
+```text
+dictators-website/src/pages/simulator/
+├── CanvasFallbackPanel.jsx
+├── InteractiveCube.jsx
+├── SimulatorControls.jsx
+├── SimulatorFaceMap.jsx
+├── SimulatorPage.jsx
+├── TutorialPanel.jsx
+├── simulatorAnimation.js
+├── simulatorAnimation.test.js
+├── simulatorConstants.js
+├── useCubeControls.js
+└── useTimer.js
+```
+
 ## Verification completed
 
 ### Backend / solver verification
@@ -82,7 +189,7 @@ This is intentional until move-sequence export is stable enough to animate a ful
 ### API verification
 - Fresh root dev session started with:
   - API on `http://localhost:5200`
-  - frontend on `http://localhost:5300`
+  - frontend on `http://localhost:5400`
 - Posted a real scrambled cube state to:
   - `POST /v1/cube/solve`
 - Confirmed `200 OK`
@@ -106,9 +213,18 @@ This is intentional until move-sequence export is stable enough to animate a ful
 - `backend/src/cube/PuzzleCube.h`
 - `backend/src/cube/solver_bridge.cpp`
 - `dictators-website/src/net/api.js`
-- `dictators-website/src/pages/SimulatorPage.jsx`
-- `dictators-website/src/pages/simulatorAnimation.js`
-- `dictators-website/src/pages/simulatorAnimation.test.js`
+- `dictators-website/src/main.jsx`
+- `dictators-website/src/pages/simulator/CanvasFallbackPanel.jsx`
+- `dictators-website/src/pages/simulator/InteractiveCube.jsx`
+- `dictators-website/src/pages/simulator/SimulatorControls.jsx`
+- `dictators-website/src/pages/simulator/SimulatorFaceMap.jsx`
+- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
+- `dictators-website/src/pages/simulator/TutorialPanel.jsx`
+- `dictators-website/src/pages/simulator/simulatorAnimation.js`
+- `dictators-website/src/pages/simulator/simulatorAnimation.test.js`
+- `dictators-website/src/pages/simulator/simulatorConstants.js`
+- `dictators-website/src/pages/simulator/useCubeControls.js`
+- `dictators-website/src/pages/simulator/useTimer.js`
 
 ## What the folders are doing
 
@@ -179,5 +295,5 @@ npm run dev
 ```
 
 At verification time it was serving:
-- frontend: `http://localhost:5300`
+- frontend: `http://localhost:5400`
 - API: `http://localhost:5200`
