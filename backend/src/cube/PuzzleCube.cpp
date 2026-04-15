@@ -19,6 +19,10 @@ const std::vector<std::vector<std::vector<int>>>& PuzzleCube::getState() const {
     return cube;
 }
 
+void PuzzleCube::setState(const std::vector<std::vector<std::vector<int>>>& newState) {
+    cube = newState;
+}
+
 bool PuzzleCube::isSolved() const {
     //to be solved, every face has to have every tile equal the same value
     for (int f = 0; f < 6; f++) {

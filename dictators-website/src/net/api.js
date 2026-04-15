@@ -1,3 +1,6 @@
+// Production uses the repo-root Vercel route at /api/v1/*.
+// Local dev keeps the frontend on :5300 and the Node API on :5200,
+// with Vite proxying /api/v1/* -> http://localhost:5200/v1/*.
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
 const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 
@@ -149,6 +152,10 @@ export async function solveCubeRemote(state, strategy = 'beginner') {
 
   if (!Array.isArray(payload.moves)) {
     throw new ApiError('Backend returned an invalid solve response.');
+  }
+
+  if (payload.state !== undefined) {
+    validateCubeState(payload.state, 'response.state');
   }
 
   return payload;

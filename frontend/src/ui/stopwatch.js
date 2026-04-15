@@ -1,7 +1,9 @@
 import { createSection } from './panel.js';
 import { generateScrambleRemote, fetchSolvedState } from '../net/api.js';
+import { onceOnFirstMove } from './controls/controls.js';
 
 const POLL_INTERVAL_MS = 500;
+const BEST_TIME_KEY = 'rubiks_best_time_ms';
 
 export function initStopwatch(container, context) {
     const { cubeState } = context;
@@ -11,8 +13,16 @@ export function initStopwatch(container, context) {
     let intervalId = null;
     let pollId = null;
 
+    // Load persisted best time
+    let bestTimeMs = parseInt(localStorage.getItem(BEST_TIME_KEY) || '0', 10) || null;
+
     const display = document.createElement('div');
     display.textContent = '0:00.00';
+
+    const bestDisplay = document.createElement('div');
+    bestDisplay.style.fontSize = '0.85em';
+    bestDisplay.style.opacity = '0.7';
+    bestDisplay.textContent = bestTimeMs ? `Best: ${formatTime(bestTimeMs)}` : 'Best: --';
 
     const statusLabel = document.createElement('div');
     statusLabel.textContent = 'Idle';
@@ -24,7 +34,7 @@ export function initStopwatch(container, context) {
     stopBtn.textContent = 'Stop';
     stopBtn.style.display = 'none';
 
-    function formatTime(ms){
+    function formatTime(ms) {
         const minutes = Math.floor(ms / 60000);
         const seconds = Math.floor((ms % 60000) / 1000);
         const centiseconds = Math.floor((ms % 1000) / 10);
@@ -48,8 +58,17 @@ export function initStopwatch(container, context) {
         pollId = null;
     }
 
+    function saveBestTime(ms) {
+        if (!bestTimeMs || ms < bestTimeMs) {
+            bestTimeMs = ms;
+            localStorage.setItem(BEST_TIME_KEY, String(ms));
+            bestDisplay.textContent = `Best: ${formatTime(ms)}`;
+        }
+    }
+
     function reset() {
         stopTimer();
+        stopPolling();
         display.textContent = '0:00.00';
         statusLabel.textContent = 'Idle';
         startBtn.style.display = '';
@@ -67,9 +86,11 @@ export function initStopwatch(container, context) {
                 );
 
                 if (isSolved) {
+                    const elapsed = performance.now() - startTime;
                     stopTimer();
                     stopPolling();
-                    statusLabel.textContent = 'Solved!';
+                    saveBestTime(elapsed);
+                    statusLabel.textContent = `Solved! ${formatTime(elapsed)}`;
                     stopBtn.style.display = 'none';
                     startBtn.style.display = '';
                 }
@@ -82,16 +103,22 @@ export function initStopwatch(container, context) {
     startBtn.onclick = async () => {
         startBtn.style.display = 'none';
         stopBtn.style.display = '';
-        statusLabel.textContent = 'Scrambling...'
+        statusLabel.textContent = 'Scrambling...';
 
         try {
-            //const { state } = await generateScrambleRemote();
-            //cubeState.setState(state);
-            //window.setCubeState(state);
+            const { state, scramble } = await generateScrambleRemote();
+            cubeState.setState(state);
+            window.setCubeState(state);
+            // Store scramble on context so the Solve button can use it
+            context.scrambleMoves = scramble;
 
-            statusLabel.textContent = 'Solve it!';
-            startTimer();
-            startPolling();
+            // Timer starts on the user's FIRST move, not immediately
+            statusLabel.textContent = 'Make a move to start!';
+            onceOnFirstMove(() => {
+                statusLabel.textContent = 'Solving...';
+                startTimer();
+                startPolling();
+            });
         } catch (err) {
             console.error('[stopwatch] Scramble failed:', err);
             reset();
@@ -101,6 +128,7 @@ export function initStopwatch(container, context) {
     stopBtn.onclick = () => reset();
 
     section.appendChild(display);
+    section.appendChild(bestDisplay);
     section.appendChild(statusLabel);
     section.appendChild(startBtn);
     section.appendChild(stopBtn);

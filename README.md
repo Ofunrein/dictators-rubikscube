@@ -27,7 +27,7 @@ npm install
 npm run dev
 ```
 
-Opens at `http://localhost:5173`. Navigate to `/simulator` for the cube.
+Opens at `http://localhost:5300`. Navigate to `/simulator` for the cube.
 
 ## Run Frontend + API Together
 
@@ -37,15 +37,27 @@ npm run dev
 ```
 
 Starts:
-- Frontend dev server on `http://localhost:5173`
-- API server on `http://localhost:4011`
+- Frontend dev server on `http://localhost:5300`
+- API server on `http://localhost:5200`
+
+Important:
+- `dictators-website/` is the active frontend used by `npm run dev`
+- `frontend/` is an older prototype and is not the live app
+- In local dev, the frontend still calls `/api/v1/*`
+- Vite proxies `/api/v1/*` from `5300` to the local API on `5200`
+- Direct local API routes are also available at `http://localhost:5200/v1/*`
+
+Why the API is on `5200`:
+- Vite already uses `5300` for the frontend
+- keeping the API on `5200` avoids a port collision
+- this mirrors a clean split: browser app on one port, API on another, with the frontend proxy hiding that split during development
 
 ## Project Structure
 
 ```
 the-dictators/
-├── api/                        ← Vercel serverless functions
-│   └── v1/[...path].js        ← Catch-all API handler
+├── api/                        ← Vercel serverless functions for deployed/prod API
+│   └── v1/[...path].js        ← Catch-all API handler used in production
 ├── dictators-website/          ← React + Vite + Tailwind (primary app)
 │   ├── src/
 │   │   ├── components/         ← Landing page components
@@ -57,11 +69,11 @@ the-dictators/
 │   │   │   └── moves.js        ← 18-move engine (U/D/L/R/F/B + M/E/S)
 │   │   └── net/api.js          ← API client
 │   └── package.json
-├── frontend/                   ← Three.js prototype (Kyle's sticker-mesh renderer)
+├── frontend/                   ← Legacy prototype / reference code, not used by npm run dev
 ├── backend/
-│   ├── api/                    ← Node.js API server
+│   ├── api/                    ← Local Node.js dev API for simulator work
 │   │   ├── openapi.yaml        ← OpenAPI 3.1 contract
-│   │   └── src/                ← server.js, cube.js, validation.js
+│   │   └── src/                ← server.js, cube.js, validation.js, wasmSolver.js
 │   ├── src/cube/               ← C++ engine
 │   │   ├── PuzzleCube.h/.cpp   ← N×N×N state model
 │   │   ├── CubeOperations.cpp  ← Solver (7-step white cross)
@@ -82,6 +94,8 @@ the-dictators/
 | POST | `/v1/cube/moves/apply` | Apply a move to a state |
 | POST | `/v1/cube/scramble` | Generate scramble + resulting state |
 | POST | `/v1/cube/solve` | Request solution sequence |
+
+Local dev also accepts the same routes under `/api/v1/*` on port `5200` to reduce confusion during manual testing.
 
 ## Cube State Contract
 

@@ -10,9 +10,11 @@ export function initFeatures(container, context){
     scrambleBtn.textContent = 'Scramble';
     scrambleBtn.onclick = async () => {
         try {
-            const { state } = await generateScrambleRemote();
-            cubeState.setState(state);
-            window.setCubeState(state);
+            const payload = await generateScrambleRemote();
+            cubeState.setState(payload.state);
+            window.setCubeState(payload.state);
+            // Store scramble sequence on context for use by the Solve button
+            context.scrambleMoves = payload.scramble;
         } catch (err) {
             console.error('[features] Scramble failed:', err);
         }
@@ -21,26 +23,27 @@ export function initFeatures(container, context){
     const solveBtn = document.createElement('button');
     solveBtn.textContent = 'Solve';
     solveBtn.onclick = async () => {
-    console.log('[features] Solve button clicked');
-    try {
-        const result = await solveCubeRemote(cubeState.getState());
-        console.log('[features] raw result:', JSON.stringify(result));
+        console.log('[features] Solve button clicked');
+        try {
+            const result = await solveCubeRemote(cubeState.getState(), {
+                scrambleMoves: context.scrambleMoves
+            });
+            console.log('[features] raw result:', JSON.stringify(result));
 
-        if (result.solvedState) {
-            cubeState.setState(result.solvedState);
-            window.setCubeState(result.solvedState);
-        } else if (result.moves && result.moves.length > 0) {
-            for (const move of result.moves) {
-                dispatchMove(move, cubeState);
+            if (result.solvedState) {
+                cubeState.setState(result.solvedState);
+                window.setCubeState(result.solvedState);
+            } else if (result.moves && result.moves.length > 0) {
+                for (const move of result.moves) {
+                    dispatchMove(move, cubeState);
+                }
+                // Clear the stored scramble after solving
+                context.scrambleMoves = null;
             }
-        } else {
+        } catch (err) {
             console.error('[features] Solve failed:', err);
-            console.error('[features] Solve error details:', err.message, err.stack);
         }
-    } catch (err) {
-        console.error('[features] Solve failed:', err);
     }
-}
 
     section.appendChild(scrambleBtn);
     section.appendChild(solveBtn);
