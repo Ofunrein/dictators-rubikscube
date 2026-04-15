@@ -7,7 +7,7 @@ import {
   easeInOutCubic,
   parseMoveAnimation,
   rotateCubiePosition,
-} from '../simulatorAnimation';
+} from './simulatorAnimation';
 import { TOKEN_HEX } from './simulatorConstants';
 
 const AXIS_VECTORS = {
@@ -20,6 +20,7 @@ const CUBIE_SIZE = 0.95;
 const STICKER_SIZE = 0.85;
 const GAP = 1.0;
 const EPSILON = 0.02;
+const CUBE_ROTATION = [0.4, -0.6, 0];
 
 const CUBIE_FACES_DEF = [
   { axis: 'x', sign: 1, face: 'R', rotation: [0, Math.PI / 2, 0] },
@@ -29,6 +30,60 @@ const CUBIE_FACES_DEF = [
   { axis: 'z', sign: 1, face: 'F', rotation: [0, 0, 0] },
   { axis: 'z', sign: -1, face: 'B', rotation: [0, Math.PI, 0] },
 ];
+
+function cloneCubieLayout() {
+  return CUBIE_LAYOUT.map((cubie) => ({ ...cubie }));
+}
+
+function isCubieOnStickerFace(definition, gx, gy, gz) {
+  return (
+    (definition.axis === 'x' && gx === definition.sign) ||
+    (definition.axis === 'y' && gy === definition.sign) ||
+    (definition.axis === 'z' && gz === definition.sign)
+  );
+}
+
+function getStickerPosition(definition) {
+  const stickerPosition = [0, 0, 0];
+  const axisIndex =
+    definition.axis === 'x' ? 0 : definition.axis === 'y' ? 1 : 2;
+
+  stickerPosition[axisIndex] = definition.sign * (CUBIE_SIZE / 2 + EPSILON);
+  return stickerPosition;
+}
+
+function getStickerSelectionInfo(face, stickerIndex) {
+  return {
+    col: stickerIndex % 3,
+    face,
+    index: stickerIndex,
+    row: Math.floor(stickerIndex / 3),
+  };
+}
+
+function isCubieInAnimatedLayer(cubie, config) {
+  return cubie[config.axis] === config.layer;
+}
+
+function attachLayerToPivot(pivot, cubieLayout, cubieRefs, config) {
+  cubieLayout.forEach((cubie, index) => {
+    if (!isCubieInAnimatedLayer(cubie, config)) return;
+
+    const cubieGroup = cubieRefs.current[index];
+    if (!cubieGroup) return;
+    pivot.attach(cubieGroup);
+  });
+}
+
+function syncCubieTransforms(cubieLayout, cubieRefs) {
+  cubieLayout.forEach((cubie, index) => {
+    const cubieGroup = cubieRefs.current[index];
+    if (!cubieGroup) return;
+
+    cubieGroup.position.set(cubie.x * GAP, cubie.y * GAP, cubie.z * GAP);
+    cubieGroup.rotation.set(0, 0, 0);
+  });
+}
 
 export class SimulatorCanvasBoundary extends React.Component {
   constructor(props) {
@@ -116,21 +171,12 @@ const StickerCubelet = React.forwardRef(function StickerCubelet(
   const stickers = [];
 
   for (const definition of CUBIE_FACES_DEF) {
-    const isExposed =
-      (definition.axis === 'x' && gx === definition.sign) ||
-      (definition.axis === 'y' && gy === definition.sign) ||
-      (definition.axis === 'z' && gz === definition.sign);
-
-    if (!isExposed) continue;
+    if (!isCubieOnStickerFace(definition, gx, gy, gz)) continue;
 
     const stickerIndex = getStickerIndex(definition.face, gx, gy, gz);
     const tokenValue = cubeState[definition.face]?.[stickerIndex];
     const color = resolveStickerColor(tokenValue);
-
-    const stickerPosition = [0, 0, 0];
-    stickerPosition[
-      definition.axis === 'x' ? 0 : definition.axis === 'y' ? 1 : 2
-    ] = definition.sign * (CUBIE_SIZE / 2 + EPSILON);
+    const stickerPosition = getStickerPosition(definition);
 
     const isSelected =
       selectedSticker?.face === definition.face &&
@@ -145,14 +191,7 @@ const StickerCubelet = React.forwardRef(function StickerCubelet(
         isSelected={isSelected}
         onPointerDown={onStickerSelect ? (event) => {
           event.stopPropagation();
-          const row = Math.floor(stickerIndex / 3);
-          const col = stickerIndex % 3;
-          onStickerSelect({
-            col,
-            face: definition.face,
-            index: stickerIndex,
-            row,
-          });
+          onStickerSelect(getStickerSelectionInfo(definition.face, stickerIndex));
         } : undefined}
       />,
     );
@@ -181,16 +220,14 @@ export function InteractiveCube({
   const pivotRef = useRef(null);
   const activeAnimationRef = useRef(null);
   const onMoveCompleteRef = useRef(onMoveComplete);
-  const [cubieLayout, setCubieLayout] = useState(() =>
-    CUBIE_LAYOUT.map((cubie) => ({ ...cubie })),
-  );
+  const [cubieLayout, setCubieLayout] = useState(cloneCubieLayout);
 
   useEffect(() => {
     onMoveCompleteRef.current = onMoveComplete;
   }, [onMoveComplete]);
 
   useEffect(() => {
-    setCubieLayout(CUBIE_LAYOUT.map((cubie) => ({ ...cubie })));
+    setCubieLayout(cloneCubieLayout());
   }, [cubeState]);
 
   useEffect(() => {
@@ -208,13 +245,7 @@ export function InteractiveCube({
     const pivot = new THREE.Group();
     groupRef.current.add(pivot);
     pivotRef.current = pivot;
-
-    cubieLayout.forEach((cubie, index) => {
-      if (cubie[config.axis] !== config.layer) return;
-      const cubieGroup = cubieRefs.current[index];
-      if (!cubieGroup) return;
-      pivot.attach(cubieGroup);
-    });
+    attachLayerToPivot(pivot, cubieLayout, cubieRefs, config);
 
     activeAnimationRef.current = {
       config,
@@ -244,13 +275,7 @@ export function InteractiveCube({
     if (animation.progress < 1) return;
 
     pivotRef.current.setRotationFromAxisAngle(axisVector, totalAngle);
-
-    cubieLayout.forEach((cubie, index) => {
-      if (cubie[animation.config.axis] !== animation.config.layer) return;
-      const cubieGroup = cubieRefs.current[index];
-      if (!cubieGroup) return;
-      groupRef.current.attach(cubieGroup);
-    });
+    attachLayerToPivot(groupRef.current, cubieLayout, cubieRefs, animation.config);
 
     groupRef.current.remove(pivotRef.current);
     pivotRef.current = null;
@@ -261,18 +286,11 @@ export function InteractiveCube({
         : animation.config.direction;
 
     const nextLayout = cubieLayout.map((cubie) => (
-      cubie[animation.config.axis] === animation.config.layer
+      isCubieInAnimatedLayer(cubie, animation.config)
         ? rotateCubiePosition(cubie, animation.config.axis, effectiveDirection)
         : cubie
     ));
-
-    nextLayout.forEach((cubie, index) => {
-      const cubieGroup = cubieRefs.current[index];
-      if (!cubieGroup) return;
-
-      cubieGroup.position.set(cubie.x * GAP, cubie.y * GAP, cubie.z * GAP);
-      cubieGroup.rotation.set(0, 0, 0);
-    });
+    syncCubieTransforms(nextLayout, cubieRefs);
 
     setCubieLayout(nextLayout);
 
@@ -281,35 +299,22 @@ export function InteractiveCube({
     onMoveCompleteRef.current?.(finishedMove);
   });
 
-  const cubelets = [];
-  let index = 0;
-
-  for (let x = -1; x <= 1; x += 1) {
-    for (let y = -1; y <= 1; y += 1) {
-      for (let z = -1; z <= 1; z += 1) {
-        const layoutIndex = index;
-        cubelets.push(
-          <StickerCubelet
-            key={`${x}-${y}-${z}`}
-            ref={(node) => {
-              cubieRefs.current[layoutIndex] = node;
-            }}
-            gx={cubieLayout[layoutIndex].x}
-            gy={cubieLayout[layoutIndex].y}
-            gz={cubieLayout[layoutIndex].z}
-            cubeState={cubeState}
-            onStickerSelect={onStickerSelect}
-            selectedSticker={selectedSticker}
-          />,
-        );
-        index += 1;
-      }
-    }
-  }
-
   return (
-    <group ref={groupRef} rotation={[0.4, -0.6, 0]}>
-      {cubelets}
+    <group ref={groupRef} rotation={CUBE_ROTATION}>
+      {cubieLayout.map((cubie, index) => (
+        <StickerCubelet
+          key={`${index}-${cubie.x}-${cubie.y}-${cubie.z}`}
+          ref={(node) => {
+            cubieRefs.current[index] = node;
+          }}
+          gx={cubie.x}
+          gy={cubie.y}
+          gz={cubie.z}
+          cubeState={cubeState}
+          onStickerSelect={onStickerSelect}
+          selectedSticker={selectedSticker}
+        />
+      ))}
     </group>
   );
 }
