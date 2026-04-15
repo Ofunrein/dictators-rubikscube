@@ -19,6 +19,7 @@
 #include <sstream>
 #include <string>
 #include <cstring>
+#include <vector>
 #include "PuzzleCube.h"
 #include "CubeOperations.h"
 
@@ -75,6 +76,91 @@ static bool loadCubeFromFlat(const char* input, PuzzleCube& cube) {
     return true;
 }
 
+static const char* writeCubeToFlat(const PuzzleCube& cube) {
+    static char output[56];
+    const auto& state = cube.getState();
+
+    for (int jsFace = 0; jsFace < 6; jsFace++) {
+        int cppFace = JS_TO_CPP_FACE[jsFace];
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 3; c++) {
+                int flatIdx = jsFace * 9 + r * 3 + c;
+                const int mappedRow = (jsFace == 0 || jsFace == 3) ? (2 - r) : r;
+                output[flatIdx] = intToToken(state[cppFace][mappedRow][c]);
+            }
+        }
+    }
+
+    output[54] = '\0';
+    return output;
+}
+
+static bool applyMoveToken(PuzzleCube& cube, const std::string& token) {
+    if (token.empty()) {
+        return true;
+    }
+
+    const bool clockwise = token.size() == 1;
+    const char face = token[0];
+
+    switch (face) {
+        case 'U':
+            CubeOperations::rotateFace(cube, PuzzleCube::Face::Up, clockwise);
+            return true;
+        case 'L':
+            CubeOperations::rotateFace(cube, PuzzleCube::Face::Left, clockwise);
+            return true;
+        case 'F':
+            CubeOperations::rotateFace(cube, PuzzleCube::Face::Front, clockwise);
+            return true;
+        case 'R':
+            CubeOperations::rotateFace(cube, PuzzleCube::Face::Right, clockwise);
+            return true;
+        case 'B':
+            CubeOperations::rotateFace(cube, PuzzleCube::Face::Back, clockwise);
+            return true;
+        case 'D':
+            CubeOperations::rotateFace(cube, PuzzleCube::Face::Down, clockwise);
+            return true;
+        case 'M':
+            cube.rotate(PuzzleCube::RotationAxis::X, 1, !clockwise);
+            return true;
+        case 'E':
+            cube.rotate(PuzzleCube::RotationAxis::Y, 1, !clockwise);
+            return true;
+        case 'S':
+            cube.rotate(PuzzleCube::RotationAxis::Z, 1, clockwise);
+            return true;
+        case 'x':
+            CubeOperations::rotateCube(cube, PuzzleCube::RotationAxis::X, clockwise);
+            return true;
+        case 'y':
+            CubeOperations::rotateCube(cube, PuzzleCube::RotationAxis::Y, clockwise);
+            return true;
+        case 'z':
+            CubeOperations::rotateCube(cube, PuzzleCube::RotationAxis::Z, clockwise);
+            return true;
+        default:
+            return false;
+    }
+}
+
+static bool applyMoveSequence(PuzzleCube& cube, const char* moves) {
+    if (!moves) {
+        return false;
+    }
+
+    std::istringstream stream(moves);
+    std::string token;
+    while (stream >> token) {
+        if (!applyMoveToken(cube, token)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 extern "C" {
 
 /**
@@ -86,29 +172,12 @@ extern "C" {
  */
 EMSCRIPTEN_KEEPALIVE
 const char* solveCube(const char* input) {
-    static char output[56];
-
     PuzzleCube cube(3);
     if (!loadCubeFromFlat(input, cube)) {
-        strncpy(output, "ERROR", 6);
-        return output;
+        return "ERROR";
     }
     CubeOperations::solve3x3(cube);
-
-    // Read the solved state back out in JS face order
-    const auto& solved = cube.getState();
-    for (int jsFace = 0; jsFace < 6; jsFace++) {
-        int cppFace = JS_TO_CPP_FACE[jsFace];
-        for (int r = 0; r < 3; r++) {
-            for (int c = 0; c < 3; c++) {
-                int flatIdx = jsFace * 9 + r * 3 + c;
-                const int mappedRow = (jsFace == 0 || jsFace == 3) ? (2 - r) : r;
-                output[flatIdx] = intToToken(solved[cppFace][mappedRow][c]);
-            }
-        }
-    }
-    output[54] = '\0';
-    return output;
+    return writeCubeToFlat(cube);
 }
 
 /**
@@ -137,6 +206,39 @@ const char* solveCubeMoves(const char* input) {
 
     output = stream.str();
     return output.c_str();
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char* roundTripState(const char* input) {
+    PuzzleCube cube(3);
+    if (!loadCubeFromFlat(input, cube)) {
+        return "ERROR";
+    }
+
+    return writeCubeToFlat(cube);
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char* applyMovesToSolved(const char* moves) {
+    PuzzleCube cube(3);
+    if (!applyMoveSequence(cube, moves)) {
+        return "ERROR";
+    }
+
+    return writeCubeToFlat(cube);
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char* applyMovesToState(const char* input, const char* moves) {
+    PuzzleCube cube(3);
+    if (!loadCubeFromFlat(input, cube)) {
+        return "ERROR";
+    }
+    if (!applyMoveSequence(cube, moves)) {
+        return "ERROR";
+    }
+
+    return writeCubeToFlat(cube);
 }
 
 } // extern "C"

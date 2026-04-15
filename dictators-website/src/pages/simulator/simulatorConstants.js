@@ -1,5 +1,7 @@
 import { MOVES } from '../../cube/moves';
 
+const SCRAMBLE_MOVES = MOVES.filter((move) => !/^[MESxyz]/.test(move));
+
 export const TOKEN_HEX = {
   W: '#FFFFFF',
   R: '#CC1A1A',
@@ -73,7 +75,7 @@ export function generateScramble(length = 20) {
   for (let index = 0; index < length; index += 1) {
     let move;
     do {
-      move = MOVES[Math.floor(Math.random() * MOVES.length)];
+      move = SCRAMBLE_MOVES[Math.floor(Math.random() * SCRAMBLE_MOVES.length)];
     } while (move.replace("'", '') === last.replace("'", ''));
 
     result.push(move);

@@ -1,4 +1,4 @@
-import { Check, RotateCcw, Shuffle } from 'lucide-react';
+import { Check, RotateCcw, RotateCw, Shuffle, Undo2 } from 'lucide-react';
 import { KEY_MAP, MOVE_GROUPS, formatTime } from './simulatorConstants';
 
 export default function SimulatorControls({
@@ -11,16 +11,20 @@ export default function SimulatorControls({
   onReset,
   onScramble,
   onSolve,
+  onUndo,
+  onUndoAll,
   scrambleSeq,
   solveDepth,
 }) {
+  const actionsDisabled = interactionLocked || solveDepth === 0;
+
   return (
     <aside className="w-full max-h-[42vh] lg:max-h-none lg:w-[280px] xl:w-[320px] border-b lg:border-b-0 lg:border-r border-dictator-chrome/10 flex flex-col bg-[#0A0A0A] overflow-y-auto">
       <div className="p-6 border-b border-dictator-chrome/10 grid grid-cols-3 gap-2">
         <button
           onClick={onScramble}
           disabled={interactionLocked}
-          className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl transition-colors
+          className={`flex min-h-[48px] items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest px-2 py-3 rounded-xl transition-colors
             ${interactionLocked
               ? 'bg-dictator-red/30 text-white/70 cursor-not-allowed'
               : 'bg-dictator-red text-white hover:bg-[#AA1515] active:scale-95'
@@ -31,9 +35,9 @@ export default function SimulatorControls({
         </button>
         <button
           onClick={onSolve}
-          disabled={interactionLocked || solveDepth === 0}
-          className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl border transition-all
-            ${interactionLocked || solveDepth === 0
+          disabled={actionsDisabled}
+          className={`flex min-h-[48px] items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest px-2 py-3 rounded-xl border transition-all
+            ${actionsDisabled
               ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
               : 'bg-[#1A1A1A] border-dictator-red/40 text-dictator-red hover:border-dictator-red hover:text-white active:scale-95'
             }`}
@@ -44,7 +48,7 @@ export default function SimulatorControls({
         <button
           onClick={onReset}
           disabled={interactionLocked}
-          className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl border transition-all
+          className={`flex min-h-[48px] items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest px-2 py-3 rounded-xl border transition-all
             ${interactionLocked
               ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
               : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-chrome/50 hover:text-white active:scale-95'
@@ -53,6 +57,34 @@ export default function SimulatorControls({
           <RotateCcw size={14} />
           Reset
         </button>
+        <button
+          onClick={onUndo}
+          disabled={actionsDisabled}
+          className={`flex min-h-[48px] items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest px-2 py-3 rounded-xl border transition-all
+            ${actionsDisabled
+              ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
+              : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-red/50 hover:text-white active:scale-95'
+            }`}
+        >
+          <Undo2 size={14} />
+          Undo
+        </button>
+        <button
+          onClick={onUndoAll}
+          disabled={actionsDisabled}
+          className={`flex min-h-[48px] items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest px-2 py-3 rounded-xl border transition-all
+            ${actionsDisabled
+              ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
+              : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-red/50 hover:text-white active:scale-95'
+            }`}
+        >
+          <RotateCw size={14} />
+          Undo All
+        </button>
+        <div
+          aria-hidden="true"
+          className="min-h-[48px] rounded-xl border border-dictator-chrome/10 bg-[#0F0F0F]"
+        />
       </div>
 
       {scrambleSeq.length > 0 && (

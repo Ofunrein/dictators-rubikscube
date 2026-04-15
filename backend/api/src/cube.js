@@ -27,6 +27,7 @@ const { applyMove: applyFrontendMove, MOVES: FRONTEND_MOVES } = frontendMovesMod
 export const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 export const STICKER_TOKENS = ['W', 'R', 'G', 'Y', 'O', 'B'];
 export const MOVE_TOKENS = [...FRONTEND_MOVES];
+export const SCRAMBLE_MOVE_TOKENS = MOVE_TOKENS.filter((move) => !/^[MESxyz]/.test(move));
 
 const FACE_SET = new Set(FACE_ORDER);
 const TOKEN_SET = new Set(STICKER_TOKENS);
@@ -87,7 +88,7 @@ export function generateScramble(length = 25, seed) {
   const scramble = [];
 
   while (scramble.length < length) {
-    const next = MOVE_TOKENS[Math.floor(random() * MOVE_TOKENS.length)];
+    const next = SCRAMBLE_MOVE_TOKENS[Math.floor(random() * SCRAMBLE_MOVE_TOKENS.length)];
     if (scramble.length === 0) {
       scramble.push(next);
       continue;

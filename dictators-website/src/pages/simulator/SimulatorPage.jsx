@@ -7,6 +7,9 @@ import { CubeState } from '../../cube/CubeState';
 import { applyMove } from '../../cube/moves';
 import { solveCubeRemote } from '../../net/api';
 import {
+  inverseMove,
+  invertMoveSequence,
+  isSliceMove,
   TURN_DURATION_SECONDS,
   mergeMoveIntoSolveStack,
   normalizeMoveSequence,
@@ -244,18 +247,32 @@ const SimulatorPage = () => {
   const handleSolve = useCallback(async () => {
     if (interactionLocked || solveDepth === 0) return;
 
+    const solveStackSnapshot = [...solveStackRef.current];
+    const inverseSolveMoves = invertMoveSequence(solveStackSnapshot);
+    const needsLocalHistorySolve = solveStackSnapshot.some(isSliceMove);
+
+    if (needsLocalHistorySolve) {
+      enqueueMoves(inverseSolveMoves);
+      return;
+    }
+
     setIsSolvingRemote(true);
 
     try {
       const payload = await solveCubeRemote(cubeStateObj.getState());
-      if (!payload.state) {
-        throw new Error('Backend did not return a solved state.');
-      }
-
       moveQueueRef.current = [];
       activeMoveRef.current = null;
       setQueuedMoveCount(0);
       setActiveMove(null);
+
+      if (Array.isArray(payload.moves) && payload.moves.length > 0) {
+        enqueueMoves(payload.moves);
+        return;
+      }
+
+      if (!payload.state) {
+        throw new Error('Backend did not return a solved state.');
+      }
 
       cubeStateObj.setState(payload.state);
       setDisplayState({ ...payload.state });
@@ -267,11 +284,16 @@ const SimulatorPage = () => {
       stopTimer();
     } catch (error) {
       console.error('Remote solve failed.', error);
+      if (inverseSolveMoves.length > 0) {
+        enqueueMoves(inverseSolveMoves);
+        return;
+      }
+
       window.alert(error instanceof Error ? error.message : 'Remote solve failed.');
     } finally {
       setIsSolvingRemote(false);
     }
-  }, [cubeStateObj, interactionLocked, solveDepth, stopTimer]);
+  }, [cubeStateObj, enqueueMoves, interactionLocked, solveDepth, stopTimer]);
 
   const handleReset = useCallback(() => {
     if (interactionLocked) return;
@@ -290,6 +312,24 @@ const SimulatorPage = () => {
     resetCubeToSolved();
     resetTimer();
   }, [interactionLocked, resetCubeToSolved, resetTimer]);
+
+  const handleUndo = useCallback(() => {
+    if (interactionLocked || solveDepth === 0) return;
+
+    const lastMove = solveStackRef.current[solveStackRef.current.length - 1];
+    if (!lastMove) return;
+
+    enqueueMoves([inverseMove(lastMove)]);
+  }, [enqueueMoves, interactionLocked, solveDepth]);
+
+  const handleUndoAll = useCallback(() => {
+    if (interactionLocked || solveDepth === 0) return;
+
+    const inverseMoves = invertMoveSequence(solveStackRef.current);
+    if (inverseMoves.length === 0) return;
+
+    enqueueMoves(inverseMoves);
+  }, [enqueueMoves, interactionLocked, solveDepth]);
 
   const handleApplyAlgorithm = useCallback((moves) => {
     enqueueMoves(moves);
@@ -339,6 +379,8 @@ const SimulatorPage = () => {
           onReset={handleReset}
           onScramble={handleScramble}
           onSolve={handleSolve}
+          onUndo={handleUndo}
+          onUndoAll={handleUndoAll}
           scrambleSeq={scrambleSeq}
           solveDepth={solveDepth}
         />
