@@ -5,6 +5,7 @@ import {
   validateSolveRequest
 } from '../../../backend/api/src/validation.js';
 import { applyMoveToState, applyMoves, generateScramble } from '../../../backend/api/src/cube.js';
+import { solveCubeStateWithWasm } from '../../../backend/api/src/wasmSolver.js';
 
 const SERVICE_NAME = 'rubiks-api';
 const VERSION = '0.1.0';
@@ -94,15 +95,28 @@ export default async function handler(req, res) {
       return;
     }
     const { state } = validation.value;
-    const alreadySolved = isSolvedState(state);
-    sendJson(res, 200, {
-      moves: alreadySolved ? [] : ["R'", "U'", 'F'],
-      estimatedMoveCount: alreadySolved ? 0 : 3,
-      isMock: true,
-      note: alreadySolved
-        ? 'Cube is already solved; returning an empty solution.'
-        : 'Solver is stubbed in Sprint 2.',
-    });
+
+    if (isSolvedState(state)) {
+      sendJson(res, 200, { moves: [], estimatedMoveCount: 0, state });
+      return;
+    }
+
+    try {
+      const solvedState = await solveCubeStateWithWasm(state);
+      sendJson(res, 200, {
+        moves: [],
+        estimatedMoveCount: 0,
+        state: solvedState,
+        solver: 'eric-cpp-wasm'
+      });
+    } catch (error) {
+      sendError(
+        res,
+        500,
+        'SOLVER_FAILURE',
+        error instanceof Error ? error.message : 'WASM solver failed unexpectedly.'
+      );
+    }
     return;
   }
 
