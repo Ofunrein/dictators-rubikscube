@@ -2,6 +2,8 @@
 #define CUBEOPERATIONS_H
 
 #include "PuzzleCube.h"
+#include <string>
+#include <vector>
 
 class PuzzleCube;
 
@@ -50,6 +52,14 @@ namespace CubeOperations {
      * @param cube Reference to the PuzzleCube object.
      */
     void solve3x3(PuzzleCube& cube);
+
+    /**
+     * @brief Solves a 3x3 cube and returns the move sequence used.
+     *
+     * @param cube Reference to the PuzzleCube object.
+     * @return The recorded move sequence in standard notation.
+     */
+    std::vector<std::string> solve3x3WithMoves(PuzzleCube& cube);
 };
 
 #endif
