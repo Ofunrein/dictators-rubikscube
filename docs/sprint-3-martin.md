@@ -423,6 +423,16 @@ dictators-website/src/pages/simulator/
   - canonical solved cube state after applying that move list
   - `solver: "eric-cpp-wasm-moves"`
 
+### Preview deployment
+- Deployed this branch as a **Vercel preview deployment** on the existing linked project
+  - project: `dictators-rubikscube`
+  - branch: `sprint-3-martin`
+- Preview URL:
+  - `https://dictators-rubikscube-pyl0i4jge-ofunreins-projects.vercel.app`
+- Inspect URL:
+  - `https://vercel.com/ofunreins-projects/dictators-rubikscube/DSf9yvxedThQTgN6cYWRLPL9sXse`
+- This was deployed as a normal branch preview, not as a separate new Vercel project
+
 ### Frontend verification
 - `npm --prefix dictators-website run build` passed
 - `npm --prefix dictators-website run test -- --run src/pages/simulatorAnimation.test.js` passed
@@ -488,7 +498,7 @@ Main file:
 - `api/v1/[...path].js`
   - catch-all Vercel serverless function
   - mirrors the same route behavior as the local API
-  - also calls `solveCubeStateWithWasm(...)`
+  - calls the same WASM-backed solve path used in local development
 
 In short:
 - `backend/api/` = local dev API
