@@ -7,8 +7,6 @@
 
 ### 1. Live simulator now uses Eric's C++ solver through the API
 
-The live `dictators-website` stack no longer depends on reverse-history solving.
-
 Delivered pieces:
 - `backend/src/cube/solver_bridge.cpp`
   - WASM bridge for Eric's C++ solver
@@ -24,11 +22,12 @@ Delivered pieces:
 - `api/v1/[...path].js`
   - production/Vercel API route also calls the real WASM solver
 - `dictators-website/src/net/api.js`
-  - solve response now accepts solved cube state from the backend
+  - solve response now accepts solver move lists and solved cube state from the backend
 - `dictators-website/src/pages/simulator/SimulatorPage.jsx`
   - solve button now calls the API
-  - solved state is applied from the backend response
-  - reverse-history solving was removed
+  - standard face-turn states now animate Eric's returned solve sequence
+  - falls back to exact inverse-history solving for slice-turn states so the simulator does not hang on `M`, `E`, `S`
+  - only snaps to solved state if move-list replay ever fails validation and the backend falls back to solved-state output
 
 ### 2. Color pop / flashing fix for the 3D cube
 
@@ -51,7 +50,27 @@ The simulator still includes the earlier timer improvements:
 - timer starts from a fresh solved/reset cube on first move
 - best time persists in `localStorage`
 
-### 4. Simulator page refactor for readability and teammate handoff
+### 4. Control panel now separates solving from undo history
+
+The simulator action panel now keeps solve and undo as different concepts instead of mixing them together.
+
+Delivered change:
+- `dictators-website/src/pages/simulator/SimulatorControls.jsx`
+  - action area expanded into a 2x3 grid
+  - top row: `Scramble`, `Solve`, `Reset`
+  - bottom row: `Undo`, `Undo All`, and one intentionally empty slot for layout balance
+- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
+  - `Undo` now reverses exactly one move from the active move stack
+  - `Undo All` reverses the full tracked move stack
+  - `Solve` remains the dedicated "compute a real solve" path
+
+Behavior decision:
+- `Solve` means "run Eric's solver from this state" for standard face-turn states
+- `Undo` means "step back one move"
+- `Undo All` means "reverse the tracked history"
+- slice states still use inverse-history behavior under solve fallback because the backend solver can still wedge on `M`, `E`, `S`
+
+### 5. Simulator page refactor for readability and teammate handoff
 
 The simulator feature was split into a dedicated feature folder so the main page is no longer carrying all rendering, timer, controls, tutorial, and animation code in one file.
 
@@ -88,19 +107,24 @@ Folder decision:
 
 ## Important solver note
 
-Eric's C++ backend solver is now the real engine behind the solve endpoint, but only the **solved-state** path is currently used live.
+Eric's C++ backend solver is now the real engine behind the live solve endpoint for both solved-state output and move-list output.
 
 Current state:
 - `solveCube` is verified and working through WASM
-- `solveCubeMoves` is still not reliable enough for live use
-- the move-list export can return incorrect sequences even when the solved-state export is correct
+- `solveCubeMoves` is now also wired into the live API path for standard face-turn states
+- the move-list path includes whole-cube rotations such as `x` and `y`, so the simulator now supports animating those rotations too
+- slice-turn simulator states can still wedge the backend solver, so scramble generation stays restricted to standard face turns and slice states still solve from exact inverse history
 
 Because of that, the frontend currently:
-- sends the current cube state to the API
-- receives a solved cube state back from Eric's solver
-- snaps to the solved state
+- sends standard face-turn cube states to the API
+- receives Eric's move list back from the backend when replay validation succeeds
+- animates that returned move list live in the simulator
+- uses exact inverse move history for slice-turn states generated inside the simulator
+- keeps the solved-state backend path only as a guarded fallback if move-list replay ever comes back invalid
 
-This is intentional until move-sequence export is stable enough to animate a full solver replay safely.
+This means scramble-button states and normal manual face-turn states now go through Eric's algorithm and animate the returned solve sequence instead of snapping directly to solved.
+
+The new explicit undo controls are there so history reversal does not have to be overloaded onto the `Solve` button.
 
 ## Architecture decisions to keep
 
@@ -134,12 +158,13 @@ Decision:
 - keep the JS/WASM adapter as the only integration point for API code
 - do not call the C++ layer directly from frontend code
 
-### 3. Keep solved-state solving live, not move-list replay
+### 3. Keep move-list solving live for standard states, keep solved-state output as fallback
 
 Decision:
-- `solveCube` is the live path
-- `solveCubeMoves` stays non-live until its move sequences are trustworthy
-- this avoids animating incorrect solve sequences in front of users
+- `solveCubeMoves` is the preferred live path for standard face-turn states
+- returned move lists are replay-validated in JS before the API returns them to the frontend
+- `solveCube` remains available as the guarded fallback if replay validation fails
+- slice-heavy simulator states still use exact inverse-history solving locally until the backend is hardened for that move class
 
 ### 4. Keep `SimulatorPage.jsx` as the coordinator
 
@@ -185,6 +210,11 @@ dictators-website/src/pages/simulator/
   - `B`
   - `R U F' L`
 - All of the above normalized back to canonical solved state successfully
+- Verified JS and C++ state mapping matched for:
+  - face turns
+  - `M`, `E`, `S` slice turns
+- Reproduced a real backend hang on a slice-containing legal simulator scramble
+- Confirmed the new simulator fallback exactly solves that same scramble by applying the inverse move history
 
 ### API verification
 - Fresh root dev session started with:
@@ -194,12 +224,16 @@ dictators-website/src/pages/simulator/
   - `POST /v1/cube/solve`
 - Confirmed `200 OK`
 - Confirmed response included:
-  - canonical solved cube state
-  - `solver: "eric-cpp-wasm"`
+  - replay-valid solve move list
+  - canonical solved cube state after applying that move list
+  - `solver: "eric-cpp-wasm-moves"`
 
 ### Frontend verification
 - `npm --prefix dictators-website run build` passed
 - `npm --prefix dictators-website run test -- --run src/pages/simulatorAnimation.test.js` passed
+- Verified simulator and backend scramble generators now stay face-turn only
+- Verified whole-cube rotations returned by Eric's solver are accepted by move normalization and animation helpers
+- Verified new `Undo` / `Undo All` control wiring builds cleanly and keeps the action panel layout consistent
 
 ## Files touched for this sprint delivery
 
