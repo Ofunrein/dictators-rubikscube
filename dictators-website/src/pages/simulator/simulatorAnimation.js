@@ -13,6 +13,9 @@ export const MOVE_ANIMATIONS = {
   M: { axis: 'x', layer: 0, direction: 1 },   // same direction as L
   E: { axis: 'y', layer: 0, direction: -1 },  // same direction as D
   S: { axis: 'z', layer: 0, direction: -1 },  // same direction as F
+  x: { axis: 'x', layer: 'all', direction: -1 },
+  y: { axis: 'y', layer: 'all', direction: 1 },
+  z: { axis: 'z', layer: 'all', direction: -1 },
 };
 
 export const CUBIE_LAYOUT = [];
@@ -58,6 +61,14 @@ export function inverseMove(move) {
   return move.endsWith("'") ? move.slice(0, -1) : `${move}'`;
 }
 
+export function isSliceMove(move) {
+  return /^[MES]'?$/.test(move?.trim?.() ?? '');
+}
+
+export function invertMoveSequence(sequence) {
+  return [...normalizeMoveSequence(sequence)].reverse().map(inverseMove);
+}
+
 export function mergeMoveIntoSolveStack(stack, move) {
   const inverse = inverseMove(move);
   if (stack.length > 0 && stack[stack.length - 1] === inverse) {
@@ -70,10 +81,10 @@ export function mergeMoveIntoSolveStack(stack, move) {
 export function expandMoveToken(move) {
   const token = move?.trim();
   if (!token) return [];
-  if (/^[URFDLBMES]2$/.test(token)) {
+  if (/^[URFDLBMESxyz]2$/.test(token)) {
     return [token[0], token[0]];
   }
-  if (/^[URFDLBMES]'?$/.test(token)) {
+  if (/^[URFDLBMESxyz]'?$/.test(token)) {
     return [token];
   }
   return [];
