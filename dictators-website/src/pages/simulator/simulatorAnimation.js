@@ -1,4 +1,5 @@
 export const TURN_DURATION_SECONDS = 0.24;
+export const SOLVE_TURN_DURATION_SECONDS = 0.46;
 export const IDLE_ROTATION_SPEED = 0.22;
 
 // Direction values are for clockwise turns of each face token.

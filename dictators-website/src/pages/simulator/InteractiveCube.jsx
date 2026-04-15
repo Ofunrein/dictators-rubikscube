@@ -213,6 +213,7 @@ const StickerCubelet = React.forwardRef(function StickerCubelet(
 
 export function InteractiveCube({
   activeMove,
+  turnDurationSeconds = TURN_DURATION_SECONDS,
   cubeState,
   onMoveComplete,
   onStickerSelect,
@@ -263,7 +264,7 @@ export function InteractiveCube({
     const animation = activeAnimationRef.current;
     if (!animation?.config) return;
 
-    animation.progress = Math.min(1, animation.progress + delta / TURN_DURATION_SECONDS);
+    animation.progress = Math.min(1, animation.progress + delta / turnDurationSeconds);
     const easedProgress = easeInOutCubic(animation.progress);
 
     let direction = animation.config.direction;
