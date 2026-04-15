@@ -128,6 +128,13 @@ public:
     const std::vector<std::vector<std::vector<int>>>& getState() const;
 
     /**
+     * @brief Sets the cube to the provided state.
+     *
+     * @param newState A 6×N×N vector of integers representing the new state.
+     */
+    void setState(const std::vector<std::vector<std::vector<int>>>& newState);
+
+    /**
      * @brief Checks if the puzzle cube is in a solved state. 
      * 
      * A cube is considered solved when each face contains a uniform color across all its tiles.

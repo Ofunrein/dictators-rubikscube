@@ -12,7 +12,15 @@ import { initKeyboardMouseControls } from './keyboardMouseControls';
  */
 
 let cleanupFn = null; // Store cleanup function for current controls to detach event listeners when switching controls
+let firstMoveCb = null; // One-shot callback fired on the next user move
 
+/**
+ * Register a one-time callback that fires on the very next dispatched move.
+ * Used by the stopwatch to detect when the user starts solving after a scramble.
+ */
+export function onceOnFirstMove(cb) {
+  firstMoveCb = cb;
+}
 
 export function dispatchMove(move, cubeState) {
   console.log(`[controls] dispatchMove called with move: ${move}`);
@@ -21,6 +29,13 @@ export function dispatchMove(move, cubeState) {
   cubeState.setState(newState);
 
   console.log(`[controls] Move applied. New state: ${JSON.stringify(cubeState.getState())}`);
+
+  // Fire first-move callback once, then clear it
+  if (firstMoveCb) {
+    const cb = firstMoveCb;
+    firstMoveCb = null;
+    cb();
+  }
 
   if(typeof window.setCubeState !== 'function') {
     console.error('[controls] window.setCubeState is NOT a function - renderer hook is missing');

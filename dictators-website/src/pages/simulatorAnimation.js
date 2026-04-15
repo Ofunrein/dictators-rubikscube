@@ -9,6 +9,10 @@ export const MOVE_ANIMATIONS = {
   L: { axis: 'x', layer: -1, direction: 1 },
   F: { axis: 'z', layer: 1, direction: -1 },
   B: { axis: 'z', layer: -1, direction: 1 },
+  // Middle slices — layer 0 on their respective axes
+  M: { axis: 'x', layer: 0, direction: 1 },   // same direction as L
+  E: { axis: 'y', layer: 0, direction: -1 },  // same direction as D
+  S: { axis: 'z', layer: 0, direction: -1 },  // same direction as F
 };
 
 export const CUBIE_LAYOUT = [];
@@ -66,10 +70,10 @@ export function mergeMoveIntoSolveStack(stack, move) {
 export function expandMoveToken(move) {
   const token = move?.trim();
   if (!token) return [];
-  if (/^[URFDLB]2$/.test(token)) {
+  if (/^[URFDLBMES]2$/.test(token)) {
     return [token[0], token[0]];
   }
-  if (/^[URFDLB]'?$/.test(token)) {
+  if (/^[URFDLBMES]'?$/.test(token)) {
     return [token];
   }
   return [];
@@ -77,4 +81,24 @@ export function expandMoveToken(move) {
 
 export function normalizeMoveSequence(sequence) {
   return sequence.flatMap(expandMoveToken);
+}
+
+export function rotateCubiePosition(position, axis, direction) {
+  const { x, y, z } = position;
+
+  if (axis === 'x') {
+    return direction > 0
+      ? { ...position, y: -z, z: y }
+      : { ...position, y: z, z: -y };
+  }
+
+  if (axis === 'y') {
+    return direction > 0
+      ? { ...position, x: z, z: -x }
+      : { ...position, x: -z, z: x };
+  }
+
+  return direction > 0
+    ? { ...position, x: -y, y: x }
+    : { ...position, x: y, y: -x };
 }

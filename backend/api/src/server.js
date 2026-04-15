@@ -6,8 +6,9 @@ import {
   validateScrambleRequest,
   validateSolveRequest
 } from './validation.js';
+import { solveCubeStateWithWasm } from './wasmSolver.js';
 
-const PORT = Number(process.env.API_PORT ?? 4011);
+const PORT = Number(process.env.API_PORT ?? 5200);
 const SERVICE_NAME = 'rubiks-api';
 const VERSION = '0.1.0';
 const MAX_BODY_BYTES = 1_000_000;
@@ -106,8 +107,19 @@ async function handleRequest(req, res) {
 
   const url = new URL(req.url, 'http://localhost');
   const { pathname } = url;
+  const routePath = pathname.startsWith('/api/v1') ? pathname.replace(/^\/api/, '') : pathname;
 
-  if (req.method === 'GET' && pathname === '/v1/health') {
+  if (req.method === 'GET' && pathname === '/') {
+    sendJson(res, 200, {
+      ok: true,
+      service: SERVICE_NAME,
+      version: VERSION,
+      message: 'Rubiks API dev server is running. Vite stays on 5400, API stays on 5200. Use /v1/* or /api/v1/* locally.'
+    });
+    return;
+  }
+
+  if (req.method === 'GET' && routePath === '/v1/health') {
     sendJson(res, 200, {
       ok: true,
       service: SERVICE_NAME,
@@ -117,12 +129,12 @@ async function handleRequest(req, res) {
     return;
   }
 
-  if (req.method === 'GET' && pathname === '/v1/cube/state/solved') {
+  if (req.method === 'GET' && routePath === '/v1/cube/state/solved') {
     sendJson(res, 200, { state: createSolvedState() });
     return;
   }
 
-  if (req.method === 'POST' && pathname === '/v1/cube/moves/apply') {
+  if (req.method === 'POST' && routePath === '/v1/cube/moves/apply') {
     let body;
     try {
       body = await readJsonBody(req);
@@ -146,7 +158,7 @@ async function handleRequest(req, res) {
     return;
   }
 
-  if (req.method === 'POST' && pathname === '/v1/cube/scramble') {
+  if (req.method === 'POST' && routePath === '/v1/cube/scramble') {
     let body;
     try {
       body = await readJsonBody(req);
@@ -169,7 +181,7 @@ async function handleRequest(req, res) {
     return;
   }
 
-  if (req.method === 'POST' && pathname === '/v1/cube/solve') {
+  if (req.method === 'POST' && routePath === '/v1/cube/solve') {
     let body;
     try {
       body = await readJsonBody(req);
@@ -187,14 +199,32 @@ async function handleRequest(req, res) {
     const { state } = validation.value;
     const alreadySolved = isSolvedState(state);
 
-    sendJson(res, 200, {
-      moves: alreadySolved ? [] : ["R'", "U'", 'F'],
-      estimatedMoveCount: alreadySolved ? 0 : 3,
-      isMock: true,
-      note: alreadySolved
-        ? 'Cube is already solved; returning an empty solution.'
-        : 'Solver implementation is stubbed in Sprint 2 and currently returns a placeholder response.'
-    });
+    if (alreadySolved) {
+      sendJson(res, 200, {
+        moves: [],
+        estimatedMoveCount: 0,
+        state
+      });
+      return;
+    }
+
+    try {
+      const solvedState = await solveCubeStateWithWasm(state);
+      sendJson(res, 200, {
+        moves: [],
+        estimatedMoveCount: 0,
+        state: solvedState,
+        solver: 'eric-cpp-wasm'
+      });
+    } catch (error) {
+      sendError(
+        res,
+        500,
+        requestId,
+        'SOLVER_FAILURE',
+        error instanceof Error ? error.message : 'WASM solver failed unexpectedly.'
+      );
+    }
     return;
   }
 

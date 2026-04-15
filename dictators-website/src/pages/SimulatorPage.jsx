@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { CubeState } from '../cube/CubeState';
@@ -10,11 +10,12 @@ import {
   CUBIE_LAYOUT,
   TURN_DURATION_SECONDS,
   easeInOutCubic,
-  inverseMove,
   mergeMoveIntoSolveStack,
   normalizeMoveSequence,
   parseMoveAnimation,
+  rotateCubiePosition,
 } from './simulatorAnimation';
+import { solveCubeRemote } from '../net/api';
 
 // ─── Color token → hex mapping (matches team's CubeState tokens) ───────────
 const TOKEN_HEX = {
@@ -56,6 +57,18 @@ class SimulatorCanvasBoundary extends React.Component {
 
     return this.props.children;
   }
+}
+
+function ResponsiveSceneCamera({ position, fov }) {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    camera.position.set(...position);
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+  }, [camera, fov, position]);
+
+  return null;
 }
 
 // ─── Kyle's sticker-mesh constants (from frontend/src/main.js) ───────────────
@@ -184,10 +197,17 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete, onUserMove }) 
   const pivotRef = useRef(null);
   const activeAnimationRef = useRef(null);
   const onMoveCompleteRef = useRef(onMoveComplete);
+  const [cubieLayout, setCubieLayout] = useState(() =>
+    CUBIE_LAYOUT.map((cubie) => ({ ...cubie })),
+  );
 
   useEffect(() => {
     onMoveCompleteRef.current = onMoveComplete;
   }, [onMoveComplete]);
+
+  useEffect(() => {
+    setCubieLayout(CUBIE_LAYOUT.map((cubie) => ({ ...cubie })));
+  }, [cubeState]);
 
   // ─── Mouse+keyboard sticker selection ───────────────────────────────────────
   const [selectedSticker, setSelectedSticker] = useState(null); // { face, index, row, col }
@@ -230,7 +250,7 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete, onUserMove }) 
     groupRef.current.add(pivot);
     pivotRef.current = pivot;
 
-    CUBIE_LAYOUT.forEach((cubie, index) => {
+    cubieLayout.forEach((cubie, index) => {
       if (cubie[config.axis] !== config.layer) return;
       const cubieGroup = cubieRefs.current[index];
       if (!cubieGroup) return;
@@ -242,7 +262,7 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete, onUserMove }) 
       config,
       progress: 0,
     };
-  }, [activeMove]);
+  }, [activeMove, cubieLayout]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -268,7 +288,7 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete, onUserMove }) 
 
     pivotRef.current.setRotationFromAxisAngle(axisVector, totalAngle);
 
-    CUBIE_LAYOUT.forEach((cubie, index) => {
+    cubieLayout.forEach((cubie, index) => {
       if (cubie[animation.config.axis] !== animation.config.layer) return;
       const cubieGroup = cubieRefs.current[index];
       if (!cubieGroup) return;
@@ -278,7 +298,16 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete, onUserMove }) 
     groupRef.current.remove(pivotRef.current);
     pivotRef.current = null;
 
-    CUBIE_LAYOUT.forEach((cubie, index) => {
+    const effectiveDirection =
+      animation.config.axis === 'y' ? -animation.config.direction : animation.config.direction;
+
+    const nextLayout = cubieLayout.map((cubie) => (
+      cubie[animation.config.axis] === animation.config.layer
+        ? rotateCubiePosition(cubie, animation.config.axis, effectiveDirection)
+        : cubie
+    ));
+
+    nextLayout.forEach((cubie, index) => {
       const cubieGroup = cubieRefs.current[index];
       if (!cubieGroup) return;
 
@@ -288,8 +317,10 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete, onUserMove }) 
         cubie.z * GAP
       );
 
-  cubieGroup.rotation.set(0, 0, 0);
-});
+      cubieGroup.rotation.set(0, 0, 0);
+    });
+
+    setCubieLayout(nextLayout);
 
     const finishedMove = animation.move;
     activeAnimationRef.current = null;
@@ -306,9 +337,9 @@ const InteractiveCube = ({ cubeState, activeMove, onMoveComplete, onUserMove }) 
           <StickerCubelet
             key={`${x}-${y}-${z}`}
             ref={(node) => { cubieRefs.current[i] = node; }}
-            gx={x}
-            gy={y}
-            gz={z}
+            gx={cubieLayout[i].x}
+            gy={cubieLayout[i].y}
+            gz={cubieLayout[i].z}
             cubeState={cubeState}
             selectedSticker={selectedSticker}
             onStickerSelect={onUserMove ? handleStickerSelect : undefined}
@@ -389,20 +420,29 @@ const SimulatorPage = () => {
   const [canvasErrorMessage, setCanvasErrorMessage] = useState('');
   const [canvasErrorDetails, setCanvasErrorDetails] = useState('');
   const [canvasRetryKey, setCanvasRetryKey] = useState(0);
+  const [isSolvingRemote, setIsSolvingRemote] = useState(false);
 
   const moveQueueRef = useRef([]);
   const activeMoveRef = useRef(null);
   const solveStackRef = useRef([]);
+  const waitingForFirstMoveRef = useRef(false); // set true after scramble, clears on first user move
 
   // Timer
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerMs, setTimerMs] = useState(0);
-  const [bestTime, setBestTime] = useState(null);
+  const [bestTime, setBestTime] = useState(() => {
+    const stored = localStorage.getItem('rubiks_best_time_ms');
+    return stored ? parseInt(stored, 10) : null;
+  });
   const timerRef = useRef(null);
   const startTimeRef = useRef(null);
 
   // Tutorial panel
   const [tutorialStep, setTutorialStep] = useState(0);
+  const [viewportSize, setViewportSize] = useState(() => ({
+    width: typeof window === 'undefined' ? 1440 : window.innerWidth,
+    height: typeof window === 'undefined' ? 900 : window.innerHeight,
+  }));
   const TUTORIAL_STEPS = [
     { title: 'Notation Basics', body: 'Each letter represents a face: U (Up), D (Down), R (Right), L (Left), F (Front), B (Back). A plain letter = clockwise. A prime (′) = counter-clockwise.' },
     { title: 'The Cross', body: 'Start by solving a cross on the U (white) face. Find the 4 white edge pieces and bring them to the top layer, matching the center colors on each side.' },
@@ -412,8 +452,32 @@ const SimulatorPage = () => {
   ];
 
   const queueActive = activeMove !== null || queuedMoveCount > 0;
-  const manualInputLocked = queueActive;
+  const interactionLocked = queueActive || isSolvingRemote;
+  const manualInputLocked = interactionLocked;
   const canAnimateMoves = !canvasFailed;
+  const isMobileViewport = viewportSize.width < 768;
+  const isTabletViewport = viewportSize.width >= 768 && viewportSize.width < 1280;
+  const isShortViewport = viewportSize.height < 760;
+
+  const cameraProfile = isMobileViewport
+    ? { position: [5.8, 4.8, 7.1], fov: 54, minDistance: 5.5, maxDistance: 13.5 }
+    : isTabletViewport
+      ? { position: [4.8, 4.0, 5.9], fov: 49, minDistance: 4.8, maxDistance: 12.5 }
+      : { position: [4, 3.5, 5], fov: 45, minDistance: 4, maxDistance: 12 };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const handleResize = () => {
+      setViewportSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const applyMovesInstantly = useCallback((moves) => {
     const normalized = normalizeMoveSequence(moves);
@@ -513,8 +577,25 @@ const SimulatorPage = () => {
   const dispatchManualMove = useCallback((move) => {
     if (!move) return;
     if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
+
+    const isSolvedNow = FACE_ORDER.every((face) =>
+      cubeStateObj.getState()[face].every((sticker) => sticker === cubeStateObj.getState()[face][0])
+    );
+    const shouldStartTimer =
+      waitingForFirstMoveRef.current || (!timerRunning && timerMs === 0 && isSolvedNow);
+
+    // Auto-start timer on first user move after a scramble or from a fresh solved/reset cube.
+    if (shouldStartTimer) {
+      waitingForFirstMoveRef.current = false;
+      startTimeRef.current = Date.now();
+      timerRef.current = setInterval(() => {
+        setTimerMs(Date.now() - startTimeRef.current);
+      }, 10);
+      setTimerRunning(true);
+    }
+
     enqueueMoves([move]);
-  }, [enqueueMoves]);
+  }, [cubeStateObj, enqueueMoves, timerMs, timerRunning]);
 
   // ── Watchdog: force-complete a stalled animation ─────────────────────────────
   useEffect(() => {
@@ -551,7 +632,13 @@ const SimulatorPage = () => {
     if (isSolved) {
       clearInterval(timerRef.current);
       setTimerRunning(false);
-      setBestTime(prev => timerMs > 0 && (prev === null || timerMs < prev) ? timerMs : prev);
+      setBestTime(prev => {
+        const next = timerMs > 0 && (prev === null || timerMs < prev) ? timerMs : prev;
+        if (next !== prev && next !== null) {
+          localStorage.setItem('rubiks_best_time_ms', String(next));
+        }
+        return next;
+      });
     }
   }, [displayState, timerRunning, timerMs]);
 
@@ -569,7 +656,11 @@ const SimulatorPage = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     setTimerRunning(false);
     if (timerMs > 0) {
-      setBestTime((prev) => (prev === null || timerMs < prev ? timerMs : prev));
+      setBestTime((prev) => {
+        const next = prev === null || timerMs < prev ? timerMs : prev;
+        if (next !== prev) localStorage.setItem('rubiks_best_time_ms', String(next));
+        return next;
+      });
     }
   }, [timerMs]);
 
@@ -591,7 +682,7 @@ const SimulatorPage = () => {
 
   // ── Scramble ─────────────────────────────────────────────────────────────────
   const handleScramble = useCallback(() => {
-    if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
+    if (activeMoveRef.current || moveQueueRef.current.length > 0 || isSolvingRemote) return;
 
     const seq = generateScramble(20);
     setScrambleSeq(seq);
@@ -601,25 +692,56 @@ const SimulatorPage = () => {
     solveStackRef.current = [];
     setSolveDepth(0);
 
+    // Reset timer and set flag so it auto-starts on the user's first move
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimerRunning(false);
+    setTimerMs(0);
+    waitingForFirstMoveRef.current = true;
+
     enqueueMoves(seq);
-  }, [enqueueMoves, resetCubeToSolved]);
+  }, [enqueueMoves, isSolvingRemote, resetCubeToSolved]);
 
   // ── Solve ────────────────────────────────────────────────────────────────────
-  const handleSolve = useCallback(() => {
-    if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
+  const handleSolve = useCallback(async () => {
+    if (activeMoveRef.current || moveQueueRef.current.length > 0 || isSolvingRemote) return;
     if (solveStackRef.current.length === 0) return;
 
-    const solution = [...solveStackRef.current].reverse().map(inverseMove);
-    enqueueMoves(solution);
-    stopTimer();
-  }, [enqueueMoves, stopTimer]);
+    setIsSolvingRemote(true);
+
+    try {
+      const payload = await solveCubeRemote(cubeStateObj.getState());
+      if (!payload.state) {
+        throw new Error('Backend did not return a solved state.');
+      }
+
+      moveQueueRef.current = [];
+      activeMoveRef.current = null;
+      setQueuedMoveCount(0);
+      setActiveMove(null);
+
+      cubeStateObj.setState(payload.state);
+      setDisplayState({ ...payload.state });
+      setMoveHistory((prev) => [...prev.slice(-49), 'SOLVED']);
+      solveStackRef.current = [];
+      setSolveDepth(0);
+      waitingForFirstMoveRef.current = false;
+
+      stopTimer();
+    } catch (error) {
+      console.error('Remote solve failed.', error);
+      window.alert(error instanceof Error ? error.message : 'Remote solve failed.');
+    } finally {
+      setIsSolvingRemote(false);
+    }
+  }, [cubeStateObj, isSolvingRemote, stopTimer]);
 
   // ── Reset ────────────────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
-    if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
+    if (activeMoveRef.current || moveQueueRef.current.length > 0 || isSolvingRemote) return;
 
     moveQueueRef.current = [];
     activeMoveRef.current = null;
+    waitingForFirstMoveRef.current = false;
     setQueuedMoveCount(0);
     setActiveMove(null);
 
@@ -631,19 +753,19 @@ const SimulatorPage = () => {
     resetCubeToSolved();
     stopTimer();
     setTimerMs(0);
-  }, [resetCubeToSolved, stopTimer]);
+  }, [isSolvingRemote, resetCubeToSolved, stopTimer]);
 
   // ── 2D face preview ──────────────────────────────────────────────────────────
   const FacePreview = ({ face, label }) => {
     const faceColors = displayState[face] || Array(9).fill('W');
     return (
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-center gap-1 min-w-0">
         <span className="font-mono text-[10px] uppercase tracking-widest text-white">{label}</span>
-        <div className="grid grid-cols-3 gap-[2px]">
+        <div className="grid grid-cols-3 gap-[2px] sm:gap-1">
           {faceColors.map((token, i) => (
             <div
               key={i}
-              className="w-5 h-5 rounded-[3px] border border-black/20"
+              className="h-4 w-4 rounded-[3px] border border-black/20 sm:h-5 sm:w-5"
               style={{ backgroundColor: TOKEN_HEX[token] ?? '#333' }}
             />
           ))}
@@ -694,9 +816,9 @@ const SimulatorPage = () => {
           <div className="p-6 border-b border-dictator-chrome/10 grid grid-cols-3 gap-2">
             <button
               onClick={handleScramble}
-              disabled={queueActive}
+              disabled={interactionLocked}
               className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl transition-colors
-                ${queueActive
+                ${interactionLocked
                   ? 'bg-dictator-red/30 text-white/70 cursor-not-allowed'
                   : 'bg-dictator-red text-white hover:bg-[#AA1515] active:scale-95'
                 }`}
@@ -706,9 +828,9 @@ const SimulatorPage = () => {
             </button>
             <button
               onClick={handleSolve}
-              disabled={queueActive || solveDepth === 0}
+              disabled={interactionLocked || solveDepth === 0}
               className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl border transition-all
-                ${queueActive || solveDepth === 0
+                ${interactionLocked || solveDepth === 0
                   ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
                   : 'bg-[#1A1A1A] border-dictator-red/40 text-dictator-red hover:border-dictator-red hover:text-white active:scale-95'
                 }`}
@@ -718,9 +840,9 @@ const SimulatorPage = () => {
             </button>
             <button
               onClick={handleReset}
-              disabled={queueActive}
+              disabled={interactionLocked}
               className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl border transition-all
-                ${queueActive
+                ${interactionLocked
                   ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
                   : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-chrome/50 hover:text-white active:scale-95'
                 }`}
@@ -810,10 +932,18 @@ const SimulatorPage = () => {
         </aside>
 
         {/* ── Center: 3D Canvas ────────────────────────────────────────────── */}
-        <main className="flex-1 min-h-[420px] lg:min-h-0 relative bg-dictator-void flex flex-col">
+        <main className="relative flex min-h-[360px] min-w-0 flex-1 flex-col overflow-y-auto bg-dictator-void sm:min-h-[420px] lg:min-h-0">
 
           {/* 3D Cube */}
-          <div className="flex-1 min-h-[400px] relative">
+          <div
+            className={`relative flex-1 ${
+              isMobileViewport
+                ? 'min-h-[320px]'
+                : isShortViewport
+                  ? 'min-h-[300px] lg:min-h-[280px] xl:min-h-[320px]'
+                  : 'min-h-[360px] lg:min-h-[320px] xl:min-h-[420px]'
+            }`}
+          >
             {canAnimateMoves ? (
               <SimulatorCanvasBoundary
                 onError={handleCanvasFailure}
@@ -847,10 +977,11 @@ const SimulatorPage = () => {
               >
                 <Canvas
                   key={canvasRetryKey}
-                  camera={{ position: [4, 3.5, 5], fov: 45 }}
+                  camera={{ position: cameraProfile.position, fov: cameraProfile.fov }}
                   shadows
                   className="w-full h-full"
                 >
+                  <ResponsiveSceneCamera position={cameraProfile.position} fov={cameraProfile.fov} />
                   <color attach="background" args={['#0D0D0D']} />
                   <ambientLight intensity={0.5} />
                   <directionalLight position={[5, 8, 5]} intensity={1} castShadow />
@@ -865,11 +996,12 @@ const SimulatorPage = () => {
                   />
                   <OrbitControls
                     enablePan={false}
-                    minDistance={4}
-                    maxDistance={12}
+                    minDistance={cameraProfile.minDistance}
+                    maxDistance={cameraProfile.maxDistance}
                     autoRotate={false}
                     dampingFactor={0.08}
                     enableDamping
+                    maxPolarAngle={Math.PI * 0.7}
                   />
                 </Canvas>
               </SimulatorCanvasBoundary>
@@ -910,16 +1042,25 @@ const SimulatorPage = () => {
               </div>
             )}
 
+            {isSolvingRemote && (
+              <div className="absolute top-4 left-4 bg-black/50 border border-dictator-red/30 rounded-full px-3 py-1.5 flex items-center gap-2 backdrop-blur">
+                <span className="w-2 h-2 rounded-full bg-dictator-red animate-pulse" />
+                <span className="font-mono text-[10px] uppercase tracking-widest text-dictator-red">
+                  Solving via Eric C++ WASM
+                </span>
+              </div>
+            )}
+
             {/* Drag hint */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 font-mono text-[10px] text-white/60 uppercase tracking-widest pointer-events-none">
+            <div className="absolute bottom-3 left-1/2 w-[calc(100%-2rem)] -translate-x-1/2 text-center font-mono text-[10px] text-white/60 uppercase tracking-widest pointer-events-none sm:bottom-4">
               {canAnimateMoves ? 'Drag to rotate · Scroll to zoom' : 'Fallback mode · Use controls to apply moves'}
             </div>
           </div>
 
           {/* 2D Face Map */}
-          <div className="border-t border-dictator-chrome/10 bg-[#0A0A0A] px-6 py-5">
+          <div className="border-t border-dictator-chrome/10 bg-[#0A0A0A] px-4 py-4 sm:px-6 sm:py-5">
             <p className="font-mono text-[10px] uppercase tracking-widest text-white mb-4">Face Map</p>
-            <div className="flex flex-wrap gap-6 justify-center">
+            <div className="grid grid-cols-3 gap-x-4 gap-y-4 sm:flex sm:flex-wrap sm:justify-center sm:gap-6">
               {FACE_ORDER.map((face) => (
                 <FacePreview key={face} face={face} label={face} />
               ))}
