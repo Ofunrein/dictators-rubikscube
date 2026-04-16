@@ -21,12 +21,15 @@ let solverModulePromise = null;
 
 function getSolverModule() {
   if (!solverModulePromise) {
+    // The compiled solver bundle is expensive to bootstrap, so keep one shared
+    // module instance alive for every solve request handled by this process.
     solverModulePromise = Promise.resolve(solverFactory({}));
   }
   return solverModulePromise;
 }
 
 function flattenState(state) {
+  // Eric's bridge expects the six faces in FACE_ORDER as one 54-character string.
   return FACE_ORDER.map((face) => state[face].join('')).join('');
 }
 
@@ -57,6 +60,9 @@ function normalizeSolvedOrientation(state) {
       throw new Error(`WASM solver returned an unknown center token: ${stickers[4]}`);
     }
 
+    // The C++ solver can hand back the solved cube in its own color/token orientation.
+    // Re-keying by center sticker keeps the frontend state in the U/R/F/D/L/B shape it
+    // already uses everywhere else.
     normalized[canonicalFace] = [...stickers];
   }
 
@@ -88,6 +94,8 @@ export async function solveCubeMoveListWithWasm(state) {
     throw new Error('WASM solver returned an invalid move-list payload.');
   }
 
+  // The bridge returns a space-separated move string so the API can replay it
+  // directly in the simulator without inventing a second move format.
   return result.trim() ? result.trim().split(/\s+/) : [];
 }
 
