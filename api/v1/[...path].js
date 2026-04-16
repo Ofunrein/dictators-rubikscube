@@ -102,6 +102,8 @@ export default async function handler(req, res) {
     }
 
     try {
+      // Match the local dev server behavior: prefer replayable solve moves first
+      // so the frontend can show the actual sequence instead of an instant snap.
       const solveMoves = await solveCubeMoveListWithWasm(state);
       if (solveMoves.length > 0) {
         const replayedState = applyMoves(state, solveMoves);
@@ -116,6 +118,8 @@ export default async function handler(req, res) {
         }
       }
 
+      // Keep a solved-state fallback for cases where the move-list export is not
+      // usable even though the backend solver can still produce the right result.
       const solvedState = await solveCubeStateWithWasm(state);
       sendJson(res, 200, {
         moves: [],

@@ -26,6 +26,8 @@ export function useCubeControls({ dispatchManualMove, manualInputLocked }) {
   }, []);
 
   useEffect(() => {
+    // Clear any selected face sticker once the cube is busy so the highlight does not
+    // stick around after scramble, solve, reset, or queued turns.
     if (manualInputLocked) {
       clearSelectedSticker();
     }

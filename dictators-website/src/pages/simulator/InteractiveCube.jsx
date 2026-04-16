@@ -116,6 +116,8 @@ export function ResponsiveSceneCamera({ position, fov }) {
   const [x, y, z] = position;
 
   useEffect(() => {
+    // Only push camera updates when the responsive profile actually changes.
+    // This keeps manual camera movement from getting snapped back mid-animation.
     camera.position.set(x, y, z);
     if ('fov' in camera) {
       camera.fov = fov;

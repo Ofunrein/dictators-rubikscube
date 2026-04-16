@@ -1,4 +1,4 @@
-import { Check, RotateCcw, RotateCw, Shuffle, Undo2 } from 'lucide-react';
+import { Check, RotateCcw, Shuffle } from 'lucide-react';
 import { KEY_MAP, MOVE_GROUPS, formatTime } from './simulatorConstants';
 
 export default function SimulatorControls({
@@ -11,8 +11,6 @@ export default function SimulatorControls({
   onReset,
   onScramble,
   onSolve,
-  onUndo,
-  onUndoAll,
   scrambleSeq,
   solveDepth,
 }) {
@@ -57,34 +55,6 @@ export default function SimulatorControls({
           <RotateCcw size={14} />
           Reset
         </button>
-        <button
-          onClick={onUndo}
-          disabled={actionsDisabled}
-          className={`flex min-h-[48px] items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest px-2 py-3 rounded-xl border transition-all
-            ${actionsDisabled
-              ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
-              : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-red/50 hover:text-white active:scale-95'
-            }`}
-        >
-          <Undo2 size={14} />
-          Undo
-        </button>
-        <button
-          onClick={onUndoAll}
-          disabled={actionsDisabled}
-          className={`flex min-h-[48px] items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest px-2 py-3 rounded-xl border transition-all
-            ${actionsDisabled
-              ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
-              : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-red/50 hover:text-white active:scale-95'
-            }`}
-        >
-          <RotateCw size={14} />
-          Undo All
-        </button>
-        <div
-          aria-hidden="true"
-          className="min-h-[48px] rounded-xl border border-dictator-chrome/10 bg-[#0F0F0F]"
-        />
       </div>
 
       {scrambleSeq.length > 0 && (
