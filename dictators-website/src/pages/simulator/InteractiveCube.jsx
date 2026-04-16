@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
@@ -113,12 +113,15 @@ export class SimulatorCanvasBoundary extends React.Component {
 
 export function ResponsiveSceneCamera({ position, fov }) {
   const { camera } = useThree();
+  const [x, y, z] = position;
 
   useEffect(() => {
-    camera.position.set(...position);
-    camera.fov = fov;
+    camera.position.set(x, y, z);
+    if ('fov' in camera) {
+      camera.fov = fov;
+    }
     camera.updateProjectionMatrix();
-  }, [camera, fov, position]);
+  }, [camera, fov, x, y, z]);
 
   return null;
 }
@@ -215,6 +218,7 @@ export function InteractiveCube({
   activeMove,
   turnDurationSeconds = TURN_DURATION_SECONDS,
   cubeState,
+  layoutResetKey,
   onMoveComplete,
   onStickerSelect,
   selectedSticker,
@@ -230,9 +234,14 @@ export function InteractiveCube({
     onMoveCompleteRef.current = onMoveComplete;
   }, [onMoveComplete]);
 
+  // Only reset the 3D layout when explicitly triggered (scramble / reset / solve-snap).
+  // Do NOT reset on every cubeState change — that overwrites correctly rotated positions.
   useEffect(() => {
-    setCubieLayout(cloneCubieLayout());
-  }, [cubeState]);
+    const canonical = cloneCubieLayout();
+    setCubieLayout(canonical);
+    syncCubieTransforms(canonical, cubieRefs);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutResetKey]);
 
   useEffect(() => {
     if (!activeMove) {
