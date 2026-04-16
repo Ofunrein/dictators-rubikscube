@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
@@ -56,6 +56,9 @@ const SimulatorPage = () => {
   const activeMoveRef = useRef(null);
   const solveStackRef = useRef([]);
   const waitingForFirstMoveRef = useRef(false);
+  const [layoutResetKey, setLayoutResetKey] = useState(0);
+
+  const bumpLayout = useCallback(() => setLayoutResetKey((k) => k + 1), []);
 
   const isSolved = FACE_ORDER.every((face) =>
     displayState[face].every((sticker) => sticker === displayState[face][0]),
@@ -79,11 +82,13 @@ const SimulatorPage = () => {
   const isTabletViewport = viewportSize.width >= 768 && viewportSize.width < 1280;
   const isShortViewport = viewportSize.height < 760;
 
-  const cameraProfile = isMobileViewport
-    ? { position: [5.8, 4.8, 7.1], fov: 54, minDistance: 5.5, maxDistance: 13.5 }
-    : isTabletViewport
-      ? { position: [4.8, 4.0, 5.9], fov: 49, minDistance: 4.8, maxDistance: 12.5 }
-      : { position: [4, 3.5, 5], fov: 45, minDistance: 4, maxDistance: 12 };
+  const cameraProfile = useMemo(() => (
+    isMobileViewport
+      ? { position: [5.8, 4.8, 7.1], fov: 54, minDistance: 5.5, maxDistance: 13.5 }
+      : isTabletViewport
+        ? { position: [4.8, 4.0, 5.9], fov: 49, minDistance: 4.8, maxDistance: 12.5 }
+        : { position: [4, 3.5, 5], fov: 45, minDistance: 4, maxDistance: 12 }
+  ), [isMobileViewport, isTabletViewport]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -206,8 +211,9 @@ const SimulatorPage = () => {
   const dispatchManualMove = useCallback((move) => {
     if (!move || interactionLocked) return;
 
-    const shouldStartTimer =
-      waitingForFirstMoveRef.current || (!timerRunning && timerMs === 0 && isSolved);
+    // Auto-start the timer on the first user move when it hasn't been started yet.
+    // This covers: post-scramble first move, and any fresh move from a clean state.
+    const shouldStartTimer = waitingForFirstMoveRef.current || (!timerRunning && timerMs === 0);
 
     if (shouldStartTimer) {
       waitingForFirstMoveRef.current = false;
@@ -215,9 +221,13 @@ const SimulatorPage = () => {
     }
 
     enqueueMoves([move]);
-  }, [enqueueMoves, interactionLocked, isSolved, startFreshTimer, timerMs, timerRunning]);
+  }, [enqueueMoves, interactionLocked, startFreshTimer, timerMs, timerRunning]);
 
-  const { handleStickerSelect, selectedSticker } = useCubeControls({
+  const {
+    clearSelectedSticker,
+    handleStickerSelect,
+    selectedSticker,
+  } = useCubeControls({
     dispatchManualMove,
     manualInputLocked,
   });
@@ -245,8 +255,10 @@ const SimulatorPage = () => {
 
     const sequence = generateScramble(20);
     setScrambleSeq(sequence);
+    clearSelectedSticker();
 
     resetCubeToSolved();
+    bumpLayout();
     setMoveHistory([]);
     solveStackRef.current = [];
     setSolveDepth(0);
@@ -254,7 +266,7 @@ const SimulatorPage = () => {
     waitingForFirstMoveRef.current = true;
 
     enqueueMoves(sequence);
-  }, [enqueueMoves, interactionLocked, resetCubeToSolved, resetTimer]);
+  }, [bumpLayout, clearSelectedSticker, enqueueMoves, interactionLocked, resetCubeToSolved, resetTimer]);
 
   const handleSolve = useCallback(async () => {
     if (interactionLocked || solveDepth === 0) return;
@@ -289,6 +301,7 @@ const SimulatorPage = () => {
 
       cubeStateObj.setState(payload.state);
       setDisplayState({ ...payload.state });
+      bumpLayout();
       setMoveHistory((previousHistory) => [...previousHistory.slice(-49), 'SOLVED']);
       solveStackRef.current = [];
       setSolveDepth(0);
@@ -322,10 +335,12 @@ const SimulatorPage = () => {
     setSolveDepth(0);
     setMoveHistory([]);
     setScrambleSeq([]);
+    clearSelectedSticker();
 
     resetCubeToSolved();
+    bumpLayout();
     resetTimer();
-  }, [interactionLocked, resetCubeToSolved, resetTimer]);
+  }, [bumpLayout, clearSelectedSticker, interactionLocked, resetCubeToSolved, resetTimer]);
 
   const handleUndo = useCallback(() => {
     if (interactionLocked || solveDepth === 0) return;
@@ -440,6 +455,7 @@ const SimulatorPage = () => {
                     activeMove={activeMove}
                     turnDurationSeconds={activeMoveDurationSeconds}
                     cubeState={displayState}
+                    layoutResetKey={layoutResetKey}
                     onMoveComplete={handleMoveAnimationComplete}
                     onStickerSelect={handleStickerSelect}
                     selectedSticker={selectedSticker}
