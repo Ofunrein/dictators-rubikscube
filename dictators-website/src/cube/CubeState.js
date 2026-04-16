@@ -1,4 +1,25 @@
 /**
+ * CubeState.js — Lightweight container for the cube's sticker state
+ *
+ * Holds the current arrangement of all 54 stickers on the cube.
+ * The state is a plain JavaScript object with 6 keys (one per face):
+ *   { U: [...9 stickers], R: [...], F: [...], D: [...], L: [...], B: [...] }
+ *
+ * Color tokens and their home faces:
+ *   W = White  (Up)      R = Red    (Right)    G = Green  (Front)
+ *   Y = Yellow (Down)    O = Orange (Left)     B = Blue   (Back)
+ *
+ * Methods:
+ *   getState()               → returns the current state object
+ *   setState(nextState)      → replaces the state (validates first)
+ *   CubeState.createSolvedState() → static, returns a fresh solved cube
+ *   CubeState.validate(candidate) → static, checks that a state has 6 faces with 9 stickers each
+ *
+ * This class does NOT know about moves — it's just a validated container.
+ * Move logic lives in moves.js.
+ */
+
+/**
  * Lightweight cube state container with validation helpers.
  * State is stored as face arrays keyed by U, R, F, D, L, B.
  */

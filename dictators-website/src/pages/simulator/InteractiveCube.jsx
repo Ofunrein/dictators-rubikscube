@@ -1,3 +1,32 @@
+/**
+ * InteractiveCube.jsx — The 3D Rubik's Cube rendered with Three.js
+ *
+ * This component is responsible for everything you SEE in the 3D viewport:
+ *   - 27 cubies (the small cubes that make up a 3x3x3 Rubik's Cube)
+ *   - Colored sticker planes on each exposed face of each cubie
+ *   - Turn animations (rotating a layer 90 degrees with smooth easing)
+ *   - Cubie position tracking (remembering where each cubie is after rotations)
+ *   - Sticker click selection (for mouse+arrow-key controls)
+ *
+ * HOW ANIMATIONS WORK:
+ *   1. SimulatorPage sets "activeMove" to something like "R"
+ *   2. This component looks up the animation config (axis=x, layer=1, direction=-1)
+ *   3. It creates a Three.js pivot group and attaches all cubies in that layer to it
+ *   4. useFrame runs every frame (~60fps) and rotates the pivot a little more
+ *   5. When the rotation reaches 90 degrees, it detaches the cubies, updates their
+ *      positions in cubieLayout, and tells SimulatorPage the move is done
+ *
+ * KEY CONCEPT — cubieLayout vs cubeState:
+ *   - cubeState = the LOGICAL state (which color is at each sticker position)
+ *   - cubieLayout = the PHYSICAL positions of the 27 cubie meshes in 3D space
+ *   Both must stay in sync. When a move animates, cubieLayout updates via
+ *   rotateCubiePosition(). cubeState updates in SimulatorPage after the animation.
+ *
+ * Also exports:
+ *   - SimulatorCanvasBoundary: error boundary that catches WebGL crashes
+ *   - ResponsiveSceneCamera: adjusts camera for mobile/tablet/desktop viewports
+ */
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';

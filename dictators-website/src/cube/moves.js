@@ -1,4 +1,30 @@
 /**
+ * moves.js — The core move engine for the Rubik's Cube
+ *
+ * This file defines exactly what happens to every sticker when you turn a face.
+ * A Rubik's Cube state is an object with 6 faces (U, R, F, D, L, B), each
+ * holding a flat array of 9 sticker color tokens.
+ *
+ * Face layout (flat array indices):
+ *   [0][1][2]     ← top row
+ *   [3][4][5]     ← middle row (index 4 is the center — never moves)
+ *   [6][7][8]     ← bottom row
+ *
+ * Supported moves:
+ *   Face turns:  U, D, L, R, F, B (and their primes U', D', etc.)
+ *   Slice moves: M (middle column), E (middle row), S (middle depth)
+ *   Cube rotations: x, y, z (rotate the entire cube)
+ *
+ * Each move function:
+ *   1. Deep-copies the state (so we never mutate the original)
+ *   2. Rotates the face matrix (the 9 stickers on the turning face)
+ *   3. Cycles the edge stickers between adjacent faces
+ *
+ * This file is imported by BOTH the frontend and the backend API (via cube.js)
+ * so that both always agree on what a move does.
+ */
+
+/**
  * Supported move tokens for a basic 3x3 cube.
  */
 export const MOVES = ['U', 'D', 'L', 'R', 'F', 'B', "U'", "D'", "L'", "R'", "F'", "B'", 'M', "M'", 'E', "E'", 'S', "S'", 'x', "x'", 'y', "y'", 'z', "z'"];

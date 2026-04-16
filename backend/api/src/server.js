@@ -1,3 +1,21 @@
+/**
+ * server.js — Local development API server
+ *
+ * This is the Node.js HTTP server that runs during local development (npm run dev).
+ * It handles the exact same routes as the Vercel serverless function (api/v1/[...path].js)
+ * but runs as a normal long-lived process on your machine instead of a cloud function.
+ *
+ * Routes (same as production):
+ *   GET  /v1/health              → health check
+ *   GET  /v1/cube/state/solved   → returns solved cube state
+ *   POST /v1/cube/moves/apply    → apply a move to a state
+ *   POST /v1/cube/scramble       → generate a scramble
+ *   POST /v1/cube/solve          → solve the cube via WASM (Eric's C++ solver)
+ *
+ * Starts on port 5200 by default (set API_PORT env var to change).
+ * The frontend dev server (Vite on port 5300) proxies /api/v1/* requests here.
+ */
+
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { applyMoveToState, applyMoves, createSolvedState, FACE_ORDER, generateScramble } from './cube.js';
