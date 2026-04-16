@@ -1,3 +1,32 @@
+/**
+ * SimulatorPage.jsx — The main page that ties everything together
+ *
+ * This is the "brain" of the simulator. It doesn't render the cube itself
+ * (that's InteractiveCube.jsx), and it doesn't draw the buttons (SimulatorControls.jsx).
+ * Instead, it manages all the STATE and LOGIC:
+ *
+ *   - Keeps track of the cube's current sticker arrangement (cubeStateObj / displayState)
+ *   - Manages the move queue: when you click a button or press a key, the move goes into
+ *     a queue and gets animated one at a time so they don't overlap
+ *   - Handles Scramble: generates 20 random moves, resets the cube, queues them up
+ *   - Handles Solve: sends the state to Eric's WASM solver via the API, or falls back
+ *     to reversing your move history if you used slice moves (M/E/S)
+ *   - Handles Reset: clears everything back to a fresh solved cube
+ *   - Handles Undo / Undo All: reverses moves from the solveStack
+ *   - Connects the timer (useTimer hook) — auto-starts on first move, auto-stops on solve
+ *   - Connects keyboard/mouse controls (useCubeControls hook)
+ *   - Manages the 3D canvas lifecycle (error boundary, fallback mode, retry)
+ *
+ * IMPORTANT REFS (these survive re-renders, unlike state):
+ *   moveQueueRef          — array of moves waiting to be animated
+ *   activeMoveRef         — the move currently being animated (or null)
+ *   solveStackRef         — running log of user moves (used by Solve and Undo)
+ *   waitingForFirstMoveRef — flag set after Scramble, cleared on first user move (starts timer)
+ *
+ * LAYOUT:
+ *   Header (timer button) | Left panel (SimulatorControls) | Center (3D Canvas) | Right panel (TutorialPanel)
+ */
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';

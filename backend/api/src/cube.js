@@ -1,7 +1,31 @@
+/**
+ * cube.js — Shared cube state utilities used by the backend API
+ *
+ * This file is the API's local copy of the cube logic. It imports the move
+ * engine from the frontend (dictators-website/src/cube/moves.js) so that
+ * the backend and frontend always use the exact same move definitions.
+ *
+ * What lives here:
+ *   - FACE_ORDER / STICKER_TOKENS / MOVE_TOKENS — constants for validation
+ *   - createSolvedState()   → returns a fresh solved cube (all W on U, all R on R, etc.)
+ *   - cloneCubeState(state) → deep copy a state without mutating the original
+ *   - applyMoveToState(state, move) → apply one move and return the new state
+ *   - applyMoves(state, moves)      → apply a sequence of moves one by one
+ *   - generateScramble(length, seed) → create a random scramble sequence
+ *
+ * WHY IT IMPORTS FROM THE FRONTEND:
+ *   The move logic (how stickers cycle when you turn a face) is defined once
+ *   in moves.js. Rather than duplicate 200 lines of index math, the backend
+ *   imports the same file. This guarantees the backend and frontend always
+ *   agree on what state a sequence of moves produces.
+ */
+
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+// Dynamically find the frontend moves.js — it could be in dictators-website/
+// or the older dicators-website/ (typo in some branches).
 const apiSrcDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(apiSrcDir, '../../..');
 const frontendMovesCandidates = [
