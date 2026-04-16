@@ -7,7 +7,6 @@ import { CubeState } from '../../cube/CubeState';
 import { applyMove } from '../../cube/moves';
 import { solveCubeRemote } from '../../net/api';
 import {
-  inverseMove,
   invertMoveSequence,
   isSliceMove,
   SOLVE_TURN_DURATION_SECONDS,
@@ -82,6 +81,8 @@ const SimulatorPage = () => {
   const isTabletViewport = viewportSize.width >= 768 && viewportSize.width < 1280;
   const isShortViewport = viewportSize.height < 760;
 
+  // Keep the camera config stable so OrbitControls is not fighting fresh object instances
+  // every time the simulator re-renders during animation or sticker selection.
   const cameraProfile = useMemo(() => (
     isMobileViewport
       ? { position: [5.8, 4.8, 7.1], fov: 54, minDistance: 5.5, maxDistance: 13.5 }
@@ -108,6 +109,8 @@ const SimulatorPage = () => {
     const normalized = normalizeMoveSequence(moves);
     if (normalized.length === 0) return;
 
+    // This path is used when the canvas is unavailable, so keep the logical cube
+    // state moving forward even if the 3D animation layer is temporarily offline.
     let nextState = cubeStateObj.getState();
     for (const move of normalized) {
       nextState = applyMove(nextState, move);
@@ -276,6 +279,8 @@ const SimulatorPage = () => {
     const needsLocalHistorySolve = solveStackSnapshot.some(isSliceMove);
 
     if (needsLocalHistorySolve) {
+      // Slice turns still have edge cases on the backend solver, so keep the
+      // simulator usable by reversing the exact local history for those states.
       enqueueMoves(inverseSolveMoves, { durationSeconds: SOLVE_TURN_DURATION_SECONDS });
       return;
     }
@@ -299,6 +304,8 @@ const SimulatorPage = () => {
         throw new Error('Backend did not return a solved state.');
       }
 
+      // When the backend can solve but cannot provide a replayable move list,
+      // snap to the solved state and rebuild the layout from that canonical state.
       cubeStateObj.setState(payload.state);
       setDisplayState({ ...payload.state });
       bumpLayout();
@@ -341,24 +348,6 @@ const SimulatorPage = () => {
     bumpLayout();
     resetTimer();
   }, [bumpLayout, clearSelectedSticker, interactionLocked, resetCubeToSolved, resetTimer]);
-
-  const handleUndo = useCallback(() => {
-    if (interactionLocked || solveDepth === 0) return;
-
-    const lastMove = solveStackRef.current[solveStackRef.current.length - 1];
-    if (!lastMove) return;
-
-    enqueueMoves([inverseMove(lastMove)]);
-  }, [enqueueMoves, interactionLocked, solveDepth]);
-
-  const handleUndoAll = useCallback(() => {
-    if (interactionLocked || solveDepth === 0) return;
-
-    const inverseMoves = invertMoveSequence(solveStackRef.current);
-    if (inverseMoves.length === 0) return;
-
-    enqueueMoves(inverseMoves);
-  }, [enqueueMoves, interactionLocked, solveDepth]);
 
   const handleApplyAlgorithm = useCallback((moves) => {
     enqueueMoves(moves);
@@ -408,8 +397,6 @@ const SimulatorPage = () => {
           onReset={handleReset}
           onScramble={handleScramble}
           onSolve={handleSolve}
-          onUndo={handleUndo}
-          onUndoAll={handleUndoAll}
           scrambleSeq={scrambleSeq}
           solveDepth={solveDepth}
         />
