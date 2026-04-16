@@ -209,6 +209,7 @@ async function handleRequest(req, res) {
     }
 
     try {
+      // First ask the solver for a move list so the frontend can animate the real solve.
       const solveMoves = await solveCubeMoveListWithWasm(state);
       if (solveMoves.length > 0) {
         const replayedState = applyMoves(state, solveMoves);
@@ -223,6 +224,8 @@ async function handleRequest(req, res) {
         }
       }
 
+      // If move replay is unavailable or does not land on a solved cube, fall back
+      // to the solved-state export so the API still returns a correct end state.
       const solvedState = await solveCubeStateWithWasm(state);
       sendJson(res, 200, {
         moves: [],
@@ -248,6 +251,8 @@ async function handleRequest(req, res) {
 const server = createServer((req, res) => {
   handleRequest(req, res).catch(() => {
     const requestId = randomUUID();
+    // Keep the outer catch narrow and consistent so unexpected crashes still
+    // come back as JSON instead of dropping the connection.
     sendError(res, 500, requestId, 'INTERNAL_ERROR', 'Unexpected server error.');
   });
 });

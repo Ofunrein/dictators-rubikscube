@@ -16,7 +16,7 @@ In simple terms:
 
 Two other important UX changes also shipped:
 - the cube flashing / color popping bug during turns was fixed
-- `Undo` and `Undo All` were added so "undo history" is separate from "solve the cube"
+- the simulator action row was simplified back down to the core `Scramble`, `Solve`, and `Reset` buttons after teammate feedback
 
 ## What was causing the cube flashing?
 
@@ -66,7 +66,7 @@ Think of the app as four layers:
 
 ```mermaid
 flowchart LR
-    A[User clicks Scramble / Solve / Undo] --> B[SimulatorPage.jsx]
+    A[User clicks Scramble / Solve / Reset] --> B[SimulatorPage.jsx]
     B --> C[dictators-website/src/net/api.js]
     C --> D[backend/api/src/server.js]
     D --> E[backend/api/src/wasmSolver.js]
@@ -115,7 +115,7 @@ sequenceDiagram
 classDiagram
     class SimulatorPage {
       owns queue state
-      handles Solve / Undo / Reset
+      handles Solve / Scramble / Reset
       calls backend
     }
 
@@ -226,24 +226,24 @@ The simulator still includes the earlier timer improvements:
 - timer starts from a fresh solved/reset cube on first move
 - best time persists in `localStorage`
 
-### 5. Control panel now separates solving from undo history
+### 5. Control panel was simplified after teammate feedback
 
-The simulator action panel now keeps solve and undo as different concepts instead of mixing them together.
+The simulator action panel now keeps only the primary actions:
+- `Scramble`
+- `Solve`
+- `Reset`
 
 Delivered change:
 - `dictators-website/src/pages/simulator/SimulatorControls.jsx`
-  - action area expanded into a 2x3 grid
-  - top row: `Scramble`, `Solve`, `Reset`
-  - bottom row: `Undo`, `Undo All`, and one intentionally empty slot for layout balance
+  - action area uses a single 3-button row
+  - manual undo is still available by applying inverse moves such as `R'`, `U'`, `F'`, etc. from the move controls or keyboard
 - `dictators-website/src/pages/simulator/SimulatorPage.jsx`
-  - `Undo` now reverses exactly one move from the active move stack
-  - `Undo All` reverses the full tracked move stack
+  - removed the explicit `Undo` and `Undo All` buttons after teammate review
   - `Solve` remains the dedicated "compute a real solve" path
 
 Behavior decision:
 - `Solve` means "run Eric's solver from this state" for standard face-turn states
-- `Undo` means "step back one move"
-- `Undo All` means "reverse the tracked history"
+- inverse moves are the intended manual way to step moves back when the user wants to undo something directly
 - slice states still use inverse-history behavior under solve fallback because the backend solver can still wedge on `M`, `E`, `S`
 
 ### 6. Simulator page refactor for readability and teammate handoff
@@ -275,6 +275,8 @@ Delivered refactor:
   - animation helpers and cubie rotation math
 - `dictators-website/src/pages/simulator/simulatorAnimation.test.js`
   - coverage for animation helpers
+- `backend/api/src/wasmSolver.js` and `backend/api/src/server.js`
+  - now carry short inline comments around the WASM bridge and solve fallback flow so new teammates can follow the backend path without digging into generated glue code
 
 Folder decision:
 - all simulator-only code now lives under `dictators-website/src/pages/simulator/`
@@ -300,7 +302,7 @@ Because of that, the frontend currently:
 
 This means scramble-button states and normal manual face-turn states now go through Eric's algorithm and animate the returned solve sequence instead of snapping directly to solved.
 
-The new explicit undo controls are there so history reversal does not have to be overloaded onto the `Solve` button.
+The solve button remains dedicated to actual solving rather than manual history-stepping.
 
 ## When the app uses Eric's solver vs reverse history
 
@@ -308,16 +310,12 @@ The current rule is:
 
 - `Solve` on standard face-turn states:
   - use Eric's C++ solver
-- `Undo`:
-  - reverse one move from tracked history
-- `Undo All`:
-  - reverse the full tracked history
 - slice-heavy states involving `M`, `E`, `S`:
   - still rely on reverse history in some paths because the backend solver can wedge there
 
 That separation is important because:
 - "solve this cube" and
-- "undo what the user just did"
+- "manually reverse what the user just did"
 
 are not the same action.
 
@@ -438,7 +436,7 @@ dictators-website/src/pages/simulator/
 - `npm --prefix dictators-website run test -- --run src/pages/simulatorAnimation.test.js` passed
 - Verified simulator and backend scramble generators now stay face-turn only
 - Verified whole-cube rotations returned by Eric's solver are accepted by move normalization and animation helpers
-- Verified new `Undo` / `Undo All` control wiring builds cleanly and keeps the action panel layout consistent
+- Verified the simplified `Scramble` / `Solve` / `Reset` action row builds cleanly and keeps the action panel layout consistent
 - Verified slower solve playback build/test path after increasing solver animation tempo to `0.46s` per move
 
 ## Teammate feedback follow-up
@@ -446,18 +444,18 @@ dictators-website/src/pages/simulator/
 After the first round of integration, Corey Hanna reviewed the simulator changes and reported a few frontend regressions.
 
 Feedback items now addressed:
+- made the `stopTimer()` auto-stop path explicit and record-safe in `useTimer.js`
 - removed the unused `useCallback` import warning in `InteractiveCube.jsx`
 - tightened the `camera.fov` update path in `InteractiveCube.jsx`
 - fixed the camera-lock behavior during scramble, solve, manual turns, and sticker selection by stabilizing the camera profile inputs
 - fixed the stale sticker-selection / preview state so reset and scramble clear it correctly
 - reduced the renderer instability that was happening when camera motion overlapped with simulator state updates
 
-Items intentionally left as-is:
-- `stopTimer();` inside `useTimer.js` was left unchanged because build and tests pass and that call is still valid in the timer effect
-- `Undo` and `Undo All` were kept because they were explicitly added as a simulator UX feature for this sprint even though Corey suggested removing them
+Follow-up UX decision:
+- `Undo` and `Undo All` were later removed after teammate feedback to keep the simulator UI focused on the primary actions
 
 Result:
-- the concrete page-level regressions Corey flagged from the new simulator integration were addressed without backing out the solve integration or the new control layout
+- the concrete page-level regressions Corey flagged from the new simulator integration were addressed without backing out the solve integration or the simplified control layout
 
 ## Files touched for this sprint delivery
 
