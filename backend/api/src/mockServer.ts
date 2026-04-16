@@ -6,36 +6,41 @@ import { URL } from 'node:url';
 const PORT = Number(process.env.MOCK_PORT ?? 4010);
 const SPEC_URL = new URL('../openapi.yaml', import.meta.url);
 const RAW_SPEC = readFileSync(SPEC_URL, 'utf-8');
-const OPENAPI = JSON.parse(RAW_SPEC);
+const OPENAPI = JSON.parse(RAW_SPEC) as Record<string, any>;
 
-function withCorsHeaders(headers = {}) {
+function withCorsHeaders(headers: Record<string, string | number> = {}): Record<string, string | number> {
   return {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'GET,POST,OPTIONS',
     'access-control-allow-headers': 'content-type',
-    ...headers
+    ...headers,
   };
 }
 
-function sendJson(res, statusCode, payload, extraHeaders = {}) {
+function sendJson(
+  res: import('node:http').ServerResponse,
+  statusCode: number,
+  payload: unknown,
+  extraHeaders: Record<string, string | number> = {},
+): void {
   const body = JSON.stringify(payload);
   res.writeHead(
     statusCode,
     withCorsHeaders({
       'content-type': 'application/json; charset=utf-8',
       'content-length': Buffer.byteLength(body),
-      ...extraHeaders
-    })
+      ...extraHeaders,
+    }),
   );
   res.end(body);
 }
 
-function sendNoContent(res, statusCode = 204) {
+function sendNoContent(res: import('node:http').ServerResponse, statusCode = 204): void {
   res.writeHead(statusCode, withCorsHeaders());
   res.end();
 }
 
-function resolvePointer(root, pointer) {
+function resolvePointer(root: Record<string, any>, pointer: string): any {
   if (typeof pointer !== 'string' || !pointer.startsWith('#/')) {
     return undefined;
   }
@@ -43,7 +48,7 @@ function resolvePointer(root, pointer) {
   return pointer
     .slice(2)
     .split('/')
-    .reduce((current, segment) => {
+    .reduce((current: any, segment) => {
       if (current === undefined || current === null) {
         return undefined;
       }
@@ -53,7 +58,7 @@ function resolvePointer(root, pointer) {
     }, root);
 }
 
-function dereference(value) {
+function dereference(value: any): any {
   if (!value || typeof value !== 'object') {
     return value;
   }
@@ -65,7 +70,7 @@ function dereference(value) {
   return value;
 }
 
-function resolveExample(exampleRefOrObject) {
+function resolveExample(exampleRefOrObject: any): any {
   const example = dereference(exampleRefOrObject);
   if (!example || typeof example !== 'object') {
     return undefined;
@@ -78,7 +83,7 @@ function resolveExample(exampleRefOrObject) {
   return undefined;
 }
 
-function pickJsonExample(response) {
+function pickJsonExample(response: any): any {
   const resolved = dereference(response);
   const content = resolved?.content?.['application/json'];
   if (!content) {
@@ -97,7 +102,7 @@ function pickJsonExample(response) {
   return undefined;
 }
 
-function pickResponse(operation) {
+function pickResponse(operation: any): { statusCode: number; body: any } {
   const responses = operation?.responses;
   if (!responses || typeof responses !== 'object') {
     return {
@@ -105,15 +110,14 @@ function pickResponse(operation) {
       body: {
         error: {
           code: 'MOCK_CONFIGURATION_ERROR',
-          message: 'Operation has no responses in the OpenAPI spec.'
-        }
-      }
+          message: 'Operation has no responses in the OpenAPI spec.',
+        },
+      },
     };
   }
 
   const preferred = ['200', '201', '202', '204', 'default'];
   let responseKey = preferred.find((candidate) => Object.hasOwn(responses, candidate));
-
   if (!responseKey) {
     responseKey = Object.keys(responses)[0];
   }
@@ -124,13 +128,13 @@ function pickResponse(operation) {
   return { statusCode, body };
 }
 
-function buildNotFound(requestId) {
+function buildNotFound(requestId: string): Record<string, any> {
   const fallback = {
     error: {
       code: 'NOT_FOUND',
       message: 'Route not found.',
-      requestId
-    }
+      requestId,
+    },
   };
 
   const notFoundResponse = OPENAPI?.components?.responses?.NotFound;
@@ -160,8 +164,8 @@ const server = createServer((req, res) => {
       error: {
         code: 'BAD_REQUEST',
         message: 'Request URL is missing.',
-        requestId
-      }
+        requestId,
+      },
     });
     return;
   }
@@ -174,8 +178,8 @@ const server = createServer((req, res) => {
       200,
       withCorsHeaders({
         'content-type': 'application/yaml; charset=utf-8',
-        'content-length': Buffer.byteLength(RAW_SPEC)
-      })
+        'content-length': Buffer.byteLength(RAW_SPEC),
+      }),
     );
     res.end(RAW_SPEC);
     return;
@@ -203,10 +207,10 @@ const server = createServer((req, res) => {
         error: {
           code: 'MOCK_EXAMPLE_MISSING',
           message: 'No application/json example configured for this operation response.',
-          requestId
-        }
+          requestId,
+        },
       },
-      headers
+      headers,
     );
     return;
   }
@@ -220,6 +224,5 @@ const server = createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  // eslint-disable-next-line no-console
   console.log(`OpenAPI mock server listening on http://localhost:${PORT}`);
 });

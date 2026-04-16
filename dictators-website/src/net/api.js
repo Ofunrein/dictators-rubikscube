@@ -1,7 +1,20 @@
+import {
+  applyAuthPayload,
+  clearAuthState,
+  getAccessToken,
+  getAuthSessionState,
+  markAuthBootstrapped,
+  subscribeAuthState,
+  updateAuthUser,
+} from './authSession.js';
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
 const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 
-class ApiError extends Error {
+let refreshPromise = null;
+let bootstrapPromise = null;
+
+export class ApiError extends Error {
   constructor(message, { status, code, requestId, details } = {}) {
     super(message);
     this.name = 'ApiError';
@@ -46,8 +59,18 @@ function buildApiError(payload, statusCode) {
     status: statusCode,
     code: error.code,
     requestId: error.requestId,
-    details: error.details
+    details: error.details,
   });
+}
+
+function withQuery(path, query = {}) {
+  const entries = Object.entries(query).filter(([, value]) => value !== undefined && value !== null);
+  if (entries.length === 0) {
+    return path;
+  }
+
+  const params = new URLSearchParams(entries.map(([key, value]) => [key, String(value)]));
+  return `${path}?${params.toString()}`;
 }
 
 async function parseJsonBody(response) {
@@ -63,33 +86,155 @@ async function parseJsonBody(response) {
   }
 }
 
-async function request(path, { method = 'GET', body } = {}) {
+async function request(path, options = {}) {
+  const {
+    method = 'GET',
+    body,
+    headers = {},
+    auth = false,
+    retryOnUnauthorized = true,
+  } = options;
+
   const url = `${API_BASE_URL}${path}`;
-  const options = {
-    method,
-    headers: {
-      accept: 'application/json'
+  const requestHeaders = {
+    accept: 'application/json',
+    ...headers,
+  };
+
+  if (auth) {
+    const token = getAccessToken();
+    if (token) {
+      requestHeaders.authorization = `Bearer ${token}`;
     }
+  }
+
+  const fetchOptions = {
+    method,
+    headers: requestHeaders,
+    credentials: 'include',
   };
 
   if (body !== undefined) {
-    options.headers['content-type'] = 'application/json';
-    options.body = JSON.stringify(body);
+    fetchOptions.headers['content-type'] = 'application/json';
+    fetchOptions.body = JSON.stringify(body);
   }
 
   let response;
   try {
-    response = await fetch(url, options);
+    response = await fetch(url, fetchOptions);
   } catch {
     throw new ApiError(`Unable to reach API at ${API_BASE_URL || window.location.origin}.`);
   }
 
   const payload = await parseJsonBody(response);
   if (!response.ok) {
-    throw buildApiError(payload, response.status);
+    const error = buildApiError(payload, response.status);
+    if (auth && retryOnUnauthorized && error.status === 401) {
+      const refreshed = await refreshAuthSession();
+      if (refreshed) {
+        return request(path, {
+          method,
+          body,
+          headers,
+          auth,
+          retryOnUnauthorized: false,
+        });
+      }
+    }
+
+    throw error;
   }
 
   return payload;
+}
+
+export function getAuthState() {
+  return getAuthSessionState();
+}
+
+export function onAuthStateChange(listener) {
+  return subscribeAuthState(listener);
+}
+
+export async function refreshAuthSession() {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const payload = await request('/api/v1/auth/refresh', {
+        method: 'POST',
+        auth: false,
+        retryOnUnauthorized: false,
+      });
+      applyAuthPayload(payload);
+      return true;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        clearAuthState();
+        return false;
+      }
+      throw error;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+export async function bootstrapAuthSession() {
+  if (bootstrapPromise) {
+    return bootstrapPromise;
+  }
+
+  bootstrapPromise = (async () => {
+    try {
+      return await refreshAuthSession();
+    } catch {
+      markAuthBootstrapped();
+      return false;
+    } finally {
+      bootstrapPromise = null;
+    }
+  })();
+
+  return bootstrapPromise;
+}
+
+export async function registerAccount({ email, username, password }) {
+  const payload = await request('/api/v1/auth/register', {
+    method: 'POST',
+    body: { email, username, password },
+    retryOnUnauthorized: false,
+  });
+  applyAuthPayload(payload);
+  return payload;
+}
+
+export async function loginAccount({ identifier, password }) {
+  const payload = await request('/api/v1/auth/login', {
+    method: 'POST',
+    body: { identifier, password },
+    retryOnUnauthorized: false,
+  });
+  applyAuthPayload(payload);
+  return payload;
+}
+
+export async function logoutAccount() {
+  await request('/api/v1/auth/logout', {
+    method: 'POST',
+    retryOnUnauthorized: false,
+  });
+  clearAuthState();
+}
+
+export async function fetchCurrentUser() {
+  const payload = await request('/api/v1/auth/me', { auth: true });
+  updateAuthUser(payload.user ?? null);
+  return payload.user ?? null;
 }
 
 export async function pingBackend() {
@@ -110,7 +255,7 @@ export async function applyMoveRemote(state, move) {
 
   const payload = await request('/api/v1/cube/moves/apply', {
     method: 'POST',
-    body: { state, move }
+    body: { state, move },
   });
 
   validateCubeState(payload.state, 'response.state');
@@ -128,7 +273,7 @@ export async function generateScrambleRemote({ length = 25, seed } = {}) {
 
   const payload = await request('/api/v1/cube/scramble', {
     method: 'POST',
-    body
+    body,
   });
 
   if (!Array.isArray(payload.scramble)) {
@@ -144,7 +289,7 @@ export async function solveCubeRemote(state, strategy = 'beginner') {
 
   const payload = await request('/api/v1/cube/solve', {
     method: 'POST',
-    body: { state, strategy }
+    body: { state, strategy },
   });
 
   if (!Array.isArray(payload.moves)) {
@@ -152,4 +297,44 @@ export async function solveCubeRemote(state, strategy = 'beginner') {
   }
 
   return payload;
+}
+
+export async function listCubeSessions({ status, limit } = {}) {
+  return request(withQuery('/api/v1/cube-sessions', { status, limit }), { auth: true });
+}
+
+export async function createCubeSession(payload) {
+  return request('/api/v1/cube-sessions', {
+    method: 'POST',
+    body: payload,
+    auth: true,
+  });
+}
+
+export async function getCubeSession(id) {
+  return request(`/api/v1/cube-sessions/${encodeURIComponent(id)}`, { auth: true });
+}
+
+export async function updateCubeSession(id, payload) {
+  return request(`/api/v1/cube-sessions/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: payload,
+    auth: true,
+  });
+}
+
+export async function completeCubeSession(id, payload = {}) {
+  return request(`/api/v1/cube-sessions/${encodeURIComponent(id)}/complete`, {
+    method: 'POST',
+    body: payload,
+    auth: true,
+  });
+}
+
+export async function fetchSolveRecords({ limit } = {}) {
+  return request(withQuery('/api/v1/solve-records', { limit }), { auth: true });
+}
+
+export async function fetchStatsSummary() {
+  return request('/api/v1/stats/summary', { auth: true });
 }

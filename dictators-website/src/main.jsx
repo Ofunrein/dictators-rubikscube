@@ -4,6 +4,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import SimulatorPage from './pages/SimulatorPage.jsx'
+import { bootstrapAuthSession } from './net/api.js'
+
+void bootstrapAuthSession()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
