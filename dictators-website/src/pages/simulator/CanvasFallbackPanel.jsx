@@ -1,3 +1,13 @@
+/**
+ * CanvasFallbackPanel.jsx — Shown when the 3D renderer fails
+ *
+ * If the browser can't initialize WebGL (old hardware, out of memory, driver crash),
+ * this panel replaces the 3D cube. The move controls and solve logic still work —
+ * you just can't see the animated cube. There's a "Retry 3D" button to try again.
+ *
+ * Displays the error message and stack trace if available, which helps with debugging.
+ */
+
 export default function CanvasFallbackPanel({
   canvasErrorDetails,
   canvasErrorMessage,
