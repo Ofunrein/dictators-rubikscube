@@ -441,6 +441,24 @@ dictators-website/src/pages/simulator/
 - Verified new `Undo` / `Undo All` control wiring builds cleanly and keeps the action panel layout consistent
 - Verified slower solve playback build/test path after increasing solver animation tempo to `0.46s` per move
 
+## Teammate feedback follow-up
+
+After the first round of integration, Corey Hanna reviewed the simulator changes and reported a few frontend regressions.
+
+Feedback items now addressed:
+- removed the unused `useCallback` import warning in `InteractiveCube.jsx`
+- tightened the `camera.fov` update path in `InteractiveCube.jsx`
+- fixed the camera-lock behavior during scramble, solve, manual turns, and sticker selection by stabilizing the camera profile inputs
+- fixed the stale sticker-selection / preview state so reset and scramble clear it correctly
+- reduced the renderer instability that was happening when camera motion overlapped with simulator state updates
+
+Items intentionally left as-is:
+- `stopTimer();` inside `useTimer.js` was left unchanged because build and tests pass and that call is still valid in the timer effect
+- `Undo` and `Undo All` were kept because they were explicitly added as a simulator UX feature for this sprint even though Corey suggested removing them
+
+Result:
+- the concrete page-level regressions Corey flagged from the new simulator integration were addressed without backing out the solve integration or the new control layout
+
 ## Files touched for this sprint delivery
 
 - `api/solver.js`
