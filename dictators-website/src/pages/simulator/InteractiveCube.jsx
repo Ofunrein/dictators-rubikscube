@@ -39,18 +39,23 @@ import {
 } from './simulatorAnimation';
 import { TOKEN_HEX } from './simulatorConstants';
 
+// Three.js unit vectors for each axis — used to tell the pivot which direction to rotate
 const AXIS_VECTORS = {
   x: new THREE.Vector3(1, 0, 0),
   y: new THREE.Vector3(0, 1, 0),
   z: new THREE.Vector3(0, 0, 1),
 };
 
-const CUBIE_SIZE = 0.95;
-const STICKER_SIZE = 0.85;
-const GAP = 1.0;
-const EPSILON = 0.02;
-const CUBE_ROTATION = [0.4, -0.6, 0];
+// Rendering dimensions for each cubie (the small black boxes) and stickers (colored squares)
+const CUBIE_SIZE = 0.95;    // how big each black box is
+const STICKER_SIZE = 0.85;  // how big the colored square on each face is (slightly smaller than the box)
+const GAP = 1.0;            // spacing between cubie centers in the 3D grid
+const EPSILON = 0.02;       // tiny offset so stickers float just above the cubie surface (prevents z-fighting)
+const CUBE_ROTATION = [0.4, -0.6, 0]; // initial camera-friendly tilt so you can see U, F, and R faces
 
+// Defines the 6 possible sticker faces on a cubie.
+// Each entry maps an axis direction to a cube face name and the rotation needed
+// to orient the sticker plane correctly in 3D space.
 const CUBIE_FACES_DEF = [
   { axis: 'x', sign: 1, face: 'R', rotation: [0, Math.PI / 2, 0] },
   { axis: 'x', sign: -1, face: 'L', rotation: [0, -Math.PI / 2, 0] },
@@ -60,10 +65,14 @@ const CUBIE_FACES_DEF = [
   { axis: 'z', sign: -1, face: 'B', rotation: [0, Math.PI, 0] },
 ];
 
+// Makes a fresh copy of the default 27-cubie grid positions.
+// Called on reset/scramble to put all cubies back to their canonical spots.
 function cloneCubieLayout() {
   return CUBIE_LAYOUT.map((cubie) => ({ ...cubie }));
 }
 
+// Checks if a cubie at position (gx,gy,gz) has a visible sticker on the given face.
+// For example, a cubie at gx=1 is on the right side of the cube, so it has an R sticker.
 function isCubieOnStickerFace(definition, gx, gy, gz) {
   return (
     (definition.axis === 'x' && gx === definition.sign) ||
@@ -72,6 +81,8 @@ function isCubieOnStickerFace(definition, gx, gy, gz) {
   );
 }
 
+// Calculates where a sticker plane should be positioned relative to its cubie.
+// Stickers sit just barely above the cubie surface (EPSILON) so they render on top.
 function getStickerPosition(definition) {
   const stickerPosition = [0, 0, 0];
   const axisIndex =
@@ -81,6 +92,8 @@ function getStickerPosition(definition) {
   return stickerPosition;
 }
 
+// Builds the info object sent to useCubeControls when a sticker is clicked.
+// row/col are needed to look up which move an arrow key should trigger.
 function getStickerSelectionInfo(face, stickerIndex) {
   return {
     col: stickerIndex % 3,
@@ -90,6 +103,9 @@ function getStickerSelectionInfo(face, stickerIndex) {
   };
 }
 
+// Checks if a cubie belongs to the layer being animated.
+// For a normal move like R (layer=1, axis=x), this checks cubie.x === 1.
+// For whole-cube rotations (layer='all'), every cubie is included.
 function isCubieInAnimatedLayer(cubie, config) {
   if (config.layer === 'all') {
     return true;
@@ -97,6 +113,8 @@ function isCubieInAnimatedLayer(cubie, config) {
   return cubie[config.axis] === config.layer;
 }
 
+// Grabs all cubies in the animated layer and parents them under the pivot group.
+// Three.js will then rotate the entire pivot (and all attached cubies) as one unit.
 function attachLayerToPivot(pivot, cubieLayout, cubieRefs, config) {
   cubieLayout.forEach((cubie, index) => {
     if (!isCubieInAnimatedLayer(cubie, config)) return;
@@ -107,6 +125,8 @@ function attachLayerToPivot(pivot, cubieLayout, cubieRefs, config) {
   });
 }
 
+// After an animation finishes, snap all cubie meshes to their updated grid positions.
+// This prevents visual drift from floating-point animation math.
 function syncCubieTransforms(cubieLayout, cubieRefs) {
   cubieLayout.forEach((cubie, index) => {
     const cubieGroup = cubieRefs.current[index];
@@ -117,6 +137,8 @@ function syncCubieTransforms(cubieLayout, cubieRefs) {
   });
 }
 
+// Error boundary — wraps the <Canvas> so if WebGL crashes, we catch it
+// and show the fallback panel instead of a blank white screen.
 export class SimulatorCanvasBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -140,6 +162,8 @@ export class SimulatorCanvasBoundary extends React.Component {
   }
 }
 
+// Adjusts the Three.js camera when the viewport changes (mobile vs tablet vs desktop).
+// Without this the cube would look too small on phones or too zoomed on wide monitors.
 export function ResponsiveSceneCamera({ position, fov }) {
   const { camera } = useThree();
   const [x, y, z] = position;
@@ -157,6 +181,10 @@ export function ResponsiveSceneCamera({ position, fov }) {
   return null;
 }
 
+// Maps a cubie's 3D grid position (gx, gy, gz) to a flat sticker index (0-8)
+// for a given face. This is how we know which color token to look up in cubeState.
+// Each face has its own mapping because the grid axes map to row/col differently
+// depending on which direction you're looking at the cube from.
 function getStickerIndex(face, gx, gy, gz) {
   switch (face) {
     case 'U': return (1 - gz) * 3 + (gx + 1);
@@ -169,6 +197,8 @@ function getStickerIndex(face, gx, gy, gz) {
   }
 }
 
+// Turns a sticker token like "W" into a hex color like "#FFFFFF".
+// Falls back to gray if the token is unknown (shouldn't happen in normal use).
 function resolveStickerColor(value) {
   if (typeof value === 'string') {
     const token = value.trim().toUpperCase();
@@ -178,6 +208,8 @@ function resolveStickerColor(value) {
   return '#808080';
 }
 
+// A single colored square on one face of a cubie.
+// When selected (mouse+keyboard mode), it gets a pink highlight overlay.
 function Sticker({ color, position, rotation, onPointerDown, isSelected }) {
   return (
     <group position={position} rotation={rotation}>
@@ -201,6 +233,9 @@ function Sticker({ color, position, rotation, onPointerDown, isSelected }) {
   );
 }
 
+// One physical cubie in the 3x3x3 grid. It's a dark box with colored sticker
+// planes on its exposed faces. gx/gy/gz are grid coordinates (-1, 0, or 1).
+// Only faces on the outside of the cube get stickers (a cubie at x=0 has no R or L sticker).
 const StickerCubelet = React.forwardRef(function StickerCubelet(
   { gx, gy, gz, cubeState, onStickerSelect, selectedSticker },
   ref,
