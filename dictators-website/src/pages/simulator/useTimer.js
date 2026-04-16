@@ -1,5 +1,31 @@
+/**
+ * useTimer.js — React hook for the solve timer
+ *
+ * This is a custom React "hook" (a reusable piece of logic that any component can use).
+ * If you have never seen React hooks before: a hook is just a function that starts with
+ * "use" and lets you plug into React features like state and side effects.
+ *
+ * What this hook does:
+ *   1. Keeps a running clock that updates every 10 milliseconds.
+ *   2. Tracks the user's best solve time and saves it to localStorage
+ *      (the browser's built-in storage that survives page refreshes).
+ *   3. Automatically stops the timer when the cube is solved (isSolved becomes true).
+ *
+ * How SimulatorPage uses it:
+ *   const { timerMs, timerRunning, startFreshTimer, stopTimer, resetTimer, bestTime, toggleTimer }
+ *     = useTimer({ isSolved });
+ *
+ *   - startFreshTimer()  → resets to 0 and starts counting (called on first user move)
+ *   - stopTimer()        → pauses and records best time
+ *   - resetTimer()       → stops and clears to 0:00.00
+ *   - toggleTimer()      → manual start/stop via the timer button in the top bar
+ *   - timerMs            → current elapsed time in milliseconds (drives the display)
+ *   - bestTime           → lowest recorded solve time (null if no solves yet)
+ */
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+// localStorage key — changing this string would reset everyone's best time.
 const BEST_TIME_STORAGE_KEY = 'rubiks_best_time_ms';
 
 export function useTimer({ isSolved }) {
