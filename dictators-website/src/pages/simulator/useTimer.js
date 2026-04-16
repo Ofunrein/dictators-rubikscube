@@ -14,6 +14,11 @@ export function useTimer({ isSolved }) {
 
   const timerRef = useRef(null);
   const startTimeRef = useRef(null);
+  const timerMsRef = useRef(0);
+
+  useEffect(() => {
+    timerMsRef.current = timerMs;
+  }, [timerMs]);
 
   const clearTicker = useCallback(() => {
     if (timerRef.current) {
@@ -61,9 +66,9 @@ export function useTimer({ isSolved }) {
     setTimerRunning(false);
 
     if (record) {
-      persistBestTime(timerMs);
+      persistBestTime(timerMsRef.current);
     }
-  }, [clearTicker, persistBestTime, timerMs]);
+  }, [clearTicker, persistBestTime]);
 
   const resetTimer = useCallback(() => {
     clearTicker();
@@ -83,7 +88,9 @@ export function useTimer({ isSolved }) {
 
   useEffect(() => {
     if (!timerRunning || !isSolved) return;
-    stopTimer();
+    // Make the auto-stop call explicit so the timer is recorded the same way
+    // whether the user stops it manually or the cube reaches solved state.
+    stopTimer({ record: true });
   }, [isSolved, stopTimer, timerRunning]);
 
   useEffect(() => () => {
