@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Rubik's Cube API",
-    "version": "0.1.0",
-    "description": "Sprint 2 API contract for cube state, move application, scramble generation, and solver wiring."
+    "version": "0.2.0",
+    "description": "API contract for auth, cube sessions, solve history, stats, and cube operations."
   },
   "servers": [
     {
@@ -21,6 +21,15 @@
     },
     {
       "name": "Cube"
+    },
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Sessions"
+    },
+    {
+      "name": "Stats"
     }
   ],
   "paths": {
@@ -204,6 +213,551 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register a new account",
+        "operationId": "registerAccount",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRegisterRequest"
+              },
+              "examples": {
+                "default": {
+                  "$ref": "#/components/examples/auth_register_request"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created and authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/auth_tokens_response"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login with email or username",
+        "operationId": "loginAccount",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthLoginRequest"
+              },
+              "examples": {
+                "default": {
+                  "$ref": "#/components/examples/auth_login_request"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/auth_tokens_response"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Rotate refresh session and issue new access token",
+        "operationId": "refreshAuth",
+        "security": [
+          {
+            "RefreshCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session refreshed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/auth_tokens_response"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Revoke current refresh session",
+        "operationId": "logoutAuth",
+        "security": [
+          {
+            "RefreshCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logout successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Return current authenticated user",
+        "operationId": "getMe",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMeResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/auth_me_response"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/cube-sessions": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "List the current user's cube sessions",
+        "operationId": "listCubeSessions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CubeSessionStatus"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CubeSessionsListResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/cube_sessions_list_response"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Create a cube session for the current user",
+        "operationId": "createCubeSession",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CubeSessionCreateRequest"
+              },
+              "examples": {
+                "default": {
+                  "$ref": "#/components/examples/cube_session_create_request"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Session created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CubeSessionResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/cube_session_response"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/cube-sessions/{id}": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Get one cube session",
+        "operationId": "getCubeSession",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CubeSessionResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/cube_session_response"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Patch an existing cube session",
+        "operationId": "updateCubeSession",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CubeSessionUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CubeSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/cube-sessions/{id}/complete": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Complete a cube session and upsert a solve record",
+        "operationId": "completeCubeSession",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CubeSessionCompleteRequest"
+              },
+              "examples": {
+                "default": {
+                  "$ref": "#/components/examples/cube_session_complete_request"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CubeSessionCompleteResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/cube_session_complete_response"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/solve-records": {
+      "get": {
+        "tags": [
+          "Stats"
+        ],
+        "summary": "List solve records for the current user",
+        "operationId": "listSolveRecords",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solve history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolveRecordListResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/solve_records_list_response"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/stats/summary": {
+      "get": {
+        "tags": [
+          "Stats"
+        ],
+        "summary": "Get solve statistics summary for current user",
+        "operationId": "getStatsSummary",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stats summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsSummaryResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/stats_summary_response"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -484,6 +1038,453 @@
         "properties": {
           "error": {
             "$ref": "#/components/schemas/ErrorEnvelope"
+          }
+        }
+      },
+      "SessionUser": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "email",
+          "username"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "AuthRegisterRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "email",
+          "username",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "username": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        }
+      },
+      "AuthLoginRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "identifier",
+          "password"
+        ],
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 128
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        }
+      },
+      "AuthTokensResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "accessToken",
+          "expiresIn",
+          "user"
+        ],
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "expiresIn": {
+            "type": "integer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/SessionUser"
+          }
+        }
+      },
+      "AuthMeResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/SessionUser"
+          }
+        }
+      },
+      "LogoutResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CubeSessionStatus": {
+        "type": "string",
+        "enum": [
+          "in_progress",
+          "completed",
+          "abandoned"
+        ]
+      },
+      "CubeSession": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "status",
+          "cubeState",
+          "moveHistory",
+          "scramble",
+          "timerMs",
+          "startedAt",
+          "updatedAt",
+          "completedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 80
+          },
+          "status": {
+            "$ref": "#/components/schemas/CubeSessionStatus"
+          },
+          "cubeState": {
+            "$ref": "#/components/schemas/CubeState"
+          },
+          "moveHistory": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scramble": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timerMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "CubeSessionCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cubeState"
+        ],
+        "properties": {
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "status": {
+            "$ref": "#/components/schemas/CubeSessionStatus"
+          },
+          "cubeState": {
+            "$ref": "#/components/schemas/CubeState"
+          },
+          "moveHistory": {
+            "type": "array",
+            "maxItems": 5000,
+            "items": {
+              "type": "string"
+            }
+          },
+          "scramble": {
+            "type": "array",
+            "maxItems": 400,
+            "items": {
+              "type": "string"
+            }
+          },
+          "timerMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 43200000
+          }
+        }
+      },
+      "CubeSessionUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "status": {
+            "$ref": "#/components/schemas/CubeSessionStatus"
+          },
+          "cubeState": {
+            "$ref": "#/components/schemas/CubeState"
+          },
+          "moveHistory": {
+            "type": "array",
+            "maxItems": 5000,
+            "items": {
+              "type": "string"
+            }
+          },
+          "scramble": {
+            "type": "array",
+            "maxItems": 400,
+            "items": {
+              "type": "string"
+            }
+          },
+          "timerMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 43200000
+          }
+        }
+      },
+      "CubeSessionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "session"
+        ],
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/CubeSession"
+          }
+        }
+      },
+      "CubeSessionsListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessions"
+        ],
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CubeSession"
+            }
+          }
+        }
+      },
+      "CubeSessionCompleteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "moveCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mode": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 40
+          },
+          "solution": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SolveRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "sourceSessionId",
+          "mode",
+          "durationMs",
+          "moveCount",
+          "scramble",
+          "solution",
+          "completedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sourceSessionId": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "moveCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "scramble": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "solution": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CubeSessionCompleteResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "session",
+          "solveRecord"
+        ],
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/CubeSession"
+          },
+          "solveRecord": {
+            "$ref": "#/components/schemas/SolveRecord"
+          }
+        }
+      },
+      "SolveRecordListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "solveRecords"
+        ],
+        "properties": {
+          "solveRecords": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolveRecord"
+            }
+          }
+        }
+      },
+      "StatsSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "totalSolves",
+          "bestTimeMs",
+          "averageTimeMs",
+          "lastSolveAt"
+        ],
+        "properties": {
+          "totalSolves": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bestTimeMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "averageTimeMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "lastSolveAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "StatsSummaryResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "summary"
+        ],
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/StatsSummary"
           }
         }
       }
@@ -909,6 +1910,496 @@
             "requestId": "req_123456"
           }
         }
+      },
+      "auth_register_request": {
+        "value": {
+          "email": "speed.cuber@example.com",
+          "username": "speedcuber",
+          "password": "correct horse battery staple"
+        }
+      },
+      "auth_login_request": {
+        "value": {
+          "identifier": "speedcuber",
+          "password": "correct horse battery staple"
+        }
+      },
+      "auth_tokens_response": {
+        "value": {
+          "accessToken": "<jwt-access-token>",
+          "expiresIn": 900,
+          "user": {
+            "id": "usr_123",
+            "email": "speed.cuber@example.com",
+            "username": "speedcuber"
+          }
+        }
+      },
+      "auth_me_response": {
+        "value": {
+          "user": {
+            "id": "usr_123",
+            "email": "speed.cuber@example.com",
+            "username": "speedcuber"
+          }
+        }
+      },
+      "cube_session_create_request": {
+        "value": {
+          "title": "Evening practice",
+          "status": "in_progress",
+          "cubeState": {
+            "U": [
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W"
+            ],
+            "R": [
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R"
+            ],
+            "F": [
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G"
+            ],
+            "D": [
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y"
+            ],
+            "L": [
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O"
+            ],
+            "B": [
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B"
+            ]
+          },
+          "moveHistory": [
+            "R",
+            "U",
+            "R'"
+          ],
+          "scramble": [
+            "R",
+            "U",
+            "F"
+          ],
+          "timerMs": 15234
+        }
+      },
+      "cube_session_response": {
+        "value": {
+          "session": {
+            "id": "ses_123",
+            "title": "Evening practice",
+            "status": "in_progress",
+            "cubeState": {
+              "U": [
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W"
+              ],
+              "R": [
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R"
+              ],
+              "F": [
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G"
+              ],
+              "D": [
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y"
+              ],
+              "L": [
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O"
+              ],
+              "B": [
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B"
+              ]
+            },
+            "moveHistory": [
+              "R",
+              "U",
+              "R'"
+            ],
+            "scramble": [
+              "R",
+              "U",
+              "F"
+            ],
+            "timerMs": 15234,
+            "startedAt": "2026-04-15T12:00:00.000Z",
+            "updatedAt": "2026-04-15T12:05:00.000Z",
+            "completedAt": null
+          }
+        }
+      },
+      "cube_sessions_list_response": {
+        "value": {
+          "sessions": [
+            {
+              "id": "ses_123",
+              "title": "Evening practice",
+              "status": "in_progress",
+              "cubeState": {
+                "U": [
+                  "W",
+                  "W",
+                  "W",
+                  "W",
+                  "W",
+                  "W",
+                  "W",
+                  "W",
+                  "W"
+                ],
+                "R": [
+                  "R",
+                  "R",
+                  "R",
+                  "R",
+                  "R",
+                  "R",
+                  "R",
+                  "R",
+                  "R"
+                ],
+                "F": [
+                  "G",
+                  "G",
+                  "G",
+                  "G",
+                  "G",
+                  "G",
+                  "G",
+                  "G",
+                  "G"
+                ],
+                "D": [
+                  "Y",
+                  "Y",
+                  "Y",
+                  "Y",
+                  "Y",
+                  "Y",
+                  "Y",
+                  "Y",
+                  "Y"
+                ],
+                "L": [
+                  "O",
+                  "O",
+                  "O",
+                  "O",
+                  "O",
+                  "O",
+                  "O",
+                  "O",
+                  "O"
+                ],
+                "B": [
+                  "B",
+                  "B",
+                  "B",
+                  "B",
+                  "B",
+                  "B",
+                  "B",
+                  "B",
+                  "B"
+                ]
+              },
+              "moveHistory": [
+                "R",
+                "U",
+                "R'"
+              ],
+              "scramble": [
+                "R",
+                "U",
+                "F"
+              ],
+              "timerMs": 15234,
+              "startedAt": "2026-04-15T12:00:00.000Z",
+              "updatedAt": "2026-04-15T12:05:00.000Z",
+              "completedAt": null
+            }
+          ]
+        }
+      },
+      "cube_session_complete_request": {
+        "value": {
+          "durationMs": 18654,
+          "moveCount": 43,
+          "mode": "practice",
+          "solution": [
+            "R",
+            "U",
+            "R'",
+            "U",
+            "F"
+          ]
+        }
+      },
+      "cube_session_complete_response": {
+        "value": {
+          "session": {
+            "id": "ses_123",
+            "title": "Evening practice",
+            "status": "completed",
+            "cubeState": {
+              "U": [
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W"
+              ],
+              "R": [
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R"
+              ],
+              "F": [
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G"
+              ],
+              "D": [
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y"
+              ],
+              "L": [
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O"
+              ],
+              "B": [
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B"
+              ]
+            },
+            "moveHistory": [
+              "R",
+              "U",
+              "R'"
+            ],
+            "scramble": [
+              "R",
+              "U",
+              "F"
+            ],
+            "timerMs": 18654,
+            "startedAt": "2026-04-15T12:00:00.000Z",
+            "updatedAt": "2026-04-15T12:07:34.000Z",
+            "completedAt": "2026-04-15T12:07:34.000Z"
+          },
+          "solveRecord": {
+            "id": "sol_123",
+            "sourceSessionId": "ses_123",
+            "mode": "practice",
+            "durationMs": 18654,
+            "moveCount": 43,
+            "scramble": [
+              "R",
+              "U",
+              "F"
+            ],
+            "solution": [
+              "R",
+              "U",
+              "R'",
+              "U",
+              "F"
+            ],
+            "completedAt": "2026-04-15T12:07:34.000Z"
+          }
+        }
+      },
+      "solve_records_list_response": {
+        "value": {
+          "solveRecords": [
+            {
+              "id": "sol_123",
+              "sourceSessionId": "ses_123",
+              "mode": "practice",
+              "durationMs": 18654,
+              "moveCount": 43,
+              "scramble": [
+                "R",
+                "U",
+                "F"
+              ],
+              "solution": [
+                "R",
+                "U",
+                "R'",
+                "U",
+                "F"
+              ],
+              "completedAt": "2026-04-15T12:07:34.000Z"
+            }
+          ]
+        }
+      },
+      "stats_summary_response": {
+        "value": {
+          "summary": {
+            "totalSolves": 12,
+            "bestTimeMs": 14210,
+            "averageTimeMs": 19885,
+            "lastSolveAt": "2026-04-15T12:07:34.000Z"
+          }
+        }
+      },
+      "unauthorized": {
+        "value": {
+          "error": {
+            "code": "UNAUTHORIZED",
+            "message": "Unauthorized",
+            "requestId": "req_123456"
+          }
+        }
+      },
+      "conflict_email_in_use": {
+        "value": {
+          "error": {
+            "code": "EMAIL_IN_USE",
+            "message": "Email already in use",
+            "requestId": "req_123456"
+          }
+        }
+      },
+      "not_found_session": {
+        "value": {
+          "error": {
+            "code": "NOT_FOUND",
+            "message": "Session not found",
+            "requestId": "req_123456"
+          }
+        }
       }
     },
     "responses": {
@@ -928,7 +2419,25 @@
         }
       },
       "NotFound": {
-        "description": "Route not found",
+        "description": "Route or resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "route_not_found": {
+                "$ref": "#/components/examples/not_found"
+              },
+              "session_not_found": {
+                "$ref": "#/components/examples/not_found_session"
+              }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Authentication required or invalid token",
         "content": {
           "application/json": {
             "schema": {
@@ -936,11 +2445,38 @@
             },
             "examples": {
               "default": {
-                "$ref": "#/components/examples/not_found"
+                "$ref": "#/components/examples/unauthorized"
               }
             }
           }
         }
+      },
+      "Conflict": {
+        "description": "Resource conflict",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "email_in_use": {
+                "$ref": "#/components/examples/conflict_email_in_use"
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "RefreshCookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refresh_token"
       }
     }
   }

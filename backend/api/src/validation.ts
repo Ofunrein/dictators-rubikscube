@@ -1,28 +1,30 @@
-import { FACE_ORDER, MOVE_TOKENS, cloneCubeState, isStickerToken, isSupportedMove } from './cube.js';
+import { FACE_ORDER, MOVE_TOKENS, cloneCubeState, isStickerToken, isSupportedMove, type CubeState } from './cube.js';
+
+import type { ApiErrorDetail } from './types/contracts.js';
 
 const FACE_SET = new Set(FACE_ORDER);
 const ALLOWED_STRATEGIES = new Set(['beginner', 'cfop']);
 
-function isPlainObject(value) {
+function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function findUnknownKeys(value, allowedKeys) {
+function findUnknownKeys(value: Record<string, unknown>, allowedKeys: string[]): string[] {
   return Object.keys(value).filter((key) => !allowedKeys.includes(key));
 }
 
-export function validateCubeState(candidate, path = 'state') {
-  const details = [];
+export function validateCubeState(candidate: unknown, path = 'state'): ApiErrorDetail[] {
+  const details: ApiErrorDetail[] = [];
 
   if (!isPlainObject(candidate)) {
     details.push({
       path,
-      message: 'Cube state must be an object with U, R, F, D, L, B faces.'
+      message: 'Cube state must be an object with U, R, F, D, L, B faces.',
     });
     return details;
   }
 
-  const unknownFaces = Object.keys(candidate).filter((key) => !FACE_SET.has(key));
+  const unknownFaces = Object.keys(candidate).filter((key) => !FACE_SET.has(key as (typeof FACE_ORDER)[number]));
   for (const face of unknownFaces) {
     details.push({ path: `${path}.${face}`, message: 'Unknown face key.' });
   }
@@ -39,12 +41,12 @@ export function validateCubeState(candidate, path = 'state') {
       continue;
     }
 
-    for (let i = 0; i < stickers.length; i += 1) {
-      const token = stickers[i];
+    for (let index = 0; index < stickers.length; index += 1) {
+      const token = stickers[index];
       if (!isStickerToken(token)) {
         details.push({
-          path: `${path}.${face}[${i}]`,
-          message: 'Sticker must be one of W, R, G, Y, O, B.'
+          path: `${path}.${face}[${index}]`,
+          message: 'Sticker must be one of W, R, G, Y, O, B.',
         });
       }
     }
@@ -53,12 +55,14 @@ export function validateCubeState(candidate, path = 'state') {
   return details;
 }
 
-export function validateMoveApplyRequest(payload) {
-  const details = [];
+export function validateMoveApplyRequest(payload: unknown):
+  | { ok: true; value: { state: CubeState; move: string } }
+  | { ok: false; details: ApiErrorDetail[] } {
+  const details: ApiErrorDetail[] = [];
   if (!isPlainObject(payload)) {
     return {
       ok: false,
-      details: [{ path: 'body', message: 'Request body must be a JSON object.' }]
+      details: [{ path: 'body', message: 'Request body must be a JSON object.' }],
     };
   }
 
@@ -75,10 +79,10 @@ export function validateMoveApplyRequest(payload) {
 
   if (!Object.hasOwn(payload, 'move')) {
     details.push({ path: 'move', message: 'move is required.' });
-  } else if (!isSupportedMove(payload.move)) {
+  } else if (typeof payload.move !== 'string' || !isSupportedMove(payload.move)) {
     details.push({
       path: 'move',
-      message: `Move must be one of ${MOVE_TOKENS.join(', ')}.`
+      message: `Move must be one of ${MOVE_TOKENS.join(', ')}.`,
     });
   }
 
@@ -89,22 +93,24 @@ export function validateMoveApplyRequest(payload) {
   return {
     ok: true,
     value: {
-      state: cloneCubeState(payload.state),
-      move: payload.move
-    }
+      state: cloneCubeState(payload.state as CubeState),
+      move: payload.move as string,
+    },
   };
 }
 
-export function validateScrambleRequest(payload) {
+export function validateScrambleRequest(payload: unknown):
+  | { ok: true; value: { length: number; seed?: number } }
+  | { ok: false; details: ApiErrorDetail[] } {
   const body = payload ?? {};
   if (!isPlainObject(body)) {
     return {
       ok: false,
-      details: [{ path: 'body', message: 'Request body must be a JSON object.' }]
+      details: [{ path: 'body', message: 'Request body must be a JSON object.' }],
     };
   }
 
-  const details = [];
+  const details: ApiErrorDetail[] = [];
   const unknown = findUnknownKeys(body, ['length', 'seed']);
   for (const key of unknown) {
     details.push({ path: key, message: 'Unknown request field.' });
@@ -112,23 +118,25 @@ export function validateScrambleRequest(payload) {
 
   let length = 25;
   if (Object.hasOwn(body, 'length')) {
-    if (!Number.isInteger(body.length)) {
+    const requestedLength = body.length;
+    if (typeof requestedLength !== 'number' || !Number.isInteger(requestedLength)) {
       details.push({ path: 'length', message: 'length must be an integer.' });
-    } else if (body.length < 1 || body.length > 100) {
+    } else if (requestedLength < 1 || requestedLength > 100) {
       details.push({ path: 'length', message: 'length must be between 1 and 100.' });
     } else {
-      length = body.length;
+      length = requestedLength;
     }
   }
 
-  let seed;
+  let seed: number | undefined;
   if (Object.hasOwn(body, 'seed')) {
-    if (!Number.isInteger(body.seed)) {
+    const requestedSeed = body.seed;
+    if (typeof requestedSeed !== 'number' || !Number.isInteger(requestedSeed)) {
       details.push({ path: 'seed', message: 'seed must be an integer.' });
-    } else if (body.seed < 0 || body.seed > 2147483647) {
+    } else if (requestedSeed < 0 || requestedSeed > 2147483647) {
       details.push({ path: 'seed', message: 'seed must be between 0 and 2147483647.' });
     } else {
-      seed = body.seed;
+      seed = requestedSeed;
     }
   }
 
@@ -140,20 +148,22 @@ export function validateScrambleRequest(payload) {
     ok: true,
     value: {
       length,
-      seed
-    }
+      seed,
+    },
   };
 }
 
-export function validateSolveRequest(payload) {
+export function validateSolveRequest(payload: unknown):
+  | { ok: true; value: { state: CubeState; strategy: string } }
+  | { ok: false; details: ApiErrorDetail[] } {
   if (!isPlainObject(payload)) {
     return {
       ok: false,
-      details: [{ path: 'body', message: 'Request body must be a JSON object.' }]
+      details: [{ path: 'body', message: 'Request body must be a JSON object.' }],
     };
   }
 
-  const details = [];
+  const details: ApiErrorDetail[] = [];
   const unknown = findUnknownKeys(payload, ['state', 'strategy']);
   for (const key of unknown) {
     details.push({ path: key, message: 'Unknown request field.' });
@@ -181,8 +191,8 @@ export function validateSolveRequest(payload) {
   return {
     ok: true,
     value: {
-      state: cloneCubeState(payload.state),
-      strategy
-    }
+      state: cloneCubeState(payload.state as CubeState),
+      strategy,
+    },
   };
 }
