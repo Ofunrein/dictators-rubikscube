@@ -177,18 +177,18 @@ export function applyMove(cubeState, move) {
 
   // M slice — middle column, same direction as L (top to front)
   if (move === 'M') {
-    const temp = [newState.F[1], newState.F[4], newState.F[7]];
-    [newState.F[1], newState.F[4], newState.F[7]] = [newState.U[1], newState.U[4], newState.U[7]];
-    [newState.U[1], newState.U[4], newState.U[7]] = [newState.B[7], newState.B[4], newState.B[1]];
-    [newState.B[7], newState.B[4], newState.B[1]] = [newState.D[1], newState.D[4], newState.D[7]];
+    const temp = [newState.F[7], newState.F[4], newState.F[1]];
+    [newState.F[1], newState.F[4], newState.F[7]] = [newState.U[7], newState.U[4], newState.U[1]];
+    [newState.U[7], newState.U[4], newState.U[1]] = [newState.B[7], newState.B[4], newState.B[1]];
+    [newState.B[7], newState.B[4], newState.B[1]] = [newState.D[7], newState.D[4], newState.D[1]];
     [newState.D[1], newState.D[4], newState.D[7]] = temp;
   }
   // M' — opposite of M
   if (move === "M'") {
-    const temp = [newState.F[1], newState.F[4], newState.F[7]];
-    [newState.F[1], newState.F[4], newState.F[7]] = [newState.D[1], newState.D[4], newState.D[7]];
-    [newState.D[1], newState.D[4], newState.D[7]] = [newState.B[7], newState.B[4], newState.B[1]];
-    [newState.B[7], newState.B[4], newState.B[1]] = [newState.U[1], newState.U[4], newState.U[7]];
+    const temp = [newState.F[7], newState.F[4], newState.F[1]];
+    [newState.F[1], newState.F[4], newState.F[7]] = [newState.D[7], newState.D[4], newState.D[1]];
+    [newState.D[1], newState.D[4], newState.D[7]] = [newState.B[1], newState.B[4], newState.B[7]];
+    [newState.B[1], newState.B[4], newState.B[7]] = [newState.U[1], newState.U[4], newState.U[7]];
     [newState.U[1], newState.U[4], newState.U[7]] = temp;
   }
 
@@ -211,18 +211,18 @@ export function applyMove(cubeState, move) {
 
   // S slice — middle slice, same direction as F (top to right)
   if (move === 'S') {
-    const temp = [newState.U[3], newState.U[4], newState.U[5]];
-    [newState.U[3], newState.U[4], newState.U[5]] = [newState.L[1], newState.L[4], newState.L[7]];
-    [newState.L[1], newState.L[4], newState.L[7]] = [newState.D[5], newState.D[4], newState.D[3]];
-    [newState.D[5], newState.D[4], newState.D[3]] = [newState.R[7], newState.R[4], newState.R[1]];
+    const temp = [newState.U[5], newState.U[4], newState.U[3]];
+    [newState.U[5], newState.U[4], newState.U[3]] = [newState.L[1], newState.L[4], newState.L[7]];
+    [newState.L[1], newState.L[4], newState.L[7]] = [newState.D[3], newState.D[4], newState.D[5]];
+    [newState.D[3], newState.D[4], newState.D[5]] = [newState.R[7], newState.R[4], newState.R[1]];
     [newState.R[7], newState.R[4], newState.R[1]] = temp;
   }
   // S' — opposite of S
   if (move === "S'") {
-    const temp = [newState.U[3], newState.U[4], newState.U[5]];
-    [newState.U[3], newState.U[4], newState.U[5]] = [newState.R[7], newState.R[4], newState.R[1]];
-    [newState.R[7], newState.R[4], newState.R[1]] = [newState.D[5], newState.D[4], newState.D[3]];
-    [newState.D[5], newState.D[4], newState.D[3]] = [newState.L[1], newState.L[4], newState.L[7]];
+    const temp = [newState.U[5], newState.U[4], newState.U[3]];
+    [newState.U[5], newState.U[4], newState.U[3]] = [newState.R[7], newState.R[4], newState.R[1]];
+    [newState.R[7], newState.R[4], newState.R[1]] = [newState.D[3], newState.D[4], newState.D[5]];
+    [newState.D[3], newState.D[4], newState.D[5]] = [newState.L[1], newState.L[4], newState.L[7]];
     [newState.L[1], newState.L[4], newState.L[7]] = temp;
   }
 
