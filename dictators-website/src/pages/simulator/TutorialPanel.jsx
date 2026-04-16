@@ -1,3 +1,16 @@
+/**
+ * TutorialPanel.jsx — Right sidebar with step-by-step solving guide
+ *
+ * Two sections:
+ *   1. Tutorial steps: expandable list of 5 beginner-friendly solving steps
+ *      (Notation, Cross, F2L, OLL, PLL). Click a step to expand its explanation.
+ *   2. Quick Algorithms: pre-built move sequences with an "Apply" button
+ *      that plays them on the cube. Good for learning common patterns.
+ *
+ * The actual step content and algorithm definitions live in simulatorConstants.js
+ * so they're easy to update without touching the UI code.
+ */
+
 import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { QUICK_ALGORITHMS, TUTORIAL_STEPS } from './simulatorConstants';

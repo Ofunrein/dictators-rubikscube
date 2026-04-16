@@ -1,3 +1,24 @@
+/**
+ * [...path].js — Vercel serverless API handler (catches all /api/v1/* routes)
+ *
+ * This is the production API that runs on Vercel. Every request to /api/v1/...
+ * gets routed here. The square brackets in the filename are Vercel's way of
+ * saying "match any path after /api/v1/".
+ *
+ * Routes:
+ *   GET  /health              → simple "am I alive?" check
+ *   GET  /cube/state/solved   → returns the solved cube state
+ *   POST /cube/moves/apply    → apply a single move to a given state
+ *   POST /cube/scramble       → generate a random scramble sequence
+ *   POST /cube/solve          → solve the cube using Eric's WASM C++ solver
+ *
+ * The solve endpoint tries two paths:
+ *   1. First: get a replayable move list from the solver (so the frontend can animate it)
+ *   2. Fallback: get the solved state directly (frontend snaps to it instantly)
+ *
+ * Imports cube logic from backend/api/src/ (shared with the local dev server).
+ */
+
 import { createSolvedState, FACE_ORDER } from '../../../backend/api/src/cube.js';
 import {
   validateMoveApplyRequest,

@@ -1,3 +1,18 @@
+/**
+ * SimulatorControls.jsx — Left sidebar panel with all the action buttons and controls
+ *
+ * This is a "dumb" component — it doesn't manage any state itself. It just receives
+ * props from SimulatorPage and renders buttons that call the callbacks it was given.
+ *
+ * Sections (top to bottom):
+ *   1. Action buttons: Scramble, Solve, Reset (disabled when a move is animating)
+ *   2. Scramble display: shows the current scramble sequence if one exists
+ *   3. Move buttons: grid of face turn and slice move buttons (U, U', D, D', etc.)
+ *   4. Keyboard shortcuts: reference card showing which keys map to which moves
+ *   5. Best time: shows the fastest solve time (only appears after at least one solve)
+ *   6. Move history: scrollable list of the last 50 moves applied
+ */
+
 import { Check, RotateCcw, Shuffle } from 'lucide-react';
 import { KEY_MAP, MOVE_GROUPS, formatTime } from './simulatorConstants';
 

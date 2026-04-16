@@ -1,5 +1,26 @@
+/**
+ * simulatorConstants.js
+ *
+ * Shared constants and small helpers used across the simulator UI.
+ *
+ * What lives here:
+ *   - TOKEN_HEX        Color codes that turn sticker letters (W, R, G ...) into hex colors.
+ *   - FACE_ORDER        The standard order we list the six cube faces everywhere.
+ *   - MOVE_GROUPS       Button layout for the move panel (grouped by face / slice).
+ *   - KEY_MAP           Maps keyboard keys to cube moves (e.g. press 'r' → R move).
+ *   - TUTORIAL_STEPS    Text content for the step-by-step solving guide on the right panel.
+ *   - QUICK_ALGORITHMS  Pre-built move sequences the user can apply with one click.
+ *   - generateScramble  Creates a random sequence of 20 moves to scramble the cube.
+ *   - formatTime        Turns a millisecond count into a human-readable mm:ss.cc string.
+ *
+ * This file contains NO cube logic — it is purely data and formatting.
+ */
+
 import { MOVES } from '../../cube/moves';
 
+// Scrambles only use face turns (U/D/R/L/F/B and their primes).
+// Slice moves (M/E/S) and whole-cube rotations (x/y/z) are excluded so
+// the generated scramble stays compatible with Eric's C++ solver on the backend.
 const SCRAMBLE_MOVES = MOVES.filter((move) => !/^[MESxyz]/.test(move));
 
 export const TOKEN_HEX = {

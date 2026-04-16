@@ -1,3 +1,28 @@
+/**
+ * useCubeControls.js — React hook for keyboard and mouse cube interaction
+ *
+ * This hook gives the user two ways to make moves:
+ *
+ *   1. KEYBOARD SHORTCUT MOVES (e.g. press 'r' for R, 'R' for R')
+ *      The KEY_MAP in simulatorConstants.js maps lowercase/uppercase letters to moves.
+ *      When a mapped key is pressed, the move fires immediately.
+ *
+ *   2. MOUSE + ARROW KEY MOVES (click a sticker, then press an arrow key)
+ *      The user clicks a sticker on the 3D cube to select it (it highlights pink).
+ *      Then they press an arrow key to choose the direction of the turn.
+ *      getStickerMove() figures out which move corresponds to that face + direction.
+ *      For example: click the front-center sticker → press ArrowUp → triggers L' move
+ *      (because pushing the front face "up" means rotating the left column upward).
+ *
+ * The hook returns:
+ *   - handleStickerSelect(info)   → call this when a sticker is clicked on the 3D cube
+ *   - selectedSticker             → which sticker is currently highlighted (or null)
+ *   - clearSelectedSticker()      → deselect (used when scramble/solve starts)
+ *
+ * When manualInputLocked is true (an animation is playing), all input is ignored
+ * so the user can't queue moves while the cube is mid-turn.
+ */
+
 import { useCallback, useEffect, useState } from 'react';
 import { KEY_MAP } from './simulatorConstants';
 
