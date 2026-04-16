@@ -1,3 +1,16 @@
+/**
+ * App.jsx — Root component of the website
+ *
+ * This is the entry point React renders. It assembles the landing page by
+ * stacking the section components in order: Navbar, Hero, Features, Philosophy,
+ * Protocol, Team, CTA, Footer.
+ *
+ * The Simulator page is NOT here — it lives at /simulator and is loaded via
+ * React Router (see main.jsx). This file is just the landing/marketing page.
+ *
+ * Uses GSAP + ScrollTrigger for scroll-based animations on the landing page.
+ */
+
 import React, { useEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';

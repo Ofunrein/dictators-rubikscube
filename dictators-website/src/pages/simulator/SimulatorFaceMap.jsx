@@ -1,3 +1,13 @@
+/**
+ * SimulatorFaceMap.jsx — 2D flattened view of all 6 cube faces
+ *
+ * Shows a grid of colored squares below the 3D cube so the user can see
+ * the state of faces that might be hidden by the camera angle.
+ * Each face is a 3x3 grid of sticker colors, labeled U/R/F/D/L/B.
+ *
+ * This component just reads displayState and renders — no logic, no state.
+ */
+
 import { FACE_ORDER, TOKEN_HEX } from './simulatorConstants';
 
 function FacePreview({ face, label }) {

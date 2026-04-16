@@ -1,3 +1,23 @@
+/**
+ * api.js — Frontend HTTP client for the Rubik's Cube API
+ *
+ * This is the networking layer. Every time the simulator needs to talk to the
+ * backend (scramble, solve, apply a move), it goes through a function in this file.
+ *
+ * Endpoints this client talks to:
+ *   GET  /api/v1/health              → is the server alive?
+ *   GET  /api/v1/cube/state/solved   → what does a solved cube look like?
+ *   POST /api/v1/cube/moves/apply    → apply one move to a state, return the new state
+ *   POST /api/v1/cube/scramble       → generate a random scramble and return the scrambled state
+ *   POST /api/v1/cube/solve          → send a cube state, get back the solution (moves or solved state)
+ *
+ * In production (Vercel), these routes are handled by api/v1/[...path].js.
+ * In local dev, Vite proxies them to the Node.js dev server on port 5200.
+ *
+ * Error handling: if a request fails, an ApiError is thrown with the status code,
+ * error code, and any validation details from the backend.
+ */
+
 // Production uses the repo-root Vercel route at /api/v1/*.
 // Local dev keeps the frontend on :5300 and the Node API on :5200,
 // with Vite proxying /api/v1/* -> http://localhost:5200/v1/*.

@@ -1,3 +1,26 @@
+/**
+ * validation.js — Request validation for all API endpoints
+ *
+ * Before the API processes any request, it runs through these validators to make
+ * sure the input is well-formed. This prevents crashes from bad data and gives
+ * clear error messages back to the frontend.
+ *
+ * Each validator returns { ok: true, value: ... } on success or
+ * { ok: false, details: [...] } on failure (with specific error messages).
+ *
+ * Validators:
+ *   validateMoveApplyRequest(body)  → checks { state, move } is valid
+ *   validateScrambleRequest(body)   → checks { length?, seed? } is valid
+ *   validateSolveRequest(body)      → checks { state, strategy? } is valid
+ *
+ * What gets validated:
+ *   - state must be an object with exactly 6 faces (U, R, F, D, L, B)
+ *   - each face must have exactly 9 sticker tokens (W, R, G, Y, O, B)
+ *   - move must be a recognized move token from the MOVES list
+ *   - scramble length must be between 1 and 100
+ *   - strategy must be "beginner" or "cfop" (defaults to "beginner")
+ */
+
 import { FACE_ORDER, MOVE_TOKENS, cloneCubeState, isStickerToken, isSupportedMove } from './cube.js';
 
 const FACE_SET = new Set(FACE_ORDER);
