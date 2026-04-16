@@ -21,6 +21,15 @@ function isTypingTarget(target) {
 
 export function useCubeControls({ dispatchManualMove, manualInputLocked }) {
   const [selectedSticker, setSelectedSticker] = useState(null);
+  const clearSelectedSticker = useCallback(() => {
+    setSelectedSticker(null);
+  }, []);
+
+  useEffect(() => {
+    if (manualInputLocked) {
+      clearSelectedSticker();
+    }
+  }, [clearSelectedSticker, manualInputLocked]);
 
   const handleStickerSelect = useCallback((info) => {
     if (manualInputLocked) return;
@@ -72,6 +81,7 @@ export function useCubeControls({ dispatchManualMove, manualInputLocked }) {
   }, [dispatchManualMove, manualInputLocked]);
 
   return {
+    clearSelectedSticker,
     handleStickerSelect,
     selectedSticker,
   };
