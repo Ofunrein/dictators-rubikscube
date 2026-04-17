@@ -169,7 +169,7 @@ classDiagram
 Delivered pieces:
 - `backend/src/cube/solver_bridge.cpp`
   - WASM bridge for Eric's C++ solver
-  - exports `solveCube` and `solveCubeMoves`
+  - exports `solveCube`, `solveCubeMoves`, and `scrambleCube`
 - `api/solver.js`
   - rebuilt Emscripten single-file WASM bundle
 - `backend/api/src/wasmSolver.js`
@@ -178,15 +178,19 @@ Delivered pieces:
   - normalizes the solved output back to canonical frontend orientation
 - `backend/api/src/server.js`
   - `/v1/cube/solve` now calls the real WASM solver
+  - `/v1/cube/scramble` now tries Eric's C++ scramble first and falls back to JS if WASM fails
 - `api/v1/[...path].js`
   - production/Vercel API route also calls the real WASM solver
+  - production scramble route mirrors the same Eric-first / JS-fallback behavior
 - `dictators-website/src/net/api.js`
   - solve response now accepts solver move lists and solved cube state from the backend
+  - scramble endpoint helper is available for frontend/backend integrations
 - `dictators-website/src/pages/simulator/SimulatorPage.jsx`
   - solve button now calls the API
   - standard face-turn states now animate Eric's returned solve sequence
   - falls back to exact inverse-history solving for slice-turn states so the simulator does not hang on `M`, `E`, `S`
   - only snaps to solved state if move-list replay ever fails validation and the backend falls back to solved-state output
+  - the current simulator scramble button still builds a local move sequence so it can animate the exact scramble list on screen
 
 ### 2. Color pop / flashing fix for the 3D cube
 
@@ -222,9 +226,10 @@ Result:
 ### 4. Timer / interaction polish that remains active
 
 The simulator still includes the earlier timer improvements:
-- timer starts on first user move after scramble
-- timer starts from a fresh solved/reset cube on first move
-- best time persists in `localStorage`
+- timer only auto-starts after `Scramble` and the user's first manual move
+- the manual timer button was moved into the left control panel under `Scramble / Solve / Reset`
+- the visible best-time box was removed from the sidebar after teammate feedback
+- the underlying timer hook still keeps a legacy best-time value in `localStorage` for future account/profile work
 
 ### 5. Control panel was simplified after teammate feedback
 
@@ -236,10 +241,15 @@ The simulator action panel now keeps only the primary actions:
 Delivered change:
 - `dictators-website/src/pages/simulator/SimulatorControls.jsx`
   - action area uses a single 3-button row
-  - manual undo is still available by applying inverse moves such as `R'`, `U'`, `F'`, etc. from the move controls or keyboard
+  - timer display/button now lives directly below that row
+  - button spacing/text sizing was tightened so labels do not clip on narrow windows
+- manual undo is still available by applying inverse moves such as `R'`, `U'`, `F'`, etc. from the move controls or keyboard
 - `dictators-website/src/pages/simulator/SimulatorPage.jsx`
   - removed the explicit `Undo` and `Undo All` buttons after teammate review
   - `Solve` remains the dedicated "compute a real solve" path
+  - timer auto-start cheating was blocked by requiring a scramble before the first automatic timer start
+- `dictators-website/src/pages/simulator/SimulatorFaceMap.jsx`
+  - `U` and `D` face previews were flipped to match the current 3D viewing angle more intuitively
 
 Behavior decision:
 - `Solve` means "run Eric's solver from this state" for standard face-turn states
@@ -290,6 +300,7 @@ Eric's C++ backend solver is now the real engine behind the live solve endpoint 
 Current state:
 - `solveCube` is verified and working through WASM
 - `solveCubeMoves` is now also wired into the live API path for standard face-turn states
+- `scrambleCube` is now exported through the WASM bridge and available from both API runtimes
 - the move-list path includes whole-cube rotations such as `x` and `y`, so the simulator now supports animating those rotations too
 - slice-turn simulator states can still wedge the backend solver, so scramble generation stays restricted to standard face turns and slice states still solve from exact inverse history
 
@@ -299,8 +310,9 @@ Because of that, the frontend currently:
 - animates that returned move list live in the simulator
 - uses exact inverse move history for slice-turn states generated inside the simulator
 - keeps the solved-state backend path only as a guarded fallback if move-list replay ever comes back invalid
+- exposes an Eric-backed scramble API route, even though the visible simulator scramble button still uses the local JS move list for predictable playback animation
 
-This means scramble-button states and normal manual face-turn states now go through Eric's algorithm and animate the returned solve sequence instead of snapping directly to solved.
+This means normal manual face-turn states now go through Eric's algorithm and animate the returned solve sequence instead of snapping directly to solved, while the visible scramble button still uses a local JS move list for deterministic playback.
 
 The solve button remains dedicated to actual solving rather than manual history-stepping.
 
@@ -342,7 +354,7 @@ Decision:
 
 Current live solve flow:
 - C++ source lives in `backend/src/cube/`
-- `backend/src/cube/solver_bridge.cpp` exports `solveCube` and `solveCubeMoves`
+- `backend/src/cube/solver_bridge.cpp` exports `solveCube`, `solveCubeMoves`, and `scrambleCube`
 - `api/solver.js` is the generated Emscripten bundle used by Node/serverless code
 - `backend/api/src/wasmSolver.js` is the shared JS adapter used by both local and production API routes
 
@@ -358,6 +370,7 @@ Decision:
 - returned move lists are replay-validated in JS before the API returns them to the frontend
 - `solveCube` remains available as the guarded fallback if replay validation fails
 - slice-heavy simulator states still use exact inverse-history solving locally until the backend is hardened for that move class
+- `scrambleCube` is now available on the backend, but the simulator UI still keeps a local scramble sequence so it can animate the exact scramble moves instead of snapping directly to a scrambled state
 
 ### 4. Keep `SimulatorPage.jsx` as the coordinator
 
@@ -412,7 +425,13 @@ dictators-website/src/pages/simulator/
 ### API verification
 - Fresh root dev session started with:
   - API on `http://localhost:5200`
-  - frontend on `http://localhost:5400`
+  - frontend on `http://localhost:5173`
+- Posted an empty request to:
+  - `POST /v1/cube/scramble`
+- Confirmed `200 OK`
+- Confirmed response included:
+  - scrambled cube state
+  - `scrambler: "eric-cpp-wasm"`
 - Posted a real scrambled cube state to:
   - `POST /v1/cube/solve`
 - Confirmed `200 OK`
