@@ -19,7 +19,7 @@
  */
 
 // Production uses the repo-root Vercel route at /api/v1/*.
-// Local dev keeps the frontend on :5300 and the Node API on :5200,
+// Local dev keeps the frontend on :5173 and the Node API on :5200,
 // with Vite proxying /api/v1/* -> http://localhost:5200/v1/*.
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
 const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
