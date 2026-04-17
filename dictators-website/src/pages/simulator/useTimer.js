@@ -7,20 +7,20 @@
  *
  * What this hook does:
  *   1. Keeps a running clock that updates every 10 milliseconds.
- *   2. Tracks the user's best solve time and saves it to localStorage
- *      (the browser's built-in storage that survives page refreshes).
+ *   2. Supports the simulator's manual Start/Stop timer button in the left panel.
  *   3. Automatically stops the timer when the cube is solved (isSolved becomes true).
+ *   4. Still keeps a legacy "best time" value in localStorage for future profile/history work,
+ *      even though the Sprint 3 sidebar no longer renders best-time UI.
  *
  * How SimulatorPage uses it:
- *   const { timerMs, timerRunning, startFreshTimer, stopTimer, resetTimer, bestTime, toggleTimer }
+ *   const { timerMs, timerRunning, startFreshTimer, stopTimer, resetTimer, toggleTimer }
  *     = useTimer({ isSolved });
  *
- *   - startFreshTimer()  → resets to 0 and starts counting (called on first user move)
- *   - stopTimer()        → pauses and records best time
+ *   - startFreshTimer()  → resets to 0 and starts counting (called on first move after scramble)
+ *   - stopTimer()        → pauses and optionally records the legacy best-time value
  *   - resetTimer()       → stops and clears to 0:00.00
- *   - toggleTimer()      → manual start/stop via the timer button in the top bar
+ *   - toggleTimer()      → manual start/stop via the timer button in the left panel
  *   - timerMs            → current elapsed time in milliseconds (drives the display)
- *   - bestTime           → lowest recorded solve time (null if no solves yet)
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
