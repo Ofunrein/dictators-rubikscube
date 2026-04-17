@@ -10,8 +10,22 @@
 
 import { FACE_ORDER, TOKEN_HEX } from './simulatorConstants';
 
+// U and D face sticker arrays are stored in standard notation (bird's-eye view),
+// but the 3D cube is tilted by the camera angle. Flipping each row horizontally
+// makes the 2D map match what you actually see on the tilted 3D cube.
+const MIRROR_FACES = new Set(['U', 'D']);
+
+function mirrorRows(stickers) {
+  return [
+    stickers[2], stickers[1], stickers[0],
+    stickers[5], stickers[4], stickers[3],
+    stickers[8], stickers[7], stickers[6],
+  ];
+}
+
 function FacePreview({ face, label }) {
-  const faceColors = face || Array(9).fill('W');
+  const raw = face || Array(9).fill('W');
+  const faceColors = MIRROR_FACES.has(label) ? mirrorRows(raw) : raw;
 
   return (
     <div className="flex flex-col items-center gap-1 min-w-0">

@@ -31,7 +31,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { ArrowLeft, Timer } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { CubeState } from '../../cube/CubeState';
 import { applyMove } from '../../cube/moves';
 import { solveCubeRemote } from '../../net/api';
@@ -45,7 +45,6 @@ import {
 } from './simulatorAnimation';
 import {
   FACE_ORDER,
-  formatTime,
   generateScramble,
 } from './simulatorConstants';
 import { useCubeControls } from './useCubeControls';
@@ -93,7 +92,6 @@ const SimulatorPage = () => {
   );
 
   const {
-    bestTime,
     resetTimer,
     startFreshTimer,
     stopTimer,
@@ -243,17 +241,15 @@ const SimulatorPage = () => {
   const dispatchManualMove = useCallback((move) => {
     if (!move || interactionLocked) return;
 
-    // Auto-start the timer on the first user move when it hasn't been started yet.
-    // This covers: post-scramble first move, and any fresh move from a clean state.
-    const shouldStartTimer = waitingForFirstMoveRef.current || (!timerRunning && timerMs === 0);
-
-    if (shouldStartTimer) {
+    // Timer only auto-starts after a scramble (waitingForFirstMoveRef is set in handleScramble).
+    // Without a scramble, no auto-timer — prevents cheating by doing one move then solving.
+    if (waitingForFirstMoveRef.current) {
       waitingForFirstMoveRef.current = false;
       startFreshTimer();
     }
 
     enqueueMoves([move]);
-  }, [enqueueMoves, interactionLocked, startFreshTimer, timerMs, timerRunning]);
+  }, [enqueueMoves, interactionLocked, startFreshTimer]);
 
   const {
     clearSelectedSticker,
@@ -402,23 +398,13 @@ const SimulatorPage = () => {
           </span>
         </div>
 
-        <button
-          onClick={toggleTimer}
-          className={`flex items-center gap-2 font-mono text-sm font-bold px-4 py-2 rounded-full border transition-all duration-200
-            ${timerRunning
-              ? 'bg-dictator-red/20 border-dictator-red text-dictator-red'
-              : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-red/50 hover:text-white'
-            }`}
-        >
-          <Timer size={14} />
-          {formatTime(timerMs)}
-        </button>
+        {/* Spacer to keep header balanced after timer was moved to left panel */}
+        <div className="w-[100px]" />
       </header>
 
       <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden">
         <SimulatorControls
           activeMove={activeMove}
-          bestTime={bestTime}
           interactionLocked={interactionLocked}
           manualInputLocked={manualInputLocked}
           moveHistory={moveHistory}
@@ -428,6 +414,9 @@ const SimulatorPage = () => {
           onSolve={handleSolve}
           scrambleSeq={scrambleSeq}
           solveDepth={solveDepth}
+          timerMs={timerMs}
+          timerRunning={timerRunning}
+          onToggleTimer={toggleTimer}
         />
 
         <main className="relative flex min-h-[360px] min-w-0 flex-1 flex-col overflow-y-auto bg-dictator-void sm:min-h-[420px] lg:min-h-0">
