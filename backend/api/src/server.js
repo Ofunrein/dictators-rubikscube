@@ -13,7 +13,7 @@
  *   POST /v1/cube/solve          → solve the cube via WASM (Eric's C++ solver)
  *
  * Starts on port 5200 by default (set API_PORT env var to change).
- * The frontend dev server (Vite on port 5300) proxies /api/v1/* requests here.
+ * The frontend dev server (Vite on port 5173) proxies /api/v1/* requests here.
  */
 
 import { createServer } from 'node:http';
