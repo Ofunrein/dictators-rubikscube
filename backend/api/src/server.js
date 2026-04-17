@@ -24,7 +24,7 @@ import {
   validateScrambleRequest,
   validateSolveRequest
 } from './validation.js';
-import { solveCubeMoveListWithWasm, solveCubeStateWithWasm } from './wasmSolver.js';
+import { scrambleCubeWithWasm, solveCubeMoveListWithWasm, solveCubeStateWithWasm } from './wasmSolver.js';
 
 const PORT = Number(process.env.API_PORT ?? 5200);
 const SERVICE_NAME = 'rubiks-api';
@@ -191,11 +191,22 @@ async function handleRequest(req, res) {
       return;
     }
 
-    const { length, seed } = validation.value;
-    const scramble = generateScramble(length, seed);
-    const state = applyMoves(createSolvedState(), scramble);
+    const { length } = validation.value;
 
-    sendJson(res, 200, { scramble, state });
+    // Try Eric's C++ scramble via WASM first — better randomness and anti-cancel logic.
+    // Falls back to the JS scramble if WASM fails.
+    try {
+      const state = await scrambleCubeWithWasm(length);
+      sendJson(res, 200, { scramble: [], state, scrambler: 'eric-cpp-wasm' });
+      return;
+    } catch (wasmError) {
+      console.warn('[scramble] WASM scramble failed, falling back to JS:', wasmError.message);
+    }
+
+    // JS fallback — still works, just less sophisticated randomness
+    const scramble = generateScramble(length);
+    const state = applyMoves(createSolvedState(), scramble);
+    sendJson(res, 200, { scramble, state, scrambler: 'js-fallback' });
     return;
   }
 

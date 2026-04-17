@@ -159,6 +159,27 @@ export async function solveCubeMoveListWithWasm(state) {
   return result.trim() ? result.trim().split(/\s+/) : [];
 }
 
+/**
+ * Scramble using Eric's C++ scramble function via WASM.
+ *
+ * Eric's scramble uses std::mt19937 with true random seeding and prevents
+ * cancelling moves (opposite rotations on same axis/layer back to back).
+ * This produces higher quality scrambles than the pure-JS version.
+ *
+ * @param {number} numMoves - Number of random rotations (default 25).
+ * @returns {Promise<object>} - Scrambled cube state in frontend format { U: [...], R: [...], ... }
+ */
+export async function scrambleCubeWithWasm(numMoves = 25) {
+  const solverModule = await getSolverModule();
+  const result = solverModule.ccall('scrambleCube', 'string', ['number'], [numMoves]);
+
+  if (!result || result === 'ERROR' || result.length !== 54) {
+    throw new Error('WASM scramble returned an invalid state.');
+  }
+
+  return unflattenState(result);
+}
+
 export function cloneSolvedState(state) {
   return cloneCubeState(state);
 }
