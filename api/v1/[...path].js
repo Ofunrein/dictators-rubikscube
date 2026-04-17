@@ -9,12 +9,13 @@
  *   GET  /health              → simple "am I alive?" check
  *   GET  /cube/state/solved   → returns the solved cube state
  *   POST /cube/moves/apply    → apply a single move to a given state
- *   POST /cube/scramble       → generate a random scramble sequence
- *   POST /cube/solve          → solve the cube using Eric's WASM C++ solver
+ *   POST /cube/scramble       → scramble using Eric's C++ WASM (falls back to JS)
+ *   POST /cube/solve          → solve using Eric's C++ WASM solver
  *
- * The solve endpoint tries two paths:
- *   1. First: get a replayable move list from the solver (so the frontend can animate it)
- *   2. Fallback: get the solved state directly (frontend snaps to it instantly)
+ * Both scramble and solve use Eric's compiled C++ code through WebAssembly.
+ * The scramble route falls back to a JS scramble if WASM is unavailable.
+ * The solve route returns an API error if WASM fails so the frontend can
+ * decide whether to use its local inverse-history fallback.
  *
  * Imports cube logic from backend/api/src/ (shared with the local dev server).
  */
@@ -26,7 +27,7 @@ import {
   validateSolveRequest
 } from '../../../backend/api/src/validation.js';
 import { applyMoveToState, applyMoves, generateScramble } from '../../../backend/api/src/cube.js';
-import { solveCubeMoveListWithWasm, solveCubeStateWithWasm } from '../../../backend/api/src/wasmSolver.js';
+import { scrambleCubeWithWasm, solveCubeMoveListWithWasm, solveCubeStateWithWasm } from '../../../backend/api/src/wasmSolver.js';
 
 const SERVICE_NAME = 'rubiks-api';
 const VERSION = '0.1.0';
@@ -101,10 +102,20 @@ export default async function handler(req, res) {
       sendError(res, 400, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
       return;
     }
-    const { length, seed } = validation.value;
-    const scramble = generateScramble(length, seed);
+    const { length } = validation.value;
+
+    // Try Eric's C++ scramble via WASM first — better randomness and anti-cancel logic.
+    try {
+      const state = await scrambleCubeWithWasm(length);
+      sendJson(res, 200, { scramble: [], state, scrambler: 'eric-cpp-wasm' });
+      return;
+    } catch (wasmError) {
+      // Keep production usable even if the WASM module fails to load.
+    }
+
+    const scramble = generateScramble(length);
     const state = applyMoves(createSolvedState(), scramble);
-    sendJson(res, 200, { scramble, state });
+    sendJson(res, 200, { scramble, state, scrambler: 'js-fallback' });
     return;
   }
 
