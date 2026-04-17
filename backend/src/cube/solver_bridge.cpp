@@ -241,4 +241,21 @@ const char* applyMovesToState(const char* input, const char* moves) {
     return writeCubeToFlat(cube);
 }
 
+/**
+ * Scramble a solved cube using Eric's C++ scramble function.
+ *
+ * Eric's scramble uses std::mt19937 with true random seeding (std::random_device)
+ * and prevents cancelling moves (two consecutive opposite rotations on the same
+ * axis and layer). This produces higher quality scrambles than the JS version.
+ *
+ * @param numMoves  Number of random rotations to apply (default 25 if 0 is passed).
+ * @return          54-char flat string of the scrambled state, same format as solveCube.
+ */
+EMSCRIPTEN_KEEPALIVE
+const char* scrambleCube(int numMoves) {
+    PuzzleCube cube(3);
+    CubeOperations::scramble(cube, numMoves > 0 ? numMoves : 25);
+    return writeCubeToFlat(cube);
+}
+
 } // extern "C"
