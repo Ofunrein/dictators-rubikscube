@@ -27,7 +27,7 @@ npm install
 npm run dev
 ```
 
-Opens at `http://localhost:5300`. Navigate to `/simulator` for the cube.
+Opens at `http://localhost:5173`. Navigate to `/simulator` for the cube.
 
 ## Run Frontend + API Together
 
@@ -37,18 +37,18 @@ npm run dev
 ```
 
 Starts:
-- Frontend dev server on `http://localhost:5300`
+- Frontend dev server on `http://localhost:5173`
 - API server on `http://localhost:5200`
 
 Important:
 - `dictators-website/` is the active frontend used by `npm run dev`
 - `frontend/` is an older prototype and is not the live app
 - In local dev, the frontend still calls `/api/v1/*`
-- Vite proxies `/api/v1/*` from `5300` to the local API on `5200`
+- Vite proxies `/api/v1/*` from `5173` to the local API on `5200`
 - Direct local API routes are also available at `http://localhost:5200/v1/*`
 
 Why the API is on `5200`:
-- Vite already uses `5300` for the frontend
+- Vite already uses `5173` for the frontend
 - keeping the API on `5200` avoids a port collision
 - this mirrors a clean split: browser app on one port, API on another, with the frontend proxy hiding that split during development
 
