@@ -9,7 +9,7 @@
  *   GET  /v1/health              → health check
  *   GET  /v1/cube/state/solved   → returns solved cube state
  *   POST /v1/cube/moves/apply    → apply a move to a state
- *   POST /v1/cube/scramble       → generate a scramble
+ *   POST /v1/cube/scramble       → scramble through Eric's C++ WASM bridge, with JS fallback
  *   POST /v1/cube/solve          → solve the cube via WASM (Eric's C++ solver)
  *
  * Starts on port 5200 by default (set API_PORT env var to change).

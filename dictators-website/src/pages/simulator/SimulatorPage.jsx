@@ -8,11 +8,11 @@
  *   - Keeps track of the cube's current sticker arrangement (cubeStateObj / displayState)
  *   - Manages the move queue: when you click a button or press a key, the move goes into
  *     a queue and gets animated one at a time so they don't overlap
- *   - Handles Scramble: generates 20 random moves, resets the cube, queues them up
+ *   - Handles Scramble: generates a local 20-move sequence, resets the cube, and queues it up
+ *     so the UI can animate the exact scramble move list step by step
  *   - Handles Solve: sends the state to Eric's WASM solver via the API, or falls back
  *     to reversing your move history if you used slice moves (M/E/S)
  *   - Handles Reset: clears everything back to a fresh solved cube
- *   - Handles Undo / Undo All: reverses moves from the solveStack
  *   - Connects the timer (useTimer hook) — auto-starts on first move, auto-stops on solve
  *   - Connects keyboard/mouse controls (useCubeControls hook)
  *   - Manages the 3D canvas lifecycle (error boundary, fallback mode, retry)
@@ -24,7 +24,7 @@
  *   waitingForFirstMoveRef — flag set after Scramble, cleared on first user move (starts timer)
  *
  * LAYOUT:
- *   Header (timer button) | Left panel (SimulatorControls) | Center (3D Canvas) | Right panel (TutorialPanel)
+ *   Header | Left panel (actions + timer + history) | Center (3D Canvas) | Right panel (TutorialPanel)
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
