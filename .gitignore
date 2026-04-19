@@ -26,3 +26,4 @@ build/
 backend/build*/
 .idea/
 .vercel
+.env*.local
