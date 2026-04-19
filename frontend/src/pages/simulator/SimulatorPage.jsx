@@ -335,7 +335,7 @@ const SimulatorPage = () => {
                   />
                   <OrbitControls
                     enablePan={false}
-                    enableRotate={!queue.queueActive}
+                    enableRotate
                     minDistance={cameraProfile.minDistance}
                     maxDistance={cameraProfile.maxDistance}
                     autoRotate={false}
