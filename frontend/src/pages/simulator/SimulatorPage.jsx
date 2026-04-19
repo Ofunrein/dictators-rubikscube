@@ -23,7 +23,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Sun, Moon } from 'lucide-react';
 import * as THREE from 'three';
 import { CubeState } from '../../cube/CubeState';
 import {
@@ -45,9 +45,13 @@ import SimulatorControls from './SimulatorControls';
 import TutorialPanel from './TutorialPanel';
 import SimulatorFaceMap from './SimulatorFaceMap';
 import CanvasFallbackPanel from './CanvasFallbackPanel';
+import { useTheme } from './useTheme';
+import { getThemeClasses } from './simulatorTheme';
 
 const SimulatorPage = () => {
   const navigate = useNavigate();
+  const { isDark, toggleTheme } = useTheme();
+  const t = getThemeClasses(isDark);
 
   // Core cube state — owned here, passed to hooks via refs
   const [cubeSize, setCubeSize] = useState(3);
@@ -222,27 +226,47 @@ const SimulatorPage = () => {
   }, [queue]);
 
   return (
-    <div className="min-h-screen bg-dictator-void text-white flex flex-col overflow-x-hidden">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-dictator-chrome/10 bg-dictator-void/90 backdrop-blur-xl sticky top-0 z-50">
+    <div
+      className={`min-h-screen flex flex-col overflow-x-hidden transition-colors duration-300 ${
+        isDark
+          ? 'dark bg-dictator-void text-white'
+          : 'bg-dictator-cream text-dictator-ink'
+      }`}
+      style={{
+        '--sim-panel': isDark ? '#0A0A0A' : '#F0EDE8',
+        '--sim-card': isDark ? '#111111' : '#FFFFFF',
+        '--sim-border': isDark ? 'rgba(176,176,176,0.1)' : '#E5E0D8',
+        '--sim-text': isDark ? '#FFFFFF' : '#2C2A26',
+        '--sim-text-muted': isDark ? 'rgba(255,255,255,0.6)' : 'rgba(44,42,38,0.5)',
+        '--sim-kbd': isDark ? '#1A1A1A' : '#FFFFFF',
+      }}
+    >
+      <header className={`flex items-center justify-between px-6 py-4 border-b ${t.headerBorder} ${t.headerBg} sticky top-0 z-50`}>
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-white hover:text-white transition-colors hover:-translate-x-1 duration-200"
+          className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest ${t.headerText} transition-colors hover:-translate-x-1 duration-200`}
         >
           <ArrowLeft size={14} />
           Back
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded-full bg-[#1A1A1A] border border-dictator-red/40 flex items-center justify-center font-mono text-dictator-red text-[10px] font-bold">
+          <div className={`w-6 h-6 rounded-full ${isDark ? 'bg-[#1A1A1A]' : 'bg-white'} border border-dictator-red/40 flex items-center justify-center font-mono text-dictator-red text-[10px] font-bold`}>
             TD
           </div>
-          <span className="font-heading text-sm font-bold uppercase tracking-widest hidden sm:block">
+          <span className={`font-heading text-sm font-bold uppercase tracking-widest hidden sm:block ${t.headerText}`}>
             The Dictators — Simulator
           </span>
         </div>
 
-        {/* Spacer to keep header balanced after timer was moved to left panel */}
-        <div className="w-[100px]" />
+        <button
+          onClick={toggleTheme}
+          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${t.border} ${t.headerText} hover:border-dictator-red/40`}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDark ? <Sun size={12} /> : <Moon size={12} />}
+          {isDark ? 'Light' : 'Dark'}
+        </button>
       </header>
 
       <div className="flex flex-1 min-h-0 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -251,6 +275,7 @@ const SimulatorPage = () => {
             activeMove={queue.activeMove}
             cubeSize={cubeSize}
             interactionLocked={actions.interactionLocked}
+            isDark={isDark}
             keyMap={keyMap}
             manualInputLocked={actions.interactionLocked}
             moveHistory={queue.moveHistory}
@@ -268,21 +293,21 @@ const SimulatorPage = () => {
             timerRunning={timer.timerRunning}
           />
 
-          <main className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-dictator-void">
-            <div className="border-b border-dictator-chrome/10 px-4 py-3 sm:px-6 lg:hidden">
+          <main className={`relative flex min-h-0 min-w-0 flex-1 flex-col ${t.pageBg}`}>
+            <div className={`border-b ${t.border} px-4 py-3 sm:px-6 lg:hidden`}>
               <button
                 type="button"
                 onClick={() => setTutorialDrawerOpen((open) => !open)}
                 aria-expanded={tutorialDrawerOpen}
-                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-dictator-chrome/15 bg-[#111111] px-4 py-3 text-left transition-colors hover:border-dictator-red/40 hover:text-dictator-red"
+                className={`flex w-full items-center justify-between gap-3 rounded-2xl border ${t.border} ${t.cardBg} px-4 py-3 text-left transition-colors hover:border-dictator-red/40 hover:text-dictator-red`}
               >
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-white/60">Guide</p>
-                  <p className="font-heading text-sm font-bold text-white">{tutorialLabel}</p>
+                  <p className={`font-mono text-[10px] uppercase tracking-widest ${t.textSecondary}`}>Guide</p>
+                  <p className={`font-heading text-sm font-bold ${t.textPrimary}`}>{tutorialLabel}</p>
                 </div>
                 <ChevronRight
                   size={16}
-                  className={`shrink-0 text-white/70 transition-transform ${tutorialDrawerOpen ? 'rotate-90' : ''}`}
+                  className={`shrink-0 ${t.textSecondary} transition-transform ${tutorialDrawerOpen ? 'rotate-90' : ''}`}
                 />
               </button>
             </div>
@@ -317,9 +342,9 @@ const SimulatorPage = () => {
                     position={cameraProfile.position}
                     fov={cameraProfile.fov}
                   />
-                  <color attach="background" args={['#0D0D0D']} />
-                  <ambientLight intensity={0.5} />
-                  <directionalLight position={[5, 8, 5]} intensity={1} castShadow />
+                  <color attach="background" args={[t.canvasBg]} />
+                  <ambientLight intensity={isDark ? 0.5 : 0.8} />
+                  <directionalLight position={[5, 8, 5]} intensity={isDark ? 1 : 0.7} castShadow />
                   <pointLight position={[-5, -5, -5]} color="#CC1A1A" intensity={0.4} distance={20} />
                   <pointLight position={[5, 5, -5]} color="#1E90FF" intensity={0.2} distance={20} />
 
@@ -359,7 +384,7 @@ const SimulatorPage = () => {
               )}
 
               {queue.queueActive && (
-                <div className="absolute top-4 right-4 bg-black/50 border border-dictator-red/30 rounded-full px-3 py-1.5 flex items-center gap-2 backdrop-blur">
+                <div className={`absolute top-4 right-4 ${t.overlay} border border-dictator-red/30 rounded-full px-3 py-1.5 flex items-center gap-2 backdrop-blur`}>
                   <span className="w-2 h-2 rounded-full bg-dictator-red animate-pulse" />
                   <span className="font-mono text-[10px] uppercase tracking-widest text-dictator-red">
                     {queue.activeMove ? `Turning ${queue.activeMove}` : `${queue.queuedMoveCount} Queued`}
@@ -368,7 +393,7 @@ const SimulatorPage = () => {
               )}
 
               {actions.isSolvingRemote && (
-                <div className="absolute top-4 left-4 bg-black/50 border border-dictator-red/30 rounded-full px-3 py-1.5 flex items-center gap-2 backdrop-blur">
+                <div className={`absolute top-4 left-4 ${t.overlay} border border-dictator-red/30 rounded-full px-3 py-1.5 flex items-center gap-2 backdrop-blur`}>
                   <span className="w-2 h-2 rounded-full bg-dictator-red animate-pulse" />
                   <span className="font-mono text-[10px] uppercase tracking-widest text-dictator-red">
                     {actions.solveStatusLabel}
@@ -376,7 +401,7 @@ const SimulatorPage = () => {
                 </div>
               )}
 
-              <div className="pointer-events-none absolute bottom-3 left-1/2 w-[calc(100%-2rem)] -translate-x-1/2 text-center font-mono text-[11px] uppercase tracking-widest text-white/90 sm:bottom-4">
+              <div className={`pointer-events-none absolute bottom-3 left-1/2 w-[calc(100%-2rem)] -translate-x-1/2 text-center font-mono text-[11px] uppercase tracking-widest ${t.textSecondary} sm:bottom-4`}>
                 {canAnimateMoves
                   ? 'Left-drag stickers to turn · right-drag empty space to orbit · scroll to zoom'
                   : 'Fallback mode · Use controls to apply moves'}
@@ -384,34 +409,35 @@ const SimulatorPage = () => {
             </div>
 
             {useCompactFaceMap ? (
-              <div className="border-t border-dictator-chrome/10">
+              <div className={`border-t ${t.border}`}>
                 <button
                   type="button"
                   onClick={() => setFaceMapOpen((open) => !open)}
                   aria-expanded={faceMapOpen}
-                  className="flex w-full items-center justify-between gap-3 bg-[#0A0A0A] px-4 py-3 text-left transition-colors hover:text-dictator-red"
+                  className={`flex w-full items-center justify-between gap-3 ${t.panelBg} px-4 py-3 text-left transition-colors hover:text-dictator-red`}
                 >
                   <div>
-                    <p className="font-mono text-[10px] uppercase tracking-widest text-white/60">State</p>
-                    <p className="font-heading text-sm font-bold text-white">Face Map</p>
+                    <p className={`font-mono text-[10px] uppercase tracking-widest ${t.textSecondary}`}>State</p>
+                    <p className={`font-heading text-sm font-bold ${t.textPrimary}`}>Face Map</p>
                   </div>
                   <ChevronRight
                     size={16}
-                    className={`shrink-0 text-white/70 transition-transform ${faceMapOpen ? 'rotate-90' : ''}`}
+                    className={`shrink-0 ${t.textSecondary} transition-transform ${faceMapOpen ? 'rotate-90' : ''}`}
                   />
                 </button>
                 {faceMapOpen && (
-                  <SimulatorFaceMap displayState={displayState} compact />
+                  <SimulatorFaceMap displayState={displayState} isDark={isDark} compact />
                 )}
               </div>
             ) : (
-              <SimulatorFaceMap displayState={displayState} />
+              <SimulatorFaceMap displayState={displayState} isDark={isDark} />
             )}
           </main>
         </div>
 
         <TutorialPanel
           cubeSize={cubeSize}
+          isDark={isDark}
           onApplyAlgorithm={handleApplyAlgorithm}
           queueActive={queue.queueActive}
           isDrawer={useTutorialDrawer}

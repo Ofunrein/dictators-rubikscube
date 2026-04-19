@@ -26,6 +26,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -36,6 +37,11 @@ export default {
           smoke: '#F2F0ED',
           charcoal: '#1A1A1A',
           deep: '#8B0000',
+          // Light mode palette (warm cream)
+          cream: '#FAF8F5',
+          linen: '#F0EDE8',
+          sand: '#E5E0D8',
+          ink: '#2C2A26',
         }
       },
       fontFamily: {
