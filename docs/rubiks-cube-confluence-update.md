@@ -1,5 +1,9 @@
 # Rubik's Cube Project Contribution Summary
 
+Note:
+- This page keeps the original contribution history intact.
+- Current repo naming uses `frontend/` for the active app and `frontend-legacy/` for the archived prototype.
+
 
 
 ## Primary Contributions

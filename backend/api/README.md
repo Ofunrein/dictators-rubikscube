@@ -6,7 +6,7 @@ This folder contains the first API-integration scaffold so frontend can wire aga
 
 These pieces are actively used by the current app:
 
-- `dictators-website/`
+- `frontend/`
   - active frontend the team is using now
 - `backend/api/src/server.js`
   - active local dev API when you run `npm run dev`
@@ -25,7 +25,7 @@ These pieces are actively used by the current app:
 
 - `backend/api/src/mockServer.js`
   - example/mock server only
-- `frontend/`
+- `frontend-legacy/`
   - older prototype, not the app started by root `npm run dev`
 - `backend/build/`
   - generated build artifacts, can be recreated
@@ -36,8 +36,8 @@ These pieces are actively used by the current app:
 
 When the user presses **Solve** in the live simulator, the call chain is:
 
-1. `dictators-website/src/pages/SimulatorPage.jsx`
-2. `dictators-website/src/net/api.js`
+1. `frontend/src/pages/SimulatorPage.jsx`
+2. `frontend/src/net/api.js`
 3. `POST /api/v1/cube/solve`
 4. `backend/api/src/server.js` in local dev, or `api/v1/[...path].js` on Vercel
 5. `backend/api/src/wasmSolver.js`
@@ -86,4 +86,4 @@ API_PORT=5001 npm run serve
 ## Notes
 
 - `openapi.yaml` is stored in JSON-compatible YAML so it can be loaded directly by Node without extra parser dependencies.
-- Move application and scramble state generation reuse the `dicators-website` move logic for contract parity during this scaffold phase.
+- Move application and scramble state generation reuse the active `frontend/` move logic for contract parity during this scaffold phase.

@@ -3,6 +3,8 @@
 **Branch:** `sprint-3-martin`  
 **Scope updated:** April 15, 2026
 
+**Repo naming clarification:** the active web app now lives in `frontend/`. The older prototype was renamed to `frontend-legacy/`. Historical sprint notes may still mention earlier folder names when they are describing work as it existed at that time.
+
 ## Plain-English summary
 
 This sprint connected the website's Rubik's Cube simulator to Eric's real C++ solving code instead of relying only on frontend-only behavior.
@@ -17,6 +19,23 @@ In simple terms:
 Two other important UX changes also shipped:
 - the cube flashing / color popping bug during turns was fixed
 - the simulator action row was simplified back down to the core `Scramble`, `Solve`, and `Reset` buttons after teammate feedback
+
+## April 17 hybrid solver update
+
+The solver path is now size-aware instead of being "3x3 only plus frontend fallbacks."
+
+Current design:
+- 3x3 solving still uses Eric's compiled C++ / WASM solver
+- 2x2 and 4x4 solving now use the vendored Python NxN solver
+- the compiled C++ lane now also creates solved states, applies move lists, and generates scrambles for 2x2, 3x3, and 4x4
+- every returned solve move list is replay-validated through the compiled move engine before the API returns it
+- reverse-history solving is no longer a normal UI path
+
+Public move notation now used across frontend, backend, validation, and replay:
+- `U D L R F B` for outer turns
+- `M E S` for odd-cube middle slices
+- `r l u d f b` for 4x4 inner slices
+- `x y z` for whole-cube rotations
 
 ## What was causing the cube flashing?
 
@@ -67,7 +86,7 @@ Think of the app as four layers:
 ```mermaid
 flowchart LR
     A[User clicks Scramble / Solve / Reset] --> B[SimulatorPage.jsx]
-    B --> C[dictators-website/src/net/api.js]
+    B --> C[frontend/src/net/api.js]
     C --> D[backend/api/src/server.js]
     D --> E[backend/api/src/wasmSolver.js]
     E --> F[api/solver.js<br/>compiled Emscripten bundle]
@@ -169,7 +188,7 @@ classDiagram
 Delivered pieces:
 - `backend/src/cube/solver_bridge.cpp`
   - WASM bridge for Eric's C++ solver
-  - exports `solveCube`, `solveCubeMoves`, and `scrambleCube`
+  - now exports the original 3x3 solve functions plus size-aware solved/apply/scramble helpers
 - `api/solver.js`
   - rebuilt Emscripten single-file WASM bundle
 - `backend/api/src/wasmSolver.js`
@@ -177,33 +196,32 @@ Delivered pieces:
   - flattens frontend cube state to the C++ input format
   - normalizes the solved output back to canonical frontend orientation
 - `backend/api/src/server.js`
-  - `/v1/cube/solve` now calls the real WASM solver
-  - `/v1/cube/scramble` now tries Eric's C++ scramble first and falls back to JS if WASM fails
+  - `/v1/cube/solve` now uses the hybrid path: Eric WASM for 3x3, vendored NxN for 2x2/4x4
+  - `/v1/cube/scramble` now comes from the compiled C++ lane for every supported size
+  - returned solve moves are replay-validated before they are sent back to the frontend
 - `api/v1/[...path].js`
-  - production/Vercel API route also calls the real WASM solver
-  - production scramble route mirrors the same Eric-first / JS-fallback behavior
-- `dictators-website/src/net/api.js`
+  - production/Vercel API route mirrors the same hybrid + replay-validation behavior
+- `frontend/src/net/api.js`
   - solve response now accepts solver move lists and solved cube state from the backend
   - scramble endpoint helper is available for frontend/backend integrations
-- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
+- `frontend/src/pages/simulator/SimulatorPage.jsx`
   - solve button now calls the API
-  - standard face-turn states now animate Eric's returned solve sequence
-  - falls back to exact inverse-history solving for slice-turn states so the simulator does not hang on `M`, `E`, `S`
+  - solve now animates backend-returned move lists only
   - only snaps to solved state if move-list replay ever fails validation and the backend falls back to solved-state output
-  - the current simulator scramble button still builds a local move sequence so it can animate the exact scramble list on screen
+  - scramble now comes from the backend so the UI animates the exact compiled scramble list on screen
 
 ### 2. Color pop / flashing fix for the 3D cube
 
 The live simulator was snapping cubies back onto a static layout after each turn, which caused sticker/color popping during turns, especially slice moves.
 
 Delivered fix:
-- `dictators-website/src/pages/simulator/simulatorAnimation.js`
+- `frontend/src/pages/simulator/simulatorAnimation.js`
   - added slice move animation support for `M`, `E`, `S`
   - added `rotateCubiePosition(...)`
-- `dictators-website/src/pages/simulator/InteractiveCube.jsx`
+- `frontend/src/pages/simulator/InteractiveCube.jsx`
   - `InteractiveCube` now tracks mutable cubie layout state
   - animated cubies are reattached and kept in their rotated positions after each move
-- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
+- `frontend/src/pages/simulator/SimulatorPage.jsx`
   - solved-state resets rebuild layout cleanly
 
 ### 3. Solve playback was slowed slightly for readability
@@ -211,12 +229,12 @@ Delivered fix:
 The solve animation was intentionally made a little slower so users can follow what the solver is doing.
 
 Delivered change:
-- `dictators-website/src/pages/simulator/simulatorAnimation.js`
+- `frontend/src/pages/simulator/simulatorAnimation.js`
   - manual turn duration stays fast at `0.24s`
   - automated solve playback now runs at `0.46s` per move
-- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
+- `frontend/src/pages/simulator/SimulatorPage.jsx`
   - move queue can now carry a per-sequence animation speed
-- `dictators-website/src/pages/simulator/InteractiveCube.jsx`
+- `frontend/src/pages/simulator/InteractiveCube.jsx`
   - animation loop now accepts the requested move duration
 
 Result:
@@ -239,16 +257,16 @@ The simulator action panel now keeps only the primary actions:
 - `Reset`
 
 Delivered change:
-- `dictators-website/src/pages/simulator/SimulatorControls.jsx`
+- `frontend/src/pages/simulator/SimulatorControls.jsx`
   - action area uses a single 3-button row
   - timer display/button now lives directly below that row
   - button spacing/text sizing was tightened so labels do not clip on narrow windows
 - manual undo is still available by applying inverse moves such as `R'`, `U'`, `F'`, etc. from the move controls or keyboard
-- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
+- `frontend/src/pages/simulator/SimulatorPage.jsx`
   - removed the explicit `Undo` and `Undo All` buttons after teammate review
   - `Solve` remains the dedicated "compute a real solve" path
   - timer auto-start cheating was blocked by requiring a scramble before the first automatic timer start
-- `dictators-website/src/pages/simulator/SimulatorFaceMap.jsx`
+- `frontend/src/pages/simulator/SimulatorFaceMap.jsx`
   - `U` and `D` face previews were flipped to match the current 3D viewing angle more intuitively
 
 Behavior decision:
@@ -261,35 +279,35 @@ Behavior decision:
 The simulator feature was split into a dedicated feature folder so the main page is no longer carrying all rendering, timer, controls, tutorial, and animation code in one file.
 
 Delivered refactor:
-- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
+- `frontend/src/pages/simulator/SimulatorPage.jsx`
   - now acts as the feature coordinator only
   - owns page layout, move queue state, solve/reset/scramble handlers, timer wiring, and canvas fallback wiring
-- `dictators-website/src/pages/simulator/InteractiveCube.jsx`
+- `frontend/src/pages/simulator/InteractiveCube.jsx`
   - contains the 3D cube renderer and move animation flow
   - was cleaned up further with small local helpers for layout sync and layer animation
-- `dictators-website/src/pages/simulator/SimulatorControls.jsx`
+- `frontend/src/pages/simulator/SimulatorControls.jsx`
   - left panel controls and move buttons
-- `dictators-website/src/pages/simulator/TutorialPanel.jsx`
+- `frontend/src/pages/simulator/TutorialPanel.jsx`
   - right panel algorithm help / tutorial actions
-- `dictators-website/src/pages/simulator/SimulatorFaceMap.jsx`
+- `frontend/src/pages/simulator/SimulatorFaceMap.jsx`
   - flat face-state readout
-- `dictators-website/src/pages/simulator/CanvasFallbackPanel.jsx`
+- `frontend/src/pages/simulator/CanvasFallbackPanel.jsx`
   - renderer failure fallback panel
-- `dictators-website/src/pages/simulator/useTimer.js`
+- `frontend/src/pages/simulator/useTimer.js`
   - timer and best-time persistence
-- `dictators-website/src/pages/simulator/useCubeControls.js`
+- `frontend/src/pages/simulator/useCubeControls.js`
   - keyboard + sticker-selection controls
-- `dictators-website/src/pages/simulator/simulatorConstants.js`
+- `frontend/src/pages/simulator/simulatorConstants.js`
   - feature constants and helpers
-- `dictators-website/src/pages/simulator/simulatorAnimation.js`
+- `frontend/src/pages/simulator/simulatorAnimation.js`
   - animation helpers and cubie rotation math
-- `dictators-website/src/pages/simulator/simulatorAnimation.test.js`
+- `frontend/src/pages/simulator/simulatorAnimation.test.js`
   - coverage for animation helpers
 - `backend/api/src/wasmSolver.js` and `backend/api/src/server.js`
   - now carry short inline comments around the WASM bridge and solve fallback flow so new teammates can follow the backend path without digging into generated glue code
 
 Folder decision:
-- all simulator-only code now lives under `dictators-website/src/pages/simulator/`
+- all simulator-only code now lives under `frontend/src/pages/simulator/`
 - this keeps simulator logic together and makes ownership clearer for teammates
 - `SimulatorPage.jsx` still exists because the route needs a page-level coordinator, but it is no longer the only simulator file
 
@@ -300,36 +318,33 @@ Eric's C++ backend solver is now the real engine behind the live solve endpoint 
 Current state:
 - `solveCube` is verified and working through WASM
 - `solveCubeMoves` is now also wired into the live API path for standard face-turn states
-- `scrambleCube` is now exported through the WASM bridge and available from both API runtimes
+- the compiled lane now also exports size-aware solved/apply/scramble helpers used by 2x2, 3x3, and 4x4 routes
 - the move-list path includes whole-cube rotations such as `x` and `y`, so the simulator now supports animating those rotations too
-- slice-turn simulator states can still wedge the backend solver, so scramble generation stays restricted to standard face turns and slice states still solve from exact inverse history
+- 4x4 public inner-slice notation is now lowercase `r l u d f b`
 
 Because of that, the frontend currently:
-- sends standard face-turn cube states to the API
-- receives Eric's move list back from the backend when replay validation succeeds
+- sends size-aware cube states to the API
+- receives replay-validated move lists back from the backend when solving succeeds
 - animates that returned move list live in the simulator
-- uses exact inverse move history for slice-turn states generated inside the simulator
 - keeps the solved-state backend path only as a guarded fallback if move-list replay ever comes back invalid
-- exposes an Eric-backed scramble API route, even though the visible simulator scramble button still uses the local JS move list for predictable playback animation
+- uses the backend scramble API route for the visible simulator scramble button too
 
-This means normal manual face-turn states now go through Eric's algorithm and animate the returned solve sequence instead of snapping directly to solved, while the visible scramble button still uses a local JS move list for deterministic playback.
+This means the simulator now uses one shared canonical move surface across manual turns, backend solve replay, and backend scrambles instead of mixing local history tricks into the normal solve path.
 
 The solve button remains dedicated to actual solving rather than manual history-stepping.
 
-## When the app uses Eric's solver vs reverse history
+## When the app uses Eric's solver vs the NxN solver
 
 The current rule is:
 
-- `Solve` on standard face-turn states:
-  - use Eric's C++ solver
-- slice-heavy states involving `M`, `E`, `S`:
-  - still rely on reverse history in some paths because the backend solver can wedge there
+- 3x3:
+  - use Eric's compiled C++ solver
+- 2x2 and 4x4:
+  - use the vendored NxN solver, then replay-check the normalized move list through the compiled engine
 
 That separation is important because:
-- "solve this cube" and
-- "manually reverse what the user just did"
-
-are not the same action.
+- the compiled engine is our source of truth for move application and replay
+- the vendored NxN solver is only trusted after its output survives canonical replay
 
 ## Architecture decisions to keep
 
@@ -367,10 +382,10 @@ Decision:
 
 Decision:
 - `solveCubeMoves` is the preferred live path for standard face-turn states
-- returned move lists are replay-validated in JS before the API returns them to the frontend
+- returned move lists are replay-validated through the compiled move engine before the API returns them to the frontend
 - `solveCube` remains available as the guarded fallback if replay validation fails
-- slice-heavy simulator states still use exact inverse-history solving locally until the backend is hardened for that move class
-- `scrambleCube` is now available on the backend, but the simulator UI still keeps a local scramble sequence so it can animate the exact scramble moves instead of snapping directly to a scrambled state
+- the NxN path follows the same replay-validation rule after move normalization
+- the simulator UI now uses the backend scramble sequence directly instead of generating a separate local scramble
 
 ### 4. Keep `SimulatorPage.jsx` as the coordinator
 
@@ -390,7 +405,7 @@ Decision:
 ## Current simulator file layout
 
 ```text
-dictators-website/src/pages/simulator/
+frontend/src/pages/simulator/
 ├── CanvasFallbackPanel.jsx
 ├── InteractiveCube.jsx
 ├── SimulatorControls.jsx
@@ -419,13 +434,16 @@ dictators-website/src/pages/simulator/
 - Verified JS and C++ state mapping matched for:
   - face turns
   - `M`, `E`, `S` slice turns
-- Reproduced a real backend hang on a slice-containing legal simulator scramble
-- Confirmed the new simulator fallback exactly solves that same scramble by applying the inverse move history
+- Verified JS and vendored NxN state mapping matched for:
+  - 2x2 outer turns
+  - 4x4 outer turns
+  - 4x4 lowercase inner slices
+- Verified 2x2, 3x3, and 4x4 solve move lists replay to solved through the compiled move engine
 
 ### API verification
 - Fresh root dev session started with:
   - API on `http://localhost:5200`
-  - frontend on `http://localhost:5173`
+  - frontend on `http://localhost:5400`
 - Posted an empty request to:
   - `POST /v1/cube/scramble`
 - Confirmed `200 OK`
@@ -451,8 +469,8 @@ dictators-website/src/pages/simulator/
 - This was deployed as a normal branch preview, not as a separate new Vercel project
 
 ### Frontend verification
-- `npm --prefix dictators-website run build` passed
-- `npm --prefix dictators-website run test -- --run src/pages/simulatorAnimation.test.js` passed
+- `npm --prefix frontend run build` passed
+- `npm --prefix frontend run test -- --run src/pages/simulatorAnimation.test.js` passed
 - Verified simulator and backend scramble generators now stay face-turn only
 - Verified whole-cube rotations returned by Eric's solver are accepted by move normalization and animation helpers
 - Verified the simplified `Scramble` / `Solve` / `Reset` action row builds cleanly and keeps the action panel layout consistent
@@ -487,19 +505,19 @@ Result:
 - `backend/src/cube/PuzzleCube.cpp`
 - `backend/src/cube/PuzzleCube.h`
 - `backend/src/cube/solver_bridge.cpp`
-- `dictators-website/src/net/api.js`
-- `dictators-website/src/main.jsx`
-- `dictators-website/src/pages/simulator/CanvasFallbackPanel.jsx`
-- `dictators-website/src/pages/simulator/InteractiveCube.jsx`
-- `dictators-website/src/pages/simulator/SimulatorControls.jsx`
-- `dictators-website/src/pages/simulator/SimulatorFaceMap.jsx`
-- `dictators-website/src/pages/simulator/SimulatorPage.jsx`
-- `dictators-website/src/pages/simulator/TutorialPanel.jsx`
-- `dictators-website/src/pages/simulator/simulatorAnimation.js`
-- `dictators-website/src/pages/simulator/simulatorAnimation.test.js`
-- `dictators-website/src/pages/simulator/simulatorConstants.js`
-- `dictators-website/src/pages/simulator/useCubeControls.js`
-- `dictators-website/src/pages/simulator/useTimer.js`
+- `frontend/src/net/api.js`
+- `frontend/src/main.jsx`
+- `frontend/src/pages/simulator/CanvasFallbackPanel.jsx`
+- `frontend/src/pages/simulator/InteractiveCube.jsx`
+- `frontend/src/pages/simulator/SimulatorControls.jsx`
+- `frontend/src/pages/simulator/SimulatorFaceMap.jsx`
+- `frontend/src/pages/simulator/SimulatorPage.jsx`
+- `frontend/src/pages/simulator/TutorialPanel.jsx`
+- `frontend/src/pages/simulator/simulatorAnimation.js`
+- `frontend/src/pages/simulator/simulatorAnimation.test.js`
+- `frontend/src/pages/simulator/simulatorConstants.js`
+- `frontend/src/pages/simulator/useCubeControls.js`
+- `frontend/src/pages/simulator/useTimer.js`
 
 ## What the folders are doing
 
