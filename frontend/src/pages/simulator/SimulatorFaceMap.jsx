@@ -39,10 +39,10 @@ function FacePreview({ face, label, size, compact = false }) {
   const gap = getGridGap(size, compact);
 
   return (
-    <div className={`flex min-w-0 flex-col items-center rounded-2xl border border-dictator-chrome/10 bg-[#111111] shadow-[0_10px_30px_rgba(0,0,0,0.16)] ${
+    <div className={`flex min-w-0 flex-col items-center rounded-2xl border border-[--sim-border] bg-[--sim-card] shadow-[0_10px_30px_rgba(0,0,0,0.16)] ${
       compact ? 'gap-1.5 px-2.5 py-2.5' : 'gap-2 px-3 py-3.5 sm:px-4 sm:py-4'
     }`}>
-      <span className={`font-mono uppercase tracking-[0.22em] text-white ${
+      <span className={`font-mono uppercase tracking-[0.22em] sim-text ${
         compact ? 'text-[10px]' : 'text-[11px] sm:text-xs'
       }`}>{label}</span>
       <div
@@ -71,10 +71,10 @@ export default function SimulatorFaceMap({ displayState, compact = false }) {
   const cubeSize = getFaceSize(displayState) ?? 3;
 
   return (
-    <div className={`min-w-0 border-t border-dictator-chrome/10 bg-[#0A0A0A] ${
+    <div className={`min-w-0 border-t border-[--sim-border] bg-[--sim-panel] ${
       compact ? 'px-3 py-3' : 'px-4 py-4 sm:px-6 sm:py-5'
     }`}>
-      <p className={`font-mono text-[11px] uppercase tracking-widest text-white ${compact ? 'mb-3' : 'mb-4'}`}>
+      <p className={`font-mono text-[11px] uppercase tracking-widest sim-text ${compact ? 'mb-3' : 'mb-4'}`}>
         Face Map
       </p>
       <div className="min-w-0 overflow-x-auto pb-1">
