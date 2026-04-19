@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "serve": "node src/server.js",
-    "mock": "node src/mockServer.js"
+    "mock": "node src/mockServer.js",
+    "test": "node --test src/**/*.test.js"
   }
 }
