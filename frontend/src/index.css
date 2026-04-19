@@ -35,6 +35,16 @@
 }
 
 @layer utilities {
+  /* Simulator theme — these use CSS custom properties set by SimulatorPage.
+     Components inside the simulator can use these classes without needing
+     an isDark prop. The variables are set on the page root div. */
+  .sim-panel-bg { background-color: var(--sim-panel); }
+  .sim-card-bg { background-color: var(--sim-card); }
+  .sim-border { border-color: var(--sim-border); }
+  .sim-text { color: var(--sim-text); }
+  .sim-text-muted { color: var(--sim-text-muted); }
+  .sim-kbd-bg { background-color: var(--sim-kbd); }
+
   .noise-overlay {
     position: fixed;
     top: 0;
