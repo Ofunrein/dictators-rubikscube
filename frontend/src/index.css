@@ -1,0 +1,159 @@
+/*
+ * Global Stylesheet — the main CSS file for the whole app.
+ *
+ * The @tailwind directives below load Tailwind's CSS system in three layers:
+ *   - base: resets and default element styles
+ *   - components: reusable component classes
+ *   - utilities: all the utility classes like "bg-red-500", "flex", "p-4", etc.
+ *
+ * Below those we define our own custom styles:
+ *   - noise-overlay: a subtle grain/noise texture layered over the whole page
+ *   - btn-magnetic: a hover effect where a red fill slides in from the left
+ *   - focus-ring: an accessibility outline so keyboard users can see what's focused
+ *   - binaryRain: falling 0s and 1s animation (Matrix-style background effect)
+ *   - scanline: a red horizontal line that slowly sweeps down the screen
+ *   - cursor-blink: a blinking cursor for the typewriter text effect
+ *   - status-pulse: a pulsing glow ring around the "live" status dot
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#F2F0ED] text-[#1A1A1A] font-body;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading tracking-tight;
+  }
+}
+
+@layer utilities {
+  .noise-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.05;
+    background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)"/></svg>');
+  }
+
+  /* Magnetic Button Hover State */
+  .btn-magnetic {
+    @apply relative overflow-hidden transition-transform duration-500 hover:scale-[1.03] hover:-translate-y-[1px];
+    transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .btn-magnetic::before {
+    content: '';
+    @apply absolute inset-0 bg-[#CC1A1A] translate-x-[-100%] transition-transform duration-300 ease-out z-0;
+  }
+
+  .btn-magnetic:hover::before {
+    @apply translate-x-0;
+  }
+
+  .btn-magnetic>* {
+    @apply relative z-10;
+  }
+
+  /* Focus Ring */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-[#CC1A1A] focus:ring-offset-2 focus:ring-offset-[#0D0D0D];
+  }
+}
+
+/* Binary Rain Animation */
+@keyframes binaryRain {
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+.binary-column {
+  position: absolute;
+  top: -100%;
+  color: #B0B0B0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 14px;
+  line-height: 1;
+  white-space: pre;
+  opacity: 0.03;
+  animation: binaryRain linear infinite;
+}
+
+/* Red Scanline Animation */
+@keyframes scanline {
+  0% {
+    transform: translateY(-100px);
+  }
+
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+.scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #CC1A1A;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: 0 0 4px #CC1A1A;
+  animation: scanline 10s linear infinite;
+}
+
+/* Typewriter Cursor Blink */
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* Status Dot Pulse */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    box-shadow: 0 0 0 0 rgba(204, 26, 26, 0.7);
+  }
+
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(204, 26, 26, 0);
+  }
+
+  100% {
+    transform: scale(0.8);
+    box-shadow: 0 0 0 0 rgba(204, 26, 26, 0);
+  }
+}
+
+.status-pulse {
+  animation: pulse-ring 2s infinite;
+}

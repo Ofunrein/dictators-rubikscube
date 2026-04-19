@@ -1,3 +1,13 @@
+/*
+ * Frontend-Only Dev Script — starts just the Vite dev server.
+ *
+ * Unlike the full "npm run dev" which starts both frontend and backend,
+ * this only launches the frontend on port 5400. Useful if you're just
+ * working on the landing page and don't need the cube-solving API running.
+ *
+ * Includes a Windows compatibility fallback — if the normal npm spawn
+ * fails on Windows, it retries using a shell-based approach.
+ */
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -7,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const isWindows = process.platform === 'win32';
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const frontendCandidates = ['dictators-website', 'dicators-website'];
+const frontendCandidates = ['frontend'];
 
 const frontendDir =
   frontendCandidates.find(
@@ -20,7 +30,7 @@ const frontendDir =
 if (!frontendDir) {
   // eslint-disable-next-line no-console
   console.error(
-    'Could not find frontend app folder. Expected one of: dictators-website/, dicators-website/.'
+    'Could not find frontend app folder. Expected: frontend/.'
   );
   process.exit(1);
 }
