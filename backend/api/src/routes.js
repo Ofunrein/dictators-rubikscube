@@ -18,6 +18,7 @@
 import {
   applyMoveToState,
   createSolvedState,
+  generateScramble,
   normalizeCubeSize,
 } from './cube.js';
 import { isSolvedState, replayValidatedMovesOrThrow } from './solvers/solvePipeline.js';
@@ -104,6 +105,23 @@ async function handleScrambleRoute(body, ctx) {
   const { size, length, seed } = validation.value;
 
   try {
+    // 4x4: WASM only knows outer face moves, so get WASM scramble then
+    // interleave inner layer moves (u r f d l b) into the sequence.
+    if (size === 4) {
+      const wasmPayload = await generateScrambleWithWasm({ size, numMoves: length, seed });
+      const innerMoves = ['u', "u'", 'u2', 'r', "r'", 'r2', 'f', "f'", 'f2', 'd', "d'", 'd2', 'l', "l'", 'l2', 'b', "b'", 'b2'];
+      const rng = seed !== undefined ? (() => { let s = seed; return () => { s = (1664525 * s + 1013904223) >>> 0; return s / 4294967296; }; })() : Math.random;
+      const numInner = Math.round(length * 0.4);
+      const combined = [...wasmPayload.scramble];
+      for (let i = 0; i < numInner; i++) {
+        const pos = Math.floor(rng() * (combined.length + 1));
+        combined.splice(pos, 0, innerMoves[Math.floor(rng() * innerMoves.length)]);
+      }
+      const finalState = combined.reduce((st, mv) => applyMoveToState(st, mv), createSolvedState(size));
+      ctx.sendJson(200, { size, scramble: combined, state: finalState, scrambler: 'wasm+inner' });
+      return;
+    }
+
     const payload = await generateScrambleWithWasm({ size, numMoves: length, seed });
     ctx.sendJson(200, payload);
   } catch (error) {
