@@ -15,13 +15,13 @@ import { normalizeFaceStickers, orientFaceForMap } from './simulatorFaceMapUtils
 function getCellStyle(size, compact) {
   if (compact) {
     return size >= 4
-      ? { width: 'clamp(0.8rem, 3vw, 0.95rem)', height: 'clamp(0.8rem, 3vw, 0.95rem)' }
-      : { width: 'clamp(0.95rem, 4vw, 1.15rem)', height: 'clamp(0.95rem, 4vw, 1.15rem)' };
+      ? { width: 'clamp(0.7rem, 2.5vw, 0.85rem)', height: 'clamp(0.7rem, 2.5vw, 0.85rem)' }
+      : { width: 'clamp(0.85rem, 3.5vw, 1rem)', height: 'clamp(0.85rem, 3.5vw, 1rem)' };
   }
 
   return size >= 4
-    ? { width: 'clamp(0.95rem, 1vw + 0.5rem, 1.25rem)', height: 'clamp(0.95rem, 1vw + 0.5rem, 1.25rem)' }
-    : { width: 'clamp(1.1rem, 1.2vw + 0.6rem, 1.6rem)', height: 'clamp(1.1rem, 1.2vw + 0.6rem, 1.6rem)' };
+    ? { width: 'clamp(0.85rem, 0.9vw + 0.4rem, 1.1rem)', height: 'clamp(0.85rem, 0.9vw + 0.4rem, 1.1rem)' }
+    : { width: 'clamp(1rem, 1.1vw + 0.5rem, 1.45rem)', height: 'clamp(1rem, 1.1vw + 0.5rem, 1.45rem)' };
 }
 
 function getGridGap(size, compact) {
