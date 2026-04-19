@@ -144,10 +144,10 @@ const SimulatorPage = () => {
   // Keep the camera config stable so OrbitControls is not fighting fresh object instances
   const cameraProfile = useMemo(() => (
     isMobileViewport
-      ? { position: [5.8, 4.8, 7.1], fov: 54, minDistance: 5.5, maxDistance: 13.5 }
+      ? { position: [5.8, 4.8, 7.1], fov: 54, minDistance: 5.5, maxDistance: 22 }
       : isTabletViewport
-        ? { position: [4.8, 4.0, 5.9], fov: 49, minDistance: 4.8, maxDistance: 12.5 }
-        : { position: [4, 3.5, 5], fov: 45, minDistance: 4, maxDistance: 12 }
+        ? { position: [4.8, 4.0, 5.9], fov: 49, minDistance: 4.8, maxDistance: 20 }
+        : { position: [4, 3.5, 5], fov: 45, minDistance: 4, maxDistance: 20 }
   ), [isMobileViewport, isTabletViewport]);
 
   // Track window resize for responsive breakpoints
