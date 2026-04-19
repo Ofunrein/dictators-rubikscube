@@ -1,64 +1,37 @@
 /**
- * Lightweight cube state container with validation helpers.
- * State is stored as face arrays keyed by U, R, F, D, L, B.
+ * CubeState.js — Small wrapper around the shared cube model helpers
+ *
+ * The simulator still likes having a little class with getState()/setState(),
+ * but the real validation and solved-state generation now live in cubeModel.js
+ * so the frontend and backend can both reuse the exact same size-aware rules.
  */
+
+import {
+  cloneCubeState,
+  createSolvedState,
+  normalizeCubeSize,
+  validateCubeState,
+} from './cubeModel.js';
+
 export class CubeState {
   constructor(size = 3) {
-    this.size = size;
-    this.state = CubeState.createSolvedState();
+    this.size = normalizeCubeSize(size);
+    this.state = CubeState.createSolvedState(this.size);
   }
 
-  /**
-   * Create a solved 3x3 cube state using face-color tokens.
-   * @returns {{U: string[], R: string[], F: string[], D: string[], L: string[], B: string[]}}
-   */
-  static createSolvedState() {
-    return {
-      U: Array(9).fill('W'),
-      R: Array(9).fill('R'),
-      F: Array(9).fill('G'),
-      D: Array(9).fill('Y'),
-      L: Array(9).fill('O'),
-      B: Array(9).fill('B')
-    };
+  static createSolvedState(size = 3) {
+    return createSolvedState(size);
   }
 
-  /**
-   * Replace current state after validation.
-   * @param {object} nextState
-   */
   setState(nextState) {
-    this.state = CubeState.validate(nextState);
+    this.state = CubeState.validate(nextState, this.size);
   }
 
-  /**
-   * Read the current cube state.
-   * @returns {object}
-   */
   getState() {
-    return this.state;
+    return cloneCubeState(this.state);
   }
 
-  /**
-   * Validate and clone a candidate state.
-   * @param {object} candidate
-   * @returns {object}
-   */
-  static validate(candidate) {
-    const faces = ['U', 'R', 'F', 'D', 'L', 'B'];
-    if (!candidate || typeof candidate !== 'object') {
-      throw new Error('Cube state must be an object with U, R, F, D, L, B faces.');
-    }
-
-    for (const face of faces) {
-      if (!Array.isArray(candidate[face]) || candidate[face].length !== 9) {
-        throw new Error(`Cube face ${face} must contain 9 stickers.`);
-      }
-    }
-
-    return faces.reduce((acc, face) => {
-      acc[face] = [...candidate[face]];
-      return acc;
-    }, {});
+  static validate(candidate, expectedSize) {
+    return validateCubeState(candidate, expectedSize);
   }
 }

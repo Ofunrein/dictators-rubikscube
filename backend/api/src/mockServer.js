@@ -1,3 +1,13 @@
+/**
+ * mockServer.js — Spec-driven mock API for testing without a real solver
+ *
+ * This is a fake version of the API that reads the OpenAPI spec file (openapi.yaml)
+ * and returns dummy responses. It's useful when you want to test the frontend
+ * without needing the real C++ solver or Python solver to be set up.
+ *
+ * Runs on port 4010 (different from the real API on 5200).
+ * Start it with: npm run mock
+ */
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';

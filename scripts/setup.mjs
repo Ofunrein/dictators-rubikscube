@@ -1,3 +1,13 @@
+/*
+ * Setup Script — installs all project dependencies.
+ *
+ * Run this once after cloning the repo:
+ *   npm run setup
+ *
+ * It runs "npm install" in both the backend/api and frontend
+ * directories so all the packages each part needs get downloaded.
+ * After setup is done, you can start developing with "npm run dev".
+ */
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -7,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const isWindows = process.platform === 'win32';
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const frontendCandidates = ['dictators-website', 'dicators-website'];
+const frontendCandidates = ['frontend'];
 
 function resolveFrontendDir() {
   for (const dir of frontendCandidates) {
@@ -84,7 +94,7 @@ async function main() {
   if (!frontendDir) {
     // eslint-disable-next-line no-console
     console.error(
-      'Could not find frontend app folder. Expected one of: dictators-website/, dicators-website/.'
+      'Could not find frontend app folder. Expected: frontend/.'
     );
     process.exit(1);
   }
