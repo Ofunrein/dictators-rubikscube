@@ -1,3 +1,16 @@
+/*
+ * Dev Runner Script — starts both servers with one command.
+ *
+ * When you run "npm run dev" from the repo root, this script launches:
+ *   1. The frontend Vite dev server on port 5400 (serves the React app)
+ *   2. The backend API server on port 5200 (handles cube solving requests)
+ *
+ * Both run at the same time so you can develop the full app locally.
+ * When you press Ctrl+C, it gracefully shuts down both processes.
+ *
+ * The first ~165 lines below are a commented-out older version of this
+ * script that's kept around for reference. The active code starts after.
+ */
 // import { spawn } from 'node:child_process';
 // import { existsSync } from 'node:fs';
 // import { dirname, resolve } from 'node:path';
@@ -7,7 +20,7 @@
 // const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // const isWindows = process.platform === 'win32';
 // const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-// const frontendCandidates = ['dictators-website', 'dicators-website'];
+// const frontendCandidates = ['frontend'];
 //
 // function resolveFrontendDir() {
 //   for (const dir of frontendCandidates) {
@@ -53,7 +66,7 @@
 // if (!frontendDir) {
 //   // eslint-disable-next-line no-console
 //   console.error(
-//     'Could not find frontend app folder. Expected one of: dictators-website/, dicators-website/.'
+//     'Could not find frontend app folder. Expected: frontend/.'
 //   );
 //   process.exit(1);
 // }
@@ -169,7 +182,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const frontendCandidates = ['dictators-website', 'dicators-website'];
+const frontendCandidates = ['frontend'];
 function resolveFrontendDir() {
     for (const dir of frontendCandidates) {
         if (
@@ -201,7 +214,7 @@ const frontendDir = resolveFrontendDir();
 if (!frontendDir) {
     // eslint-disable-next-line no-console
     console.error(
-        'Could not find frontend app folder. Expected one of: dictators-website/, dicators-website/.'
+        'Could not find frontend app folder. Expected: frontend/.'
     );
     process.exit(1);
 }
@@ -228,7 +241,7 @@ console.log(`Starting active frontend "${frontendDir}" on :5400 and local API on
 // eslint-disable-next-line no-console
 console.log('Local dev routing: browser -> http://localhost:5400, API proxy -> /api/v1/*, direct API -> http://localhost:5200/v1/*');
 // eslint-disable-next-line no-console
-console.log('Repo note: dictators-website/ is the active frontend. frontend/ is an older prototype and is not used by npm run dev.');
+console.log('Repo note: frontend/ is the active frontend. frontend-legacy/ is an older prototype and is not used by npm run dev.');
 const children = services.map(startService);
 let shuttingDown = false;
 function shutdown(signal = 'SIGTERM') {
