@@ -142,7 +142,10 @@ export function getSupportedMoveTokens(size = 3) {
 
 export function getScrambleMoveTokens(size = 3) {
   const normalizedSize = normalizeCubeSize(size);
-  return getSupportedMoves(normalizedSize).filter((move) => /^[URFDLB](2|')?$/.test(move));
+  const pattern = normalizedSize === 4
+    ? /^[URFDLBurfdlb](2|')?$/
+    : /^[URFDLB](2|')?$/;
+  return getSupportedMoves(normalizedSize).filter((move) => pattern.test(move));
 }
 
 export function getDefaultScrambleLength(size = 3) {
@@ -178,7 +181,7 @@ export function applyMoves(initialState, moves) {
 }
 
 export function getMoveFace(move) {
-  return move.replace(/['2]/g, '');
+  return move.replace(/['2]/g, '').toUpperCase();
 }
 
 export function generateScramble(length = 25, seed, size = 3) {
