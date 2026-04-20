@@ -13,7 +13,14 @@
  * This adapter bridges that gap so all the real logic stays in routes.js.
  */
 
-import { ROUTES } from '../../../backend/api/src/routes.js';
+let routesPromise = null;
+
+async function getRoutes() {
+  if (!routesPromise) {
+    routesPromise = import('../../backend/api/src/routes.js').then((mod) => mod.ROUTES);
+  }
+  return routesPromise;
+}
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -22,6 +29,7 @@ const CORS_HEADERS = {
 };
 
 export default async function handler(req, res) {
+  const ROUTES = await getRoutes();
   Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
 
   if (req.method === 'OPTIONS') {
