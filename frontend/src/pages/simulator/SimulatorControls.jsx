@@ -2,8 +2,8 @@
  * SimulatorControls.jsx — Left sidebar panel with all the action buttons and controls
  */
 
-import { Check, Play, RotateCcw, Shuffle, Square, Timer } from 'lucide-react';
-import { CUBE_SIZE_OPTIONS, formatTime } from './simulatorConstants';
+import { Check, Play, RotateCcw, Shuffle, Square } from 'lucide-react';
+import { CUBE_SIZE_OPTIONS } from './simulatorConstants';
 import { getThemeClasses } from './simulatorTheme';
 
 export default function SimulatorControls({
@@ -11,6 +11,7 @@ export default function SimulatorControls({
   cubeSize,
   interactionLocked,
   isDark = true,
+  isTimedSolveSession = false,
   keyMap,
   manualInputLocked,
   moveHistory,
@@ -21,6 +22,7 @@ export default function SimulatorControls({
   onSolve,
   onSizeChange,
   onTimerAction,
+  onTimerReset,
   scrambleMoveCount = 0,
   scrambleSeq,
   solveDepth,
@@ -30,14 +32,8 @@ export default function SimulatorControls({
 }) {
   const actionsDisabled = interactionLocked || solveDepth === 0;
   const t = getThemeClasses(isDark);
-  const timerButtonLabel = timerRunning ? 'Stop Timer' : timerPrimed ? 'Cancel Timed Solve' : 'Start Timed Solve';
-  const timerStatusText = timerRunning
-    ? 'Active timed solve. Using Solve cancels the timer instead of keeping the result.'
-    : timerPrimed
-      ? 'Scramble is queued. Timer starts on your first move.'
-      : 'Starts from a fresh scramble so every solve uses the same flow.';
 
-  const isTimedSolve = timerPrimed || timerRunning;
+  const isTimedSolve = isTimedSolveSession || timerPrimed || timerRunning;
   const hiddenMoves = /^[xyXY]'?$/;
   const visibleMoves = (isTimedSolve
     ? moveHistory.slice(scrambleMoveCount)
@@ -114,62 +110,62 @@ export default function SimulatorControls({
         </div>
       </div>
 
-      {/* Timer — compact row on mobile, original card on desktop */}
+      {/* Timer — stopwatch card */}
       <div className="border-b border-[--sim-border] p-2 sm:p-3 md:p-4">
-        {/* Mobile */}
-        <div className="md:hidden flex items-center justify-between gap-2 rounded-lg border border-[--sim-border] bg-[--sim-card] px-2 py-1.5">
-          <p className={`font-mono text-lg font-extrabold tracking-tight tabular-nums ${timerRunning ? 'text-dictator-red' : timerPrimed ? 'text-[#5B5FC7]' : 'sim-text'}`}>
-            {timerPrimed ? 'READY' : formatTime(timerMs)}
-          </p>
-          <button
-            onClick={onTimerAction}
-            disabled={interactionLocked}
-            className={`flex items-center gap-1 rounded-full px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-wide transition-all shrink-0
-              ${interactionLocked
-                ? 'bg-[--sim-kbd] border border-[--sim-border] sim-text/30 cursor-not-allowed'
-                : timerRunning || timerPrimed
-                  ? 'bg-dictator-red/20 border border-dictator-red text-dictator-red'
-                  : 'bg-[--sim-kbd] border border-dictator-chrome/20 sim-text hover:border-dictator-red/50'
-              }`}
-          >
-            <Timer size={10} className="shrink-0" />
-            {timerRunning ? 'Stop' : timerPrimed ? 'Cancel' : 'Start'}
-          </button>
-        </div>
+        <div className="rounded-2xl border border-[--sim-border] bg-[--sim-card] p-3 md:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
+          <div className="flex items-baseline justify-center gap-0.5 tabular-nums">
+            {(() => {
+              const minutes = String(Math.floor(timerMs / 60000)).padStart(2, '0');
+              const seconds = String(Math.floor((timerMs % 60000) / 1000)).padStart(2, '0');
+              const centis = String(Math.floor((timerMs % 1000) / 10)).padStart(2, '0');
+              return (
+                <>
+                  <span className={`font-mono text-2xl md:text-4xl font-extrabold tracking-tight ${timerRunning ? 'text-dictator-red' : 'sim-text'}`}>{minutes}</span>
+                  <span className={`font-mono text-xl md:text-3xl font-bold ${timerRunning ? 'text-dictator-red/60' : 'sim-text/50'}`}>:</span>
+                  <span className={`font-mono text-2xl md:text-4xl font-extrabold tracking-tight ${timerRunning ? 'text-dictator-red' : 'sim-text'}`}>{seconds}</span>
+                  <span className={`font-mono text-base md:text-xl font-bold self-end pb-0.5 ${timerRunning ? 'text-dictator-red/60' : 'sim-text/50'}`}>.</span>
+                  <span className={`font-mono text-lg md:text-2xl font-bold self-end pb-px ${timerRunning ? 'text-dictator-red/80' : 'sim-text/70'}`}>{centis}</span>
+                </>
+              );
+            })()}
+          </div>
 
-        {/* Desktop */}
-        <div className="hidden md:block">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="mb-1 font-mono text-[11px] uppercase tracking-widest sim-text/90">Timer</p>
-                <p className={`font-mono text-2xl font-bold ${timerRunning ? 'text-dictator-red' : 'sim-text'}`}>
-                  {formatTime(timerMs)}
-                </p>
-              </div>
-              <button
-                onClick={onTimerAction}
-                disabled={interactionLocked}
-                className={`flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-wider leading-tight transition-all sm:text-[11px]
-                  ${interactionLocked
-                    ? 'bg-[--sim-kbd] border-[--sim-border] sim-text/50 cursor-not-allowed'
-                    : timerRunning || timerPrimed
-                      ? 'bg-dictator-red/20 border-dictator-red text-dictator-red'
-                      : 'bg-[--sim-kbd] border-dictator-chrome/20 sim-text hover:border-dictator-red/50'
-                  }`}
-              >
-                <Timer size={12} className="shrink-0" />
-                <span>{timerButtonLabel}</span>
-              </button>
-            </div>
-            <div>
-              <p className="mb-1 font-mono text-[11px] uppercase tracking-widest sim-text/90">Timed Solve</p>
-              <p className="font-mono text-[11px] leading-relaxed sim-text/95">
-                {timerStatusText}
-              </p>
-            </div>
+          <div className="mt-3 flex items-center justify-center gap-2 md:gap-3">
+            <button
+              onClick={onTimerReset}
+              disabled={interactionLocked || (!timerRunning && timerMs === 0)}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 md:px-4 md:py-2 font-mono text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-all
+                ${interactionLocked || (!timerRunning && timerMs === 0)
+                  ? 'border-[--sim-border] bg-[--sim-kbd] sim-text/30 cursor-not-allowed'
+                  : 'border-[--sim-border] bg-[--sim-kbd] sim-text/70 hover:sim-text hover:border-[--sim-text] active:scale-95'
+                }`}
+            >
+              <RotateCcw size={11} />
+              Reset
+            </button>
+
+            <button
+              onClick={onTimerAction}
+              disabled={interactionLocked}
+              className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 md:px-5 md:py-2 font-mono text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-all
+                ${interactionLocked
+                  ? 'bg-[--sim-kbd] border border-[--sim-border] sim-text/30 cursor-not-allowed'
+                  : timerRunning
+                    ? 'bg-dictator-red text-white hover:bg-[#AA1515] active:scale-95'
+                    : 'bg-[#5B5FC7] text-white hover:bg-[#4A4EB3] active:scale-95'
+                }`}
+            >
+              {timerRunning ? <Square size={10} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
+              {timerRunning ? 'Stop' : 'Start'}
+            </button>
           </div>
         </div>
+
+        {timerPrimed && (
+          <p className="mt-2 text-center font-mono text-[10px] uppercase tracking-widest sim-text/60">
+            Timer starts on your first move
+          </p>
+        )}
       </div>
 
       {/* Move buttons */}
