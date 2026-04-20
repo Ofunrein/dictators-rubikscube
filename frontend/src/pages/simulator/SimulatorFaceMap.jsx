@@ -55,7 +55,7 @@ function FacePreview({ face, label, size, compact = false }) {
         {faceColors.map((token, index) => (
           <div
             key={`${label}-${index}`}
-            className="rounded-[4px] border border-black/20"
+            className="rounded-[4px] border-2 border-black/50 shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]"
             style={{
               ...cellStyle,
               backgroundColor: TOKEN_HEX[token] ?? '#333',
