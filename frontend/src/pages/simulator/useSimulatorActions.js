@@ -48,6 +48,7 @@ export function useSimulatorActions({
   const [scrambleSeq, setScrambleSeq] = useState([]);
   const [timerPrimed, setTimerPrimed] = useState(false);
   const [scrambleMoveCount, setScrambleMoveCount] = useState(0);
+  const [isTimedSolveSession, setIsTimedSolveSession] = useState(false);
 
   // This ref is set to true after a timed scramble. The first user move
   // after the scramble clears it and starts the timer.
@@ -71,6 +72,7 @@ export function useSimulatorActions({
     waitingForFirstMoveRef.current = false;
     setTimerPrimed(false);
     setScrambleMoveCount(0);
+    setIsTimedSolveSession(false);
   }, []);
 
   const cancelTimedSolve = useCallback(() => {
@@ -124,6 +126,8 @@ export function useSimulatorActions({
       timer.resetTimer();
       waitingForFirstMoveRef.current = armTimer;
       setTimerPrimed(armTimer);
+      setScrambleMoveCount(armTimer ? payload.scramble.length : 0);
+      if (armTimer) setIsTimedSolveSession(true);
 
       enqueueMoves(payload.scramble);
     } catch (error) {
@@ -224,6 +228,7 @@ export function useSimulatorActions({
   }, [bumpLayout, clearPendingAnimation, clearSelectedStickerRef, clearTimedSolveState, cubeSize, cubeStateObjRef, interactionLocked, setCubeSize, setDisplayState, setMoveHistory, setSolveDepth, solveStackRef, timer]);
 
   return {
+    cancelTimedSolve,
     dispatchManualMove,
     handleReset,
     handleScramble,
@@ -233,6 +238,7 @@ export function useSimulatorActions({
     interactionLocked,
     isScramblingRemote,
     isSolvingRemote,
+    isTimedSolveSession,
     scrambleSeq,
     scrambleMoveCount,
     solveStatusLabel,

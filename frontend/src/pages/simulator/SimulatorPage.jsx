@@ -144,7 +144,7 @@ const SimulatorPage = () => {
   const isShortViewport = viewportSize.height < 760;
   const useCompactFaceMap = viewportSize.width < 420;
   const useTutorialDrawer = viewportSize.width < 1024;
-  const tutorialLabel = cubeSize === 3 ? 'Step-by-Step Guide' : `${cubeSize}x${cubeSize} Notes`;
+  const tutorialLabel = `${cubeSize}x${cubeSize} Guide`;
 
   // Keep the camera config stable so OrbitControls is not fighting fresh object instances
   const cameraProfile = useMemo(() => (
@@ -228,7 +228,7 @@ const SimulatorPage = () => {
 
   return (
     <div
-      className={`min-h-screen flex flex-col overflow-x-hidden transition-colors duration-300 ${
+      className={`min-h-screen h-screen flex flex-col overflow-hidden transition-colors duration-300 ${
         isDark
           ? 'dark bg-dictator-void text-white'
           : 'bg-dictator-cream text-dictator-ink'
@@ -270,13 +270,14 @@ const SimulatorPage = () => {
         </button>
       </header>
 
-      <div className="flex flex-1 min-h-0 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
           <SimulatorControls
             activeMove={queue.activeMove}
             cubeSize={cubeSize}
             interactionLocked={actions.interactionLocked}
             isDark={isDark}
+            isTimedSolveSession={actions.isTimedSolveSession}
             keyMap={keyMap}
             manualInputLocked={actions.interactionLocked}
             moveHistory={queue.moveHistory}
@@ -287,6 +288,7 @@ const SimulatorPage = () => {
             onSolve={actions.handleSolve}
             onSizeChange={actions.handleSizeChange}
             onTimerAction={actions.handleTimerAction}
+            onTimerReset={actions.cancelTimedSolve}
             scrambleSeq={actions.scrambleSeq}
             scrambleMoveCount={actions.scrambleMoveCount}
             solveDepth={queue.solveDepth}
@@ -295,7 +297,7 @@ const SimulatorPage = () => {
             timerRunning={timer.timerRunning}
           />
 
-          <main className={`relative flex min-h-0 min-w-0 flex-1 flex-col ${t.pageBg}`}>
+          <main className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${t.pageBg}`}>
             <div className={`border-b ${t.border} px-4 py-3 sm:px-6 lg:hidden`}>
               <button
                 type="button"
