@@ -130,11 +130,69 @@ export const TUTORIAL_STEPS = [
   },
 ];
 
+export const TUTORIAL_STEPS_2X2 = [
+  {
+    title: 'Notation Basics',
+    body: 'Same as 3x3: U (Up), D (Down), R (Right), L (Left), F (Front), B (Back). No edge pieces on a 2x2 — only corners, so every move affects the whole face.',
+  },
+  {
+    title: 'Solve One Face',
+    body: 'Pick a color (usually white). Get all 4 corners of that color on one face. The side colors of those corners must also match each other.',
+  },
+  {
+    title: 'Orient Last Layer (OLL)',
+    body: 'Flip the remaining corners so the top face is one solid color. Use Sune (R U R′ U R U2 R′) repeatedly until all top stickers match.',
+  },
+  {
+    title: 'Permute Last Layer (PLL)',
+    body: 'Swap corners into their correct positions. Use the Y-Perm or T-Perm to cycle three corners until the cube is solved.',
+  },
+];
+
+export const TUTORIAL_STEPS_4X4 = [
+  {
+    title: 'Notation Basics',
+    body: 'Uppercase letters (R, U, F…) turn the outer layer. Lowercase letters (r, u, f…) turn the inner slice next to that face. A prime (′) means counter-clockwise.',
+  },
+  {
+    title: 'Centers',
+    body: 'Group the 4 center pieces of each face into a solid 2x2 block. Use inner-slice moves (r, u, l…) to pair centers without breaking ones already built.',
+  },
+  {
+    title: 'Edge Pairing',
+    body: 'Pair the split edge pieces into full edges using the "slice-flip-slice" technique. Hold a matched pair in FR, do a U move, slice, then undo.',
+  },
+  {
+    title: 'Reduce to 3x3',
+    body: 'Once all centers are grouped and edges are paired, solve it like a 3x3 — Cross, F2L, OLL, PLL. Treat paired edges as single edges.',
+  },
+  {
+    title: 'Parity Fixes',
+    body: 'Two extra cases appear on 4x4: OLL Parity (one flipped edge) and PLL Parity (two swapped edges). These require dedicated parity algorithms.',
+  },
+];
+
 export const QUICK_ALGORITHMS = [
   { name: 'Sexy Move', moves: ['R', 'U', "R'", "U'"] },
   { name: 'F2L Insert', moves: ['U', 'R', "U'", "R'"] },
   { name: 'OLL (Sune)', moves: ['R', 'U', "R'", 'U', 'R', 'U2', "R'"] },
   { name: 'PLL (U-Perm)', moves: ['R', "U'", 'R', 'U', 'R', 'U', 'R', "U'", "R'", "U'", 'R2'] },
+  { name: 'T-Perm', moves: ['R', 'U', "R'", "U'", "R'", 'F', 'R2', "U'", "R'", "U'", 'R', 'U', "R'", "F'"] },
+];
+
+export const QUICK_ALGORITHMS_2X2 = [
+  { name: 'Sexy Move', moves: ['R', 'U', "R'", "U'"] },
+  { name: 'Sune (OLL)', moves: ['R', 'U', "R'", 'U', 'R', 'U2', "R'"] },
+  { name: 'Anti-Sune', moves: ['R', 'U2', "R'", "U'", 'R', "U'", "R'"] },
+  { name: 'Y-Perm', moves: ['F', 'R', "U'", "R'", "U'", 'R', 'U', "R'", "F'", 'R', 'U', "R'", "U'", "R'", 'F', 'R', "F'"] },
+  { name: 'T-Perm', moves: ['R', 'U', "R'", "U'", "R'", 'F', 'R2', "U'", "R'", "U'", 'R', 'U', "R'", "F'"] },
+];
+
+export const QUICK_ALGORITHMS_4X4 = [
+  { name: 'Sexy Move', moves: ['R', 'U', "R'", "U'"] },
+  { name: 'Sune (OLL)', moves: ['R', 'U', "R'", 'U', 'R', 'U2', "R'"] },
+  { name: 'OLL Parity', moves: ['r', 'U2', 'r', 'U2', "r'", 'U2', 'r', 'U2', "l'", 'U2', 'r', 'U2', "r'", 'U2', 'r', 'U2', 'r'] },
+  { name: 'PLL Parity', moves: ['R2', 'U2', 'R2', 'u2', 'R2', 'u2'] },
   { name: 'T-Perm', moves: ['R', 'U', "R'", "U'", "R'", 'F', 'R2', "U'", "R'", "U'", 'R', 'U', "R'", "F'"] },
 ];
 
