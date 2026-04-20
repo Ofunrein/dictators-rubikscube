@@ -41,15 +41,20 @@ export function useSimulatorActions({
   queueActive,
   bumpLayout,
   scrambleLength,
+  moveHistory,
 }) {
   const [isSolvingRemote, setIsSolvingRemote] = useState(false);
   const [isScramblingRemote, setIsScramblingRemote] = useState(false);
   const [scrambleSeq, setScrambleSeq] = useState([]);
   const [timerPrimed, setTimerPrimed] = useState(false);
+  const [scrambleMoveCount, setScrambleMoveCount] = useState(0);
 
   // This ref is set to true after a timed scramble. The first user move
   // after the scramble clears it and starts the timer.
   const waitingForFirstMoveRef = useRef(false);
+
+  const moveHistoryRef = useRef(moveHistory);
+  moveHistoryRef.current = moveHistory;
 
   const solveStatusLabel = useMemo(() => (
     cubeSize === 3
@@ -65,6 +70,7 @@ export function useSimulatorActions({
   const clearTimedSolveState = useCallback(() => {
     waitingForFirstMoveRef.current = false;
     setTimerPrimed(false);
+    setScrambleMoveCount(0);
   }, []);
 
   const cancelTimedSolve = useCallback(() => {
@@ -87,6 +93,7 @@ export function useSimulatorActions({
     if (waitingForFirstMoveRef.current) {
       waitingForFirstMoveRef.current = false;
       setTimerPrimed(false);
+      setScrambleMoveCount(moveHistoryRef.current.length);
       timer.startFreshTimer();
     }
 
@@ -227,6 +234,7 @@ export function useSimulatorActions({
     isScramblingRemote,
     isSolvingRemote,
     scrambleSeq,
+    scrambleMoveCount,
     solveStatusLabel,
     timerPrimed,
   };

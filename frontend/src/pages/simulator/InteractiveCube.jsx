@@ -255,6 +255,9 @@ function syncCubieTransforms(cubieLayout, cubieRefs) {
 
     cubieGroup.position.set(cubie.x * GAP, cubie.y * GAP, cubie.z * GAP);
     cubieGroup.rotation.set(0, 0, 0);
+    cubieGroup.quaternion.identity();
+    cubieGroup.scale.set(1, 1, 1);
+    cubieGroup.updateMatrix();
   });
 }
 
