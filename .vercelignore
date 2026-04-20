@@ -1,0 +1,16 @@
+node_modules
+frontend/node_modules
+frontend-legacy/node_modules
+backend/api/node_modules
+frontend/dist
+frontend-legacy/dist
+backend/api/dist
+.git
+.DS_Store
+*.log
+*.tmp
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+backend/vendor
