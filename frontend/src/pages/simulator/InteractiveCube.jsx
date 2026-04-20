@@ -58,7 +58,7 @@ const CUBIE_SIZE = 0.95;    // how big each black box is
 const STICKER_SIZE = 0.85;  // how big the colored square on each face is (slightly smaller than the box)
 const GAP = 1.0;            // spacing between cubie centers in the 3D grid
 const EPSILON = 0.02;       // tiny offset so stickers float just above the cubie surface (prevents z-fighting)
-const CUBE_ROTATION = [0.4, -0.6, 0]; // initial camera-friendly tilt so you can see U, F, and R faces
+const CUBE_ROTATION = [0.2, 0.3, 0]; // initial camera-friendly tilt so you can see U, F, and R faces
 
 // Defines the 6 possible sticker faces on a cubie.
 // Each entry maps an axis direction to a cube face name and the rotation needed
