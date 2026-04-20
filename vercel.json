@@ -3,6 +3,7 @@
   "outputDirectory": "frontend/dist",
   "framework": null,
   "rewrites": [
+    { "source": "/api/v1/cube/solve", "destination": "/api/nxn-solve" },
     { "source": "/api/v1/:path*", "destination": "/api/v1/[...path]" }
   ]
 }

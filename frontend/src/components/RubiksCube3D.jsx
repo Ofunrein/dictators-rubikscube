@@ -100,7 +100,7 @@ const HeroCubie = ({ gx, gy, gz }) => {
 const RubiksCube3D = () => {
   const groupRef = useRef();
   const [isDragging, setIsDragging] = useState(false);
-  const baseRotation = useRef({ x: 0.5, y: -0.5 });
+  const baseRotation = useRef({ x: 0.2, y: 0.3 });
 
   // Build 27 cubies
   const cubies = useMemo(() => {
@@ -144,7 +144,7 @@ const RubiksCube3D = () => {
   return (
     <group
       ref={groupRef}
-      rotation={[0.5, -0.5, 0]}
+      rotation={[0.2, 0.3, 0]}
       onPointerDown={() => setIsDragging(true)}
       onPointerUp={() => setIsDragging(false)}
     >

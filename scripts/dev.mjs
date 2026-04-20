@@ -175,23 +175,15 @@
 //     process.exit(0);
 //   });
 // }
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const frontendCandidates = ['frontend'];
+
 function resolveFrontendDir() {
-    for (const dir of frontendCandidates) {
-        if (
-            existsSync(resolve(repoRoot, dir, 'package.json')) &&
-            existsSync(resolve(repoRoot, dir, 'node_modules'))
-        ) {
-            return dir;
-        }
-    }
     for (const dir of frontendCandidates) {
         if (existsSync(resolve(repoRoot, dir, 'package.json'))) {
             return dir;
@@ -199,42 +191,44 @@ function resolveFrontendDir() {
     }
     return null;
 }
-function assertDependencies(frontendDir) {
-    const missing = [];
-    if (!existsSync(resolve(repoRoot, frontendDir, 'node_modules'))) {
-        missing.push(`npm --prefix ${frontendDir} install`);
-    }
-    if (missing.length > 0) {
+
+function npmInstall(cwd, label, extraArgs = []) {
+    return new Promise((res, rej) => {
         // eslint-disable-next-line no-console
-        console.error('Missing dependencies for dev startup. Run:');
-        for (const command of missing) {
-            // eslint-disable-next-line no-console
-            console.error(`  ${command}`);
+        console.log(`Installing dependencies in ${label}...`);
+        const child = spawn('npm', ['install', ...extraArgs], {
+            cwd,
+            env: process.env,
+            stdio: 'inherit',
+            shell: true
+        });
+        child.on('error', rej);
+        child.on('exit', (code) => {
+            if (code === 0) res();
+            else rej(new Error(`npm install failed in ${label} (exit ${code})`));
+        });
+    });
+}
+
+async function ensureDependencies(frontendDir) {
+    const dirs = [
+        { path: resolve(repoRoot, 'backend/api'), label: 'backend/api', args: [] },
+        // --legacy-peer-deps needed because @vitejs/plugin-react peer dep lags behind vite 8
+        { path: resolve(repoRoot, frontendDir), label: frontendDir, args: ['--legacy-peer-deps'] }
+    ];
+    for (const { path, label, args } of dirs) {
+        if (!existsSync(resolve(path, 'node_modules'))) {
+            await npmInstall(path, label, args);
         }
-        // eslint-disable-next-line no-console
-        console.error('Or run: npm run setup');
-        process.exit(1);
     }
 }
-const frontendDir = resolveFrontendDir();
-if (!frontendDir) {
-    // eslint-disable-next-line no-console
-    console.error(
-        'Could not find frontend app folder. Expected: frontend/.'
-    );
-    process.exit(1);
-}
-assertDependencies(frontendDir);
-const services = [
-    { name: 'API', cwd: resolve(repoRoot, 'backend/api'), args: ['run', 'serve'] },
-    { name: 'Frontend', cwd: resolve(repoRoot, frontendDir), args: ['run', 'dev'] }
-];
-function startService({ name, cwd, args }) {
-    const child = spawn(npmCommand, args, {
+
+function startService(name, cwd, args) {
+    const child = spawn('npm', args, {
         cwd,
         env: process.env,
         stdio: 'inherit',
-        shell: process.platform === 'win32'
+        shell: true
     });
     child.on('error', (error) => {
         // eslint-disable-next-line no-console
@@ -242,37 +236,131 @@ function startService({ name, cwd, args }) {
     });
     return child;
 }
-// eslint-disable-next-line no-console
-console.log(`Starting active frontend "${frontendDir}" on :5400 and local API on :5200...`);
-// eslint-disable-next-line no-console
-console.log('Local dev routing: browser -> http://localhost:5400, API proxy -> /api/v1/*, direct API -> http://localhost:5200/v1/*');
-// eslint-disable-next-line no-console
-console.log('Repo note: frontend/ is the active frontend. frontend-legacy/ is an older prototype and is not used by npm run dev.');
-const children = services.map(startService);
-let shuttingDown = false;
-function shutdown(signal = 'SIGTERM') {
-    if (shuttingDown) {
-        return;
+
+function pythonFound() {
+    const isWin = process.platform === 'win32';
+    const candidates = isWin ? ['py', 'python', 'python3'] : ['python3', 'python'];
+    for (const cmd of candidates) {
+        const result = spawnSync(cmd, ['--version'], { stdio: 'pipe', timeout: 5000, shell: isWin });
+        if (result.status === 0) return cmd;
     }
-    shuttingDown = true;
+    return null;
+}
+
+function tryInstallPython() {
+    const isWin = process.platform === 'win32';
+    const isMac = process.platform === 'darwin';
+
+    if (isWin) {
+        // eslint-disable-next-line no-console
+        console.log('Python not found. Attempting auto-install via winget...');
+        const result = spawnSync(
+            'winget',
+            ['install', '-e', '--id', 'Python.Python.3', '--silent',
+             '--accept-package-agreements', '--accept-source-agreements'],
+            { stdio: 'inherit', shell: true, timeout: 120000 }
+        );
+        if (result.status === 0) {
+            // eslint-disable-next-line no-console
+            console.log('\nPython installed. Open a new terminal and run npm run dev again.');
+            // eslint-disable-next-line no-console
+            console.log('Also disable: Settings → Apps → Advanced app settings → App execution aliases → python.exe / python3.exe');
+            process.exit(0);
+        }
+        // eslint-disable-next-line no-console
+        console.warn('winget install failed — see manual instructions below.');
+        return false;
+    }
+
+    if (isMac) {
+        // eslint-disable-next-line no-console
+        console.log('Python not found. Attempting auto-install via Homebrew (brew)...');
+        const result = spawnSync('brew', ['install', 'python3'], { stdio: 'inherit', timeout: 120000 });
+        if (result.status === 0) {
+            // eslint-disable-next-line no-console
+            console.log('\nPython installed. Open a new terminal and run npm run dev again.');
+            process.exit(0);
+        }
+        // eslint-disable-next-line no-console
+        console.warn('brew install failed (Homebrew may not be installed) — see manual instructions below.');
+        return false;
+    }
+
+    return false;
+}
+
+async function ensurePython() {
+    if (pythonFound()) return;
+
+    const isWin = process.platform === 'win32';
+    const isMac = process.platform === 'darwin';
+
+    tryInstallPython();
+
+    // eslint-disable-next-line no-console
+    console.warn([
+        '',
+        'WARNING: Python not found — 2x2 and 4x4 solving will not work until Python is installed.',
+        isWin
+            ? 'Install: https://python.org  (check "Add Python to PATH")  then disable the Store alias:\n         Settings → Apps → Advanced app settings → App execution aliases → off for python.exe + python3.exe'
+            : isMac
+                ? 'Install via Homebrew:  brew install python3\n         Or download from: https://python.org'
+                : 'Install Python 3 via your package manager, e.g.:  sudo apt install python3',
+        'Then restart this terminal and run: npm run dev',
+        '',
+    ].join('\n'));
+}
+
+async function main() {
+    const frontendDir = resolveFrontendDir();
+    if (!frontendDir) {
+        // eslint-disable-next-line no-console
+        console.error('Could not find frontend app folder. Expected: frontend/.');
+        process.exit(1);
+    }
+
+    await ensurePython();
+    await ensureDependencies(frontendDir);
+
+    // eslint-disable-next-line no-console
+    console.log(`Starting active frontend "${frontendDir}" on :5400 and local API on :5200...`);
+    // eslint-disable-next-line no-console
+    console.log('Local dev routing: browser -> http://localhost:5400, API proxy -> /api/v1/*, direct API -> http://localhost:5200/v1/*');
+
+    const services = [
+        { name: 'API', cwd: resolve(repoRoot, 'backend/api'), args: ['run', 'serve'] },
+        { name: 'Frontend', cwd: resolve(repoRoot, frontendDir), args: ['run', 'dev'] }
+    ];
+
+    const children = services.map(({ name, cwd, args }) => startService(name, cwd, args));
+    let shuttingDown = false;
+
+    function shutdown(signal = 'SIGTERM') {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        for (const child of children) {
+            if (!child.killed) child.kill(signal);
+        }
+    }
+
+    for (const signal of ['SIGINT', 'SIGTERM']) {
+        process.on(signal, () => {
+            shutdown(signal);
+            process.exit(0);
+        });
+    }
+
     for (const child of children) {
-        if (!child.killed) {
-            child.kill(signal);
-        }
+        child.on('exit', (code) => {
+            if (shuttingDown) return;
+            shutdown('SIGTERM');
+            process.exit(typeof code === 'number' ? code : 1);
+        });
     }
 }
-for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.on(signal, () => {
-        shutdown(signal);
-        process.exit(0);
-    });
-}
-for (const child of children) {
-    child.on('exit', (code) => {
-        if (shuttingDown) {
-            return;
-        }
-        shutdown('SIGTERM');
-        process.exit(typeof code === 'number' ? code : 1);
-    });
-}
+
+main().catch((error) => {
+    // eslint-disable-next-line no-console
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+});

@@ -33,7 +33,11 @@ const moduleDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(moduleDir, '..', '..', '..', '..');
 const vendorRoot = resolve(repoRoot, 'backend/vendor/rubiks-cube-NxNxN-solver');
 const venvDir = resolve(vendorRoot, '.venv');
-const pythonBin = resolve(venvDir, 'bin/python3');
+const IS_WINDOWS = process.platform === 'win32';
+// Venv Python binary path differs between Windows (Scripts\python.exe) and Unix (bin/python3)
+const pythonBin = IS_WINDOWS
+  ? resolve(venvDir, 'Scripts', 'python.exe')
+  : resolve(venvDir, 'bin', 'python3');
 const bridgeScript = resolve(moduleDir, 'nxn_solver_bridge.py');
 const bootstrapStamp = resolve(venvDir, '.solver-ready');
 const idaBinary = resolve(vendorRoot, 'ida_search_via_graph');
@@ -45,6 +49,24 @@ function formatCommandError(error, context) {
   const stdout = error?.stdout?.toString?.().trim?.();
   const detail = stderr || stdout || error?.message || 'Unknown command failure.';
   return new Error(`${context}: ${detail}`);
+}
+
+// Try each Python executable candidate and return the first one that works.
+// Windows typically has 'py' (launcher) or 'python'; Unix typically has 'python3'.
+async function findPythonCommand() {
+  const candidates = IS_WINDOWS ? ['py', 'python', 'python3'] : ['python3', 'python'];
+  for (const cmd of candidates) {
+    try {
+      await execFileAsync(cmd, ['--version'], { timeout: 5000, env: process.env, shell: IS_WINDOWS });
+      return cmd;
+    } catch {
+      // try next candidate
+    }
+  }
+  throw new Error(
+    'Python not found. Install Python from https://python.org and ensure it is in your PATH.\n' +
+    'On Windows: disable the Microsoft Store alias at Settings → Apps → Advanced app settings → App execution aliases.'
+  );
 }
 
 async function runFile(command, args, context) {
@@ -77,25 +99,33 @@ async function ensureBootstrap() {
     mkdirSync(venvDir, { recursive: true });
 
     if (!existsSync(pythonBin)) {
-      await runFile('python3', ['-m', 'venv', '.venv'], 'Failed to create NxN solver virtualenv');
+      const pythonCommand = await findPythonCommand();
+      await runFile(pythonCommand, ['-m', 'venv', '.venv'], 'Failed to create NxN solver virtualenv');
     }
 
     if (!existsSync(idaBinary)) {
-      await runFile(
-        'gcc',
-        [
-          '-O3',
-          '-o',
-          'ida_search_via_graph',
-          'rubikscubennnsolver/ida_search_core.c',
-          'rubikscubennnsolver/rotate_xxx.c',
-          'rubikscubennnsolver/ida_search_666.c',
-          'rubikscubennnsolver/ida_search_777.c',
-          'rubikscubennnsolver/ida_search_via_graph.c',
-          '-lm',
-        ],
-        'Failed to compile ida_search_via_graph',
-      );
+      // The IDA binary is only needed for 6x6/7x7 — 2x2 and 4x4 work without it.
+      // gcc is often absent on Windows; skip with a warning rather than hard-failing.
+      try {
+        await runFile(
+          'gcc',
+          [
+            '-O3',
+            '-o',
+            'ida_search_via_graph',
+            'rubikscubennnsolver/ida_search_core.c',
+            'rubikscubennnsolver/rotate_xxx.c',
+            'rubikscubennnsolver/ida_search_666.c',
+            'rubikscubennnsolver/ida_search_777.c',
+            'rubikscubennnsolver/ida_search_via_graph.c',
+            '-lm',
+          ],
+          'Failed to compile ida_search_via_graph',
+        );
+      } catch (gccError) {
+        // eslint-disable-next-line no-console
+        console.warn('[NxN solver] gcc not available — skipping IDA binary. 2x2 and 4x4 solves are unaffected.');
+      }
     }
 
     if (!existsSync(bootstrapStamp)) {
