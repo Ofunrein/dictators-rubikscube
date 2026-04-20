@@ -125,6 +125,7 @@ const SimulatorPage = () => {
     queueActive: queue.queueActive,
     bumpLayout,
     scrambleLength,
+    moveHistory: queue.moveHistory,
   });
 
   // --- Hook: Keyboard + mouse controls ---
@@ -287,6 +288,7 @@ const SimulatorPage = () => {
             onSizeChange={actions.handleSizeChange}
             onTimerAction={actions.handleTimerAction}
             scrambleSeq={actions.scrambleSeq}
+            scrambleMoveCount={actions.scrambleMoveCount}
             solveDepth={queue.solveDepth}
             timerMs={timer.timerMs}
             timerPrimed={actions.timerPrimed}
