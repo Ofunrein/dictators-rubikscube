@@ -13,23 +13,24 @@ import { FACE_ORDER, TOKEN_HEX } from './simulatorConstants';
 import { normalizeFaceStickers, orientFaceForMap } from './simulatorFaceMapUtils';
 
 function getCellStyle(size, compact) {
+  const vhUnit = size >= 4 ? '1.2vh' : '1.6vh';
   if (compact) {
     return size >= 4
-      ? { width: 'clamp(0.7rem, 2.5vw, 0.85rem)', height: 'clamp(0.7rem, 2.5vw, 0.85rem)' }
-      : { width: 'clamp(0.85rem, 3.5vw, 1rem)', height: 'clamp(0.85rem, 3.5vw, 1rem)' };
+      ? { width: `clamp(0.5rem, min(2.5vw, ${vhUnit}), 0.85rem)`, height: `clamp(0.5rem, min(2.5vw, ${vhUnit}), 0.85rem)` }
+      : { width: `clamp(0.6rem, min(3.5vw, ${vhUnit}), 1rem)`, height: `clamp(0.6rem, min(3.5vw, ${vhUnit}), 1rem)` };
   }
 
   return size >= 4
-    ? { width: 'clamp(0.85rem, 0.9vw + 0.4rem, 1.1rem)', height: 'clamp(0.85rem, 0.9vw + 0.4rem, 1.1rem)' }
-    : { width: 'clamp(1rem, 1.1vw + 0.5rem, 1.45rem)', height: 'clamp(1rem, 1.1vw + 0.5rem, 1.45rem)' };
+    ? { width: `clamp(0.5rem, min(0.9vw + 0.4rem, ${vhUnit}), 1.1rem)`, height: `clamp(0.5rem, min(0.9vw + 0.4rem, ${vhUnit}), 1.1rem)` }
+    : { width: `clamp(0.6rem, min(1.1vw + 0.5rem, ${vhUnit}), 1.45rem)`, height: `clamp(0.6rem, min(1.1vw + 0.5rem, ${vhUnit}), 1.45rem)` };
 }
 
 function getGridGap(size, compact) {
   if (compact) {
-    return size >= 4 ? '3px' : '4px';
+    return size >= 4 ? '2px' : '3px';
   }
 
-  return size >= 4 ? '4px' : '5px';
+  return size >= 4 ? 'clamp(2px, 0.4vh, 4px)' : 'clamp(2px, 0.5vh, 5px)';
 }
 
 function FacePreview({ face, label, size, compact = false }) {
@@ -40,10 +41,10 @@ function FacePreview({ face, label, size, compact = false }) {
 
   return (
     <div className={`flex min-w-0 flex-col items-center rounded-2xl border border-[--sim-border] bg-[--sim-card] shadow-[0_10px_30px_rgba(0,0,0,0.16)] ${
-      compact ? 'gap-1.5 px-2.5 py-2.5' : 'gap-2 px-3 py-3.5 sm:px-4 sm:py-4'
+      compact ? 'gap-1 px-1.5 py-1.5' : 'gap-1 px-2 py-2 sm:px-3 sm:py-2.5'
     }`}>
       <span className={`font-mono uppercase tracking-[0.22em] sim-text ${
-        compact ? 'text-[10px]' : 'text-[11px] sm:text-xs'
+        compact ? 'text-[9px]' : 'text-[10px] sm:text-xs'
       }`}>{label}</span>
       <div
         className="grid"
@@ -71,22 +72,22 @@ export default function SimulatorFaceMap({ displayState, compact = false }) {
   const cubeSize = getFaceSize(displayState) ?? 3;
 
   return (
-    <div className={`min-w-0 border-t border-[--sim-border] bg-[--sim-panel] ${
-      compact ? 'px-3 py-3' : 'px-4 py-4 sm:px-6 sm:py-5'
-    }`}>
-      <p className={`font-mono text-[11px] uppercase tracking-widest sim-text ${compact ? 'mb-3' : 'mb-4'}`}>
+    <div className={`z-20 min-w-0 border-t border-[--sim-border] bg-[--sim-panel]/95 backdrop-blur ${
+      compact ? 'px-3 py-2' : 'px-4 py-2 sm:px-6 sm:py-2'
+    }`} style={{ maxHeight: '30vh' }}>
+      <p className={`font-mono text-[11px] uppercase tracking-widest sim-text ${compact ? 'mb-2' : 'mb-2'}`}>
         Face Map
       </p>
-      <div className="min-w-0 overflow-x-auto pb-1">
-        <div className={`mx-auto w-fit ${
+      <div
+        className={`grid pb-1 ${
           compact
-            ? 'grid grid-cols-2 gap-x-2.5 gap-y-2.5'
-            : 'grid min-w-max grid-cols-3 gap-x-3 gap-y-3 max-[359px]:grid-cols-2 max-[359px]:gap-x-2.5 max-[359px]:gap-y-2.5 sm:flex sm:flex-wrap sm:justify-center sm:gap-4 lg:gap-5'
-        }`}>
-          {FACE_ORDER.map((face) => (
-            <FacePreview key={face} face={displayState[face]} label={face} size={cubeSize} compact={compact} />
-          ))}
-        </div>
+            ? 'grid-cols-3 gap-2 min-[390px]:grid-cols-6'
+            : 'grid-cols-6 gap-2 sm:gap-2.5'
+        }`}
+      >
+        {FACE_ORDER.map((face) => (
+          <FacePreview key={face} face={displayState[face]} label={face} size={cubeSize} compact={compact} />
+        ))}
       </div>
     </div>
   );
