@@ -110,9 +110,82 @@ export default function SimulatorControls({
         </div>
       </div>
 
-      {/* Timer — stopwatch card */}
+      {/* Timer — compact row on mobile, stacked card on desktop */}
       <div className="border-b border-[--sim-border] p-2 sm:p-3 md:p-4">
-        <div className={`rounded-2xl border p-3 md:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.08)] ${
+
+        {/* Mobile: inline row */}
+        <div className={`md:hidden rounded-lg border px-2 py-1.5 ${
+          timerPrimed
+            ? 'border-[#5B5FC7]/40 bg-[#5B5FC7]/5'
+            : timerRunning
+              ? 'border-dictator-red/30 bg-dictator-red/5'
+              : 'border-[--sim-border] bg-[--sim-card]'
+        }`}>
+          {timerPrimed ? (
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#5B5FC7]">
+                First move starts timer
+              </p>
+              <button
+                onClick={onTimerReset}
+                className="flex items-center gap-1 rounded-full border border-[--sim-border] bg-[--sim-kbd] px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide sim-text/70 hover:sim-text active:scale-95 shrink-0"
+              >
+                <RotateCcw size={9} />
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-baseline gap-0.5 tabular-nums">
+                {(() => {
+                  const minutes = String(Math.floor(timerMs / 60000)).padStart(2, '0');
+                  const seconds = String(Math.floor((timerMs % 60000) / 1000)).padStart(2, '0');
+                  const centis = String(Math.floor((timerMs % 1000) / 10)).padStart(2, '0');
+                  return (
+                    <>
+                      <span className={`font-mono text-lg font-extrabold tracking-tight ${timerRunning ? 'text-dictator-red' : 'sim-text'}`}>{minutes}</span>
+                      <span className={`font-mono text-base font-bold ${timerRunning ? 'text-dictator-red/60' : 'sim-text/50'}`}>:</span>
+                      <span className={`font-mono text-lg font-extrabold tracking-tight ${timerRunning ? 'text-dictator-red' : 'sim-text'}`}>{seconds}</span>
+                      <span className={`font-mono text-[10px] font-bold self-end pb-px ${timerRunning ? 'text-dictator-red/60' : 'sim-text/50'}`}>.</span>
+                      <span className={`font-mono text-sm font-bold self-end ${timerRunning ? 'text-dictator-red/80' : 'sim-text/70'}`}>{centis}</span>
+                    </>
+                  );
+                })()}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={onTimerReset}
+                  disabled={interactionLocked && !timerPrimed}
+                  className={`flex items-center gap-1 rounded-full border px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide transition-all
+                    ${interactionLocked && !timerPrimed
+                      ? 'border-[--sim-border] bg-[--sim-kbd] sim-text/30 cursor-not-allowed'
+                      : 'border-[--sim-border] bg-[--sim-kbd] sim-text/70 hover:sim-text hover:border-[--sim-text] active:scale-95'
+                    }`}
+                >
+                  <RotateCcw size={9} />
+                  Reset
+                </button>
+                <button
+                  onClick={onTimerAction}
+                  disabled={interactionLocked || timerPrimed}
+                  className={`flex items-center gap-1 rounded-full px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-wide transition-all
+                    ${interactionLocked || timerPrimed
+                      ? 'bg-[--sim-kbd] border border-[--sim-border] sim-text/30 cursor-not-allowed'
+                      : timerRunning
+                        ? 'bg-dictator-red text-white hover:bg-[#AA1515] active:scale-95'
+                        : 'bg-[#5B5FC7] text-white hover:bg-[#4A4EB3] active:scale-95'
+                    }`}
+                >
+                  {timerRunning ? <Square size={8} fill="currentColor" /> : <Play size={9} fill="currentColor" />}
+                  {timerRunning ? 'Stop' : 'Start'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop: original stacked card */}
+        <div className={`hidden md:block rounded-2xl border p-4 shadow-[0_4px_20px_rgba(0,0,0,0.08)] ${
           timerPrimed
             ? 'border-[#5B5FC7]/40 bg-[#5B5FC7]/5'
             : timerRunning
@@ -131,35 +204,34 @@ export default function SimulatorControls({
                 const centis = String(Math.floor((timerMs % 1000) / 10)).padStart(2, '0');
                 return (
                   <>
-                    <span className={`font-mono text-2xl md:text-4xl font-extrabold tracking-tight ${timerRunning ? 'text-dictator-red' : 'sim-text'}`}>{minutes}</span>
-                    <span className={`font-mono text-xl md:text-3xl font-bold ${timerRunning ? 'text-dictator-red/60' : 'sim-text/50'}`}>:</span>
-                    <span className={`font-mono text-2xl md:text-4xl font-extrabold tracking-tight ${timerRunning ? 'text-dictator-red' : 'sim-text'}`}>{seconds}</span>
-                    <span className={`font-mono text-base md:text-xl font-bold self-end pb-0.5 ${timerRunning ? 'text-dictator-red/60' : 'sim-text/50'}`}>.</span>
-                    <span className={`font-mono text-lg md:text-2xl font-bold self-end pb-px ${timerRunning ? 'text-dictator-red/80' : 'sim-text/70'}`}>{centis}</span>
+                    <span className={`font-mono text-4xl font-extrabold tracking-tight ${timerRunning ? 'text-dictator-red' : 'sim-text'}`}>{minutes}</span>
+                    <span className={`font-mono text-3xl font-bold ${timerRunning ? 'text-dictator-red/60' : 'sim-text/50'}`}>:</span>
+                    <span className={`font-mono text-4xl font-extrabold tracking-tight ${timerRunning ? 'text-dictator-red' : 'sim-text'}`}>{seconds}</span>
+                    <span className={`font-mono text-xl font-bold self-end pb-0.5 ${timerRunning ? 'text-dictator-red/60' : 'sim-text/50'}`}>.</span>
+                    <span className={`font-mono text-2xl font-bold self-end pb-px ${timerRunning ? 'text-dictator-red/80' : 'sim-text/70'}`}>{centis}</span>
                   </>
                 );
               })()}
             </div>
           )}
 
-          <div className="mt-3 flex items-center justify-center gap-2 md:gap-3">
+          <div className="mt-3 flex items-center justify-center gap-3">
             <button
               onClick={onTimerReset}
               disabled={interactionLocked && !timerPrimed}
-              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 md:px-4 md:py-2 font-mono text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-all
+              className={`flex items-center gap-1.5 rounded-full border px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider transition-all
                 ${interactionLocked && !timerPrimed
                   ? 'border-[--sim-border] bg-[--sim-kbd] sim-text/30 cursor-not-allowed'
                   : 'border-[--sim-border] bg-[--sim-kbd] sim-text/70 hover:sim-text hover:border-[--sim-text] active:scale-95'
                 }`}
             >
-              <RotateCcw size={11} />
+              <RotateCcw size={10} />
               {timerPrimed || timerRunning ? 'Cancel' : 'Reset'}
             </button>
-
             <button
               onClick={onTimerAction}
               disabled={interactionLocked || timerPrimed}
-              className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 md:px-5 md:py-2 font-mono text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-all
+              className={`flex items-center gap-1.5 rounded-full px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-wider transition-all
                 ${interactionLocked || timerPrimed
                   ? 'bg-[--sim-kbd] border border-[--sim-border] sim-text/30 cursor-not-allowed'
                   : timerRunning
