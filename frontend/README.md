@@ -29,12 +29,19 @@ From the repo root, `npm run dev` starts:
 ## Important Folders In This App
 
 ```text
-frontend/
-  src/components/         landing page sections
-  src/cube/               shared cube model and move logic
-  src/net/api.js          frontend API client
-  src/pages/simulator/    simulator page, hooks, controls, and helpers
-  src/utils/              shared frontend utilities
+frontend/src/
+  components/         landing page sections + shared UI components
+                        Navbar.jsx      — landing page nav (scroll-aware pill)
+                        PageNavbar.jsx  — inner page nav (Learn, Leaderboard, Profile)
+                        AuthModal.jsx   — login/signup modal overlay
+  context/            global React contexts shared by all pages
+                        ThemeContext.jsx — dark/light toggle, localStorage persistence
+                        AuthContext.jsx  — login/logout state (mock until DB ready)
+  cube/               shared cube model and move logic (also imported by backend)
+  net/api.js          frontend API client
+  pages/simulator/    simulator page, hooks, controls, and helpers
+  pages/              inner pages: LearnPage, LeaderboardPage, ProfilePage
+  utils/              shared frontend utilities
 ```
 
 ## Source Of Truth

@@ -189,7 +189,8 @@ async function handleSolveRoute(body, ctx) {
       return;
     }
 
-    // 2x2 / 4x4: use the Python NxN solver
+    // 2x2 / 4x4: use the Python NxN solver (local dev only for 4x4 — Vercel
+    // routes 2x2 directly to /api/nxn-solve and 4x4 returns 501 there)
     const nxnPayload = await solveCubeStateWithPython(state, size);
     if (nxnPayload.moves.length > 0) {
       nxnPayload.state = await replayValidatedMovesOrThrow({

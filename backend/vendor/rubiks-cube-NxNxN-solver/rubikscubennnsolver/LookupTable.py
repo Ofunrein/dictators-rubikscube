@@ -5,7 +5,17 @@ import hashlib
 import json
 import logging
 import os
-import resource
+try:
+    import resource  # POSIX only — not available on Windows
+except ImportError:
+    # Windows stub: resource is only used for memory-delta logging, not solving.
+    class resource:  # noqa: N801
+        RUSAGE_SELF = 0
+        @staticmethod
+        def getrusage(_who):
+            class _r:
+                ru_maxrss = 0
+            return _r()
 import shutil
 import ssl
 import subprocess

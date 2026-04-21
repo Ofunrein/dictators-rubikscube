@@ -1,7 +1,7 @@
 # Sprint 3 — Martin Ofunrein — Delivered Changes
 
 **Branch:** `sprint-3-martin`  
-**Scope updated:** April 15, 2026
+**Scope updated:** April 21, 2026
 
 **Repo naming clarification:** the active web app now lives in `frontend/`. The older prototype was renamed to `frontend-legacy/`. Historical sprint notes may still mention earlier folder names when they are describing work as it existed at that time.
 
@@ -567,17 +567,323 @@ They both reach the same solver bridge:
 
 This folder is for **repo-level developer tooling**.
 
-Main files:
+Main file:
 - `scripts/dev.mjs`
-  - starts both the frontend and local API together from the repo root
-- `scripts/dev-frontend.mjs`
-  - starts only the active frontend
-- `scripts/setup.mjs`
-  - installs/checks dependencies for the workspace
+  - the only dev script that matters — starts both the frontend and local API from the repo root
+  - auto-installs npm dependencies for `backend/api` and `frontend` if `node_modules` is missing
+  - auto-detects Python via `py / python / python3` candidates
+  - on Windows: attempts `winget install Python.Python.3` if Python is not found
+  - on Mac: attempts `brew install python3` if Python is not found
+  - warns clearly if auto-install fails so the user knows what to run manually
+
+`setup.mjs` and `dev-frontend.mjs` were deleted — `dev.mjs` handles everything they did.
 
 In short:
 - `scripts/` is not app logic
-- it exists to make local development easier
+- `npm run dev` from the repo root is the only command teammates need
+
+---
+
+## April 20 additions — Dev tooling, Vercel Python solver, UI polish, and new pages
+
+### 7. Cross-platform dev script and Python auto-install
+
+**Problem:** `npm run dev` failed on Windows with a `spawn EINVAL` error because Node's `child_process.spawn` requires `shell: true` on Windows for npm-based commands. `setup.mjs` and `dev-frontend.mjs` were separate scripts that duplicated logic already in `dev.mjs`.
+
+**What shipped:**
+- `scripts/dev.mjs` — rewritten to be the single all-in-one dev command
+  - `shell: true` on all `spawn` / `spawnSync` calls (Windows fix)
+  - auto-installs npm deps for `backend/api` and `frontend` if `node_modules` is missing
+  - `--legacy-peer-deps` flag for frontend install (resolves `@vitejs/plugin-react` vs `vite 8` peer conflict)
+  - `pythonFound()` tries `py`, `python`, `python3` candidates in platform-correct order
+  - `tryInstallPython()` attempts `winget` on Windows and `brew` on Mac
+  - clear warning printed if auto-install fails so the teammate knows the exact manual step
+- `scripts/setup.mjs` — deleted (was redundant)
+- `scripts/dev-frontend.mjs` — deleted (was redundant)
+- `package.json` — removed `setup` and `dev:frontend` scripts; `npm run dev` is now the only command needed
+
+**Files changed:**
+- `scripts/dev.mjs`
+- `scripts/setup.mjs` (deleted)
+- `scripts/dev-frontend.mjs` (deleted)
+- `package.json`
+
+---
+
+### 8. Python NxN solver — Windows and Mac cross-platform fix
+
+**Problem:** The Python bridge hardcoded `python3` as the executable and assumed Unix venv path (`bin/python3`). Both assumptions fail on Windows.
+
+**What shipped:**
+- `backend/api/src/solvers/pythonNxNSolver.js`
+  - `IS_WINDOWS` flag drives all platform branching
+  - `pythonBin` uses `Scripts\python.exe` on Windows, `bin/python3` on Unix
+  - `findPythonCommand()` tries `py`, `python`, `python3` (Windows) or `python3`, `python` (Unix) before failing
+  - `gcc` compilation for the IDA binary is wrapped in try/catch — non-fatal warning on Windows (gcc absent), does not break 2x2 or 4x4 solving
+  - `shell: true` on all `execFileAsync` calls on Windows
+
+**Files changed:**
+- `backend/api/src/solvers/pythonNxNSolver.js`
+
+---
+
+### 9. Vercel — Python NxN solver for 2x2 and 4x4
+
+**Problem:** Vercel serverless functions run in a Node.js environment with no Python available, so the local Python bridge cannot be used in production.
+
+**What shipped:**
+- `api/nxn-solve.py` — new Python serverless function (Vercel convention: `api/*.py`)
+  - handles 2x2 and 4x4 via the vendored `rubikscubennnsolver` library
+  - handles 3x3 via `kociemba` (lighter weight for serverless)
+  - replicates `flattenStateForSolver()` and `normalizeSolverMoves()` from `pythonNotation.js` in pure Python
+  - includes CORS headers for browser fetch
+- `requirements.txt` — added at repo root so Vercel installs `kociemba` at build time
+- `vercel.json` — added `/api/v1/cube/solve` rewrite to `/api/nxn-solve` before the catch-all `/api/v1/:path*` rewrite so the Python function is hit for solve requests
+
+**Files changed:**
+- `api/nxn-solve.py` (new)
+- `requirements.txt` (new)
+- `vercel.json`
+
+---
+
+### 10. Simulator UI polish — light/dark mode, cube orientation, button contrast
+
+**What shipped:**
+
+#### Default cube orientation
+- `frontend/src/pages/simulator/InteractiveCube.jsx` — `CUBE_ROTATION` changed to `[0.2, 0.3, 0]`
+- `frontend/src/components/RubiksCube3D.jsx` — `baseRotation` and initial `rotation` prop updated to match
+
+#### Light/dark theme variables (SimulatorPage)
+- Added `--sim-card`, `--sim-btn-border`, `--sim-face-border` CSS custom properties
+- `--sim-border` darkened in light mode from `#E5E0D8` to `#A89F94`
+- `--sim-face-border` introduced to fix Tailwind opacity-modifier breakdown on rgba variables
+
+#### Face map border fix
+- `SimulatorFaceMap.jsx` — face card borders switched from `border-[--sim-border]/50` to `border-[--sim-face-border]`
+- Root cause: Tailwind's `/50` opacity modifier generates `rgb(var(...) / 0.5)` which is invalid CSS when the variable already contains `rgba(...)`, causing the browser to fall back to `currentColor` (white) — visually harsh white outlines in dark mode
+- Fix: bake opacity directly into `--sim-face-border` so no modifier is needed
+
+#### Button contrast (SimulatorControls)
+- Default button borders changed from `border-dictator-chrome/20` to `border-[--sim-btn-border]`
+- `--sim-btn-border` is `rgba(176,176,176,0.12)` dark / `rgba(44,42,38,0.15)` light — pale ghost-button style in default state
+
+#### Sticker cell softening (SimulatorFaceMap)
+- Sticker cells changed from `border-2 border-black/50 shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]` to `border border-black/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.07)]`
+
+**Files changed:**
+- `frontend/src/pages/simulator/SimulatorPage.jsx`
+- `frontend/src/pages/simulator/SimulatorControls.jsx`
+- `frontend/src/pages/simulator/SimulatorFaceMap.jsx`
+- `frontend/src/pages/simulator/InteractiveCube.jsx`
+- `frontend/src/components/RubiksCube3D.jsx`
+
+---
+
+### 11. New pages and authentication system
+
+**What shipped:**
+
+#### Global contexts — `frontend/src/context/`
+
+- `AuthContext.jsx`
+  - `AuthProvider` wraps the whole app (mounted in `main.jsx`)
+  - `currentUser` state: `null` when logged out, populated mock object when logged in
+  - `login()`, `signup()`, `logout()` are stubs — replace bodies with real API calls when DB is ready
+  - `useAuth()` hook for any component to read auth state
+- `ThemeContext.jsx`
+  - `ThemeProvider` wraps the whole app (mounted above `AuthProvider` in `main.jsx`)
+  - persists to `localStorage` under key `simulator-theme`
+  - replaces the old per-component `useTheme.js` hook — state is now shared across all routes
+  - `SimulatorPage` updated to import from this context instead of the old local hook
+  - `useTheme()` hook for any component to read or toggle the theme
+
+#### Auth modal — `frontend/src/components/AuthModal.jsx`
+
+- Floating overlay component, not a route
+- Login / Sign Up tabs with form validation
+- Escape key and backdrop click to dismiss
+- Calls `AuthContext` stubs on submit; closes on success
+- Triggered from Navbar (mobile hamburger), App.jsx (desktop top-right), and SimulatorPage header
+
+#### Page navbar — `frontend/src/components/PageNavbar.jsx`
+
+- Shared nav used by Learn, Leaderboard, and Profile pages
+- Landing page keeps `Navbar.jsx` (scroll-aware pill with GSAP)
+- Features: logo → home, Learn/Compete links with active underline, auth state (Log In / Sign Up or profile avatar), light/dark toggle, Simulator shortcut
+- All colors branch on `isDark` from `ThemeContext`
+
+#### Routes — `frontend/src/pages/`
+
+- `LearnPage.jsx` — `/learn`
+  - Coming-soon placeholder holding space for the future learning system
+  - Shows planned content cards: Beginner Method, CFOP/Fridrich, Video Guides, Algorithm Trainer
+  - Replace file content when learning system is built; route and navbar wiring stay as-is
+- `LeaderboardPage.jsx` — `/leaderboard`
+  - Mock global rankings with 3x3 / 2x2 / 4x4 tab switcher
+  - Rank icons: Crown (1st), Medal (2nd/3rd), number (4+)
+  - Times ≥ 60 seconds formatted as M:SS.ms
+  - Replace `MOCK_ENTRIES` with a `fetch()` call when DB is ready
+- `ProfilePage.jsx` — `/profile`
+  - Redirects to home if `currentUser === null`
+  - Sections: avatar + username + email, stats summary cards, per-cube breakdown table, recent solves list
+  - All data comes from `AuthContext.currentUser` — no page changes needed when DB is wired up
+
+#### Landing page and routing updates
+
+- `App.jsx` — added fixed top-right Log In / Sign Up buttons (desktop only, `hidden md:flex`); renders `AuthModal`
+- `Navbar.jsx` — mobile hamburger now includes Log In / Sign Up (or profile avatar) so auth is reachable at any screen size; nav links updated to route to `/learn` and `/leaderboard`
+- `main.jsx` — wraps with `ThemeProvider` and `AuthProvider`; adds routes for `/learn`, `/leaderboard`, `/profile`
+- `SimulatorPage.jsx` — Log In / profile icon added next to the light/dark toggle in the header
+
+#### Inner pages — light/dark mode support
+
+All three inner pages read `isDark` from `ThemeContext` and apply conditional Tailwind classes for backgrounds, borders, and text. Secondary text uses `text-dictator-ink/75` in light mode instead of `text-dictator-chrome` (`#B0B0B0`) which is unreadable on light backgrounds. Borders use `border-dictator-ink/20` instead of `border-dictator-sand` for visible separation.
+
+**Files changed (new):**
+- `frontend/src/context/AuthContext.jsx`
+- `frontend/src/context/ThemeContext.jsx`
+- `frontend/src/components/AuthModal.jsx`
+- `frontend/src/components/PageNavbar.jsx`
+- `frontend/src/pages/LearnPage.jsx`
+- `frontend/src/pages/LeaderboardPage.jsx`
+- `frontend/src/pages/ProfilePage.jsx`
+
+**Files changed (updated):**
+- `frontend/src/App.jsx`
+- `frontend/src/main.jsx`
+- `frontend/src/components/Navbar.jsx`
+- `frontend/src/pages/simulator/SimulatorPage.jsx`
+
+---
+
+### 12. Documentation pass
+
+Applied the repo-organization checklist to all new and changed files.
+
+**What was updated:**
+
+- File-level doc comments added to all 7 new files (AuthContext, ThemeContext, AuthModal, PageNavbar, LearnPage, LeaderboardPage, ProfilePage) — each explains purpose, how it connects to the rest of the system, and what a teammate needs to change when the database is wired up
+- `main.jsx` — added route map and context explanation
+- `App.jsx` — explained why auth buttons live in App.jsx rather than inside Navbar
+- `Navbar.jsx` — clarified landing-page-only scope and how mobile auth works
+- `docs/architecture.md` — added contexts section, inner pages section, auth/theme system section, `simulatorTheme.js` to the simulator file map
+- `frontend/README.md` — added `context/` and `pages/` folders with per-file descriptions
+
+**Files changed:**
+- `docs/architecture.md`
+- `docs/sprint-3-martin.md` (this file)
+- `frontend/README.md`
+- all 7 new frontend files (doc comment added)
+- `frontend/src/App.jsx`
+- `frontend/src/main.jsx`
+- `frontend/src/components/Navbar.jsx`
+
+---
+
+## Updated files touched this sprint (full list)
+
+### From earlier in the sprint (unchanged)
+- `api/solver.js`
+- `api/v1/[...path].js`
+- `backend/api/src/server.js`
+- `backend/api/src/wasmSolver.js`
+- `backend/src/cube/CubeOperations.cpp`
+- `backend/src/cube/CubeOperations.h`
+- `backend/src/cube/PuzzleCube.cpp`
+- `backend/src/cube/PuzzleCube.h`
+- `backend/src/cube/solver_bridge.cpp`
+- `frontend/src/net/api.js`
+- `frontend/src/pages/simulator/CanvasFallbackPanel.jsx`
+- `frontend/src/pages/simulator/InteractiveCube.jsx`
+- `frontend/src/pages/simulator/SimulatorControls.jsx`
+- `frontend/src/pages/simulator/SimulatorFaceMap.jsx`
+- `frontend/src/pages/simulator/SimulatorPage.jsx`
+- `frontend/src/pages/simulator/TutorialPanel.jsx`
+- `frontend/src/pages/simulator/simulatorAnimation.js`
+- `frontend/src/pages/simulator/simulatorAnimation.test.js`
+- `frontend/src/pages/simulator/simulatorConstants.js`
+- `frontend/src/pages/simulator/useCubeControls.js`
+- `frontend/src/pages/simulator/useTimer.js`
+
+### Added April 20
+- `api/nxn-solve.py` (new)
+- `requirements.txt` (new)
+- `vercel.json`
+- `scripts/dev.mjs`
+- `scripts/setup.mjs` (deleted)
+- `scripts/dev-frontend.mjs` (deleted)
+- `package.json`
+- `backend/api/src/solvers/pythonNxNSolver.js`
+- `frontend/src/context/AuthContext.jsx` (new)
+- `frontend/src/context/ThemeContext.jsx` (new)
+- `frontend/src/components/AuthModal.jsx` (new)
+- `frontend/src/components/PageNavbar.jsx` (new)
+- `frontend/src/pages/LearnPage.jsx` (new)
+- `frontend/src/pages/LeaderboardPage.jsx` (new)
+- `frontend/src/pages/ProfilePage.jsx` (new)
+- `frontend/src/App.jsx`
+- `frontend/src/main.jsx`
+- `frontend/src/components/Navbar.jsx`
+- `frontend/src/components/RubiksCube3D.jsx`
+- `docs/architecture.md`
+- `frontend/README.md`
+
+---
+
+## 4x4 on Vercel — known limitation and current status (April 21)
+
+### What works
+
+| Size | Vercel (deployed) | Local (`npm run dev`) |
+|------|------------------|-----------------------|
+| 2x2  | ✅ `python-nxn-2` via pre-built wheel | ✅ vendored library |
+| 3x3  | ✅ `kociemba-3x3` | ✅ Eric's C++ WASM |
+| 4x4  | ❌ blocked (see below) | ✅ vendored library |
+
+### Why 4x4 cannot run on Vercel
+
+The `rubikscubennnsolver` library solves 4x4 using precomputed lookup tables downloaded at runtime from S3. Those tables are ~400 MB. Vercel serverless functions:
+
+- Have a read-only filesystem except for `/tmp`
+- `/tmp` fills up before the tables finish downloading → `[Errno 28] No space left on device`
+
+This is a hard Vercel platform limit unrelated to our code.
+
+### Why 2x2 works on Vercel but 4x4 doesn't
+
+The 2x2 solver uses a direct non-table algorithm (`solve_non_table()`). No files are downloaded, no disk space needed. The 4x4 solver has no equivalent — it requires lookup tables.
+
+### How we got the library onto Vercel
+
+`rubikscubennnsolver` is not on PyPI and its `setup.py` uses `distutils` (removed in Python 3.12+). Vercel's build environment runs Python 3.14 so the library cannot be installed from source. The fix:
+
+1. Installed Python 3.11 locally via `uv python install 3.11`
+2. Built a wheel from our patched vendored copy: `pip wheel ./backend/vendor/rubiks-cube-NxNxN-solver --no-deps -w api/wheels/`
+3. Committed `api/wheels/rubikscubennnsolver-1.0.0-py3-none-any.whl` to the repo
+4. `requirements.txt` points at the local wheel — Vercel installs it directly, no compilation needed
+
+The vendored copy was also patched:
+- `rubikscubennnsolver/LookupTable.py` — `import resource` wrapped in `try/except` (Windows fix)
+- `rubiks-cube-solver.py` — same fix
+- `LookupTable.py` download function already used `urllib` in our vendored copy (the GitHub HEAD had `wget`)
+
+### Size selector UI — temporarily hidden
+
+`frontend/src/pages/simulator/SimulatorControls.jsx` — the SIZE button row (2x2 / 3x3 / 4x4) is commented out with a block comment explaining why. The code is preserved in place.
+
+**To restore:** uncomment the block in `SimulatorControls.jsx`. This is worth doing once either:
+- Eric's C++ WASM solver is extended to support 4x4 (no Python/lookup tables needed)
+- The app is hosted on a platform with persistent storage (Railway, Render) where lookup tables can be downloaded once on server startup
+
+### Options to fix 4x4 on Vercel in a future sprint
+
+1. **Extend Eric's WASM solver** — if `solver_bridge.cpp` exports 4x4 solving, zero extra infrastructure needed
+2. **Move the API to Railway or Render** — persistent server, tables download once on cold start, stay in memory
+3. **Accept local-only for 4x4** — show a "local dev only" indicator on the 4x4 button when deployed
+
+---
 
 ## Current dev server
 
