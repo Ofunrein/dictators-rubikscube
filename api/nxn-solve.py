@@ -1,22 +1,25 @@
 """
-nxn-solve.py — Vercel Python serverless function for cube solving
+nxn-solve.py — Vercel Python serverless function for 2x2 cube solving
 
-Handles all cube sizes on Vercel where Node.js cannot exec Python:
-  3x3 → kociemba (Herbert Kociemba's Two-Phase Algorithm)
-  2x2, 4x4 → vendored rubikscubennnsolver
+Handles only 2x2 solving. 3x3 goes through the Node.js WASM path
+(api/v1/[...path].js → wasmSolver.js → Eric's C++ solver).
+4x4 is not supported on Vercel — lookup tables (~400 MB) exceed /tmp limits.
 
-Invoked at POST /api/v1/cube/solve via the vercel.json rewrite:
-  { "source": "/api/v1/cube/solve", "destination": "/api/nxn-solve" }
+Invoked directly at POST /api/nxn-solve by the frontend (api.js routes
+size=2 here). The old vercel.json rewrite that blanket-redirected all
+/api/v1/cube/solve requests here was removed to restore 3x3 WASM solving.
 
-Local dev uses the Node.js subprocess path (pythonNxNSolver.js) instead.
+  2x2 → rubikscubennnsolver (pre-built wheel at api/wheels/)
+  4x4 → NotImplementedError (returns 501)
+
+Local dev uses the Node.js path for all sizes:
+  pythonNxNSolver.js → nxn_solver_bridge.py → vendored lib at backend/vendor/
 """
 
 import json
 import logging
 import os
-import sys
 from http.server import BaseHTTPRequestHandler
-from pathlib import Path
 
 logging.getLogger().setLevel(logging.ERROR)
 
@@ -33,8 +36,9 @@ SOLVER_INNER_TO_CANONICAL = {
     '2L': ['l'], '2F': ['f'], '2B': ['b'],
 }
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-VENDOR_PATH = REPO_ROOT / 'backend' / 'vendor' / 'rubiks-cube-NxNxN-solver'
+# rubikscubennnsolver is installed from a pre-built wheel (api/wheels/).
+# It cannot be built from source on Vercel (Python 3.14 removed distutils).
+# The wheel was built locally with Python 3.11 from our patched vendored copy.
 
 
 def remap_face_for_solver(face, stickers, size):
@@ -91,9 +95,19 @@ def normalize_solver_moves(raw_moves, size):
     return result
 
 
+def flatten_state_for_kociemba(state):
+    """Flatten for kociemba — no U/D row flip (unlike rubikscubennnsolver).
+    kociemba expects face letters in our natural row-major order."""
+    return ''.join(
+        TOKEN_TO_SOLVER[t]
+        for face in FACE_ORDER
+        for t in state[face]
+    )
+
+
 def solve_3x3(state):
     import kociemba
-    flat = flatten_state_for_solver(state)
+    flat = flatten_state_for_kociemba(state)
     solution_str = kociemba.solve(flat)
     moves = [m for m in solution_str.split() if m]
     return {
@@ -105,10 +119,9 @@ def solve_3x3(state):
 
 
 def solve_nxn(state, size):
-    os.chdir(str(VENDOR_PATH))
-    if str(VENDOR_PATH) not in sys.path:
-        sys.path.insert(0, str(VENDOR_PATH))
-
+    # Vercel's filesystem is read-only except /tmp.
+    # The library writes lookup-tables to the working directory, so redirect it.
+    os.chdir('/tmp')
     flat = flatten_state_for_solver(state)
 
     if size == 2:
@@ -145,7 +158,13 @@ def handle_solve(body):
 
     if size == 3:
         return solve_3x3(state)
-    return solve_nxn(state, size)
+    if size == 4:
+        # 4x4 lookup tables are hundreds of MB — too large for Vercel's /tmp.
+        raise NotImplementedError(
+            '4x4 solving is not available in the deployed version — '
+            'run the app locally with `npm run dev` to solve 4x4 cubes.'
+        )
+    return solve_nxn(state, size)  # size == 2
 
 
 class handler(BaseHTTPRequestHandler):
@@ -161,6 +180,8 @@ class handler(BaseHTTPRequestHandler):
             result = handle_solve(body)
             result['size'] = int(body.get('size', 3))
             self._respond(200, result)
+        except NotImplementedError as exc:
+            self._respond(501, {'error': {'code': 'NOT_SUPPORTED', 'message': str(exc)}})
         except Exception as exc:
             self._respond(500, {'error': {'code': 'SOLVER_FAILURE', 'message': str(exc)}})
 
