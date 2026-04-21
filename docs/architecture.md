@@ -10,10 +10,14 @@ Browser
   -> Frontend calls /api/v1/* through Vite proxy in local dev
 
 frontend/
-  -> Landing page components
-  -> Simulator page
-  -> Shared cube model and move engine in src/cube/
-  -> Frontend API client in src/net/api.js
+  -> Landing page (App.jsx + components/)
+  -> Inner pages: /learn, /leaderboard, /profile (pages/)
+  -> Simulator page (pages/simulator/)
+  -> Shared cube model and move engine (src/cube/)
+  -> Frontend API client (src/net/api.js)
+  -> Global contexts (src/context/):
+       ThemeContext  — dark/light toggle, persisted to localStorage
+       AuthContext   — login/logout state, mock data until DB ready
 
 backend/api/
   -> Local Node API server on :5200
@@ -52,8 +56,14 @@ backend/vendor/
 
 ### Frontend UI
 
-- `frontend/src/components/`
-- `frontend/src/pages/simulator/`
+- `frontend/src/components/`       — landing page sections + shared UI (Navbar, PageNavbar, AuthModal)
+- `frontend/src/pages/simulator/`  — interactive 3D cube simulator
+- `frontend/src/pages/`            — inner pages: LearnPage, LeaderboardPage, ProfilePage
+
+### Global app state (contexts)
+
+- `frontend/src/context/ThemeContext.jsx` — dark/light mode, shared across all pages
+- `frontend/src/context/AuthContext.jsx`  — login/logout/currentUser, mock until DB connected
 
 ### Shared cube state and move logic
 
@@ -96,9 +106,29 @@ frontend/src/pages/simulator/
   useSimulatorQueue.js       queued move animation lifecycle
   useSimulatorActions.js     scramble, solve, reset, and size-change actions
   simulatorAnimation.js      animation timing and motion helpers
+  simulatorTheme.js          light/dark Tailwind class mappings for simulator
   moveNotation.js            move-sequence normalization and inversion helpers
   simulatorFaceMapUtils.js   face-map normalization and orientation helpers
 ```
+
+## Inner Pages (Sprint 3)
+
+Added in Sprint 3. These pages use `PageNavbar` for navigation and read from
+`ThemeContext` and `AuthContext` for shared state.
+
+```text
+frontend/src/pages/
+  LearnPage.jsx          /learn       — coming-soon placeholder for learning content
+  LeaderboardPage.jsx    /leaderboard — mock global rankings (3x3 / 2x2 / 4x4 tabs)
+  ProfilePage.jsx        /profile     — user stats; redirects home if not logged in
+```
+
+## Auth and Theme System
+
+Both contexts are mounted in `main.jsx` above the router so every route shares
+the same state. The auth functions (login, signup, logout) are stubs — they set
+local state with mock data. When the database is ready, replace only those
+function bodies in `AuthContext.jsx`; no page components need to change.
 
 ## Why The Repo Is Split This Way
 
