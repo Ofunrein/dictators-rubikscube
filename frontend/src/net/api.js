@@ -183,7 +183,14 @@ export async function solveCubeRemote(state, strategy = 'beginner', size) {
   const normalizedSize = normalizeCubeSize(size ?? getFaceSize(state));
   validateCubeState(state, 'state', normalizedSize);
 
-  const payload = await request('/api/v1/cube/solve', {
+  // Routing by size:
+  //   2x2 → /api/nxn-solve  (Python serverless, rubikscubennnsolver)
+  //   3x3 → /api/v1/cube/solve  (Node.js, Eric's C++ WASM solver)
+  // A blanket vercel.json rewrite was tried but broke 3x3 (kociemba invalid state).
+  // Explicit routing here keeps the two solver paths cleanly separated.
+  const endpoint = normalizedSize === 2 ? '/api/nxn-solve' : '/api/v1/cube/solve';
+
+  const payload = await request(endpoint, {
     method: 'POST',
     body: { size: normalizedSize, state, strategy }
   });

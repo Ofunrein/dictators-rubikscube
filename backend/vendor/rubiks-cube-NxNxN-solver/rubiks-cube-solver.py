@@ -10,7 +10,16 @@ Solve any size rubiks cube:
 import argparse
 import datetime as dt
 import logging
-import resource
+try:
+    import resource  # POSIX only — not available on Windows
+except ImportError:
+    class resource:  # noqa: N801
+        RUSAGE_SELF = 0
+        @staticmethod
+        def getrusage(_who):
+            class _r:
+                ru_maxrss = 0
+            return _r()
 import sys
 from math import sqrt
 

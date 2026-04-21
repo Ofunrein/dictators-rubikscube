@@ -37,6 +37,7 @@ export function useSimulatorQueue({ cubeStateObjRef, canAnimateMoves, solveStack
   // because animation callbacks read them synchronously mid-frame.
   const moveQueueRef = useRef([]);
   const activeMoveRef = useRef(null);
+  const activeRecordHistoryRef = useRef(true);
   const moveIdRef = useRef(0);
 
   // Pulls the next move off the queue and starts its animation.
@@ -50,6 +51,7 @@ export function useSimulatorQueue({ cubeStateObjRef, canAnimateMoves, solveStack
     const nextMove = moveQueueRef.current.shift();
     setQueuedMoveCount(moveQueueRef.current.length);
     activeMoveRef.current = nextMove.move;
+    activeRecordHistoryRef.current = nextMove.recordHistory ?? true;
     setActiveMove(nextMove.move);
     setActiveMoveId(nextMove.id);
     setActiveMoveDurationSeconds(nextMove.durationSeconds);
@@ -84,13 +86,15 @@ export function useSimulatorQueue({ cubeStateObjRef, canAnimateMoves, solveStack
   }, [cubeStateObjRef, setDisplayState, solveStackRef]);
 
   // Adds moves to the queue. If the canvas is down, applies them instantly instead.
-  const enqueueMoves = useCallback((moves, { durationSeconds = TURN_DURATION_SECONDS } = {}) => {
+  const enqueueMoves = useCallback((moves, { durationSeconds = TURN_DURATION_SECONDS, recordHistory = true } = {}) => {
     const normalized = normalizeMoveSequence(moves);
     if (normalized.length === 0) return;
 
     if (!canAnimateMoves) {
       applyMovesInstantly(normalized);
-      setMoveHistory((prev) => [...prev, ...normalized].slice(-MAX_HISTORY_LENGTH));
+      if (recordHistory) {
+        setMoveHistory((prev) => [...prev, ...normalized].slice(-MAX_HISTORY_LENGTH));
+      }
       setSolveDepth(solveStackRef.current.length);
       return;
     }
@@ -101,6 +105,7 @@ export function useSimulatorQueue({ cubeStateObjRef, canAnimateMoves, solveStack
         id: moveIdRef.current,
         move,
         durationSeconds,
+        recordHistory,
       };
     });
 
@@ -129,7 +134,9 @@ export function useSimulatorQueue({ cubeStateObjRef, canAnimateMoves, solveStack
     cubeStateObjRef.current.setState(newState);
     setDisplayState({ ...newState });
 
-    setMoveHistory((prev) => [...prev, move].slice(-MAX_HISTORY_LENGTH));
+    if (activeRecordHistoryRef.current) {
+      setMoveHistory((prev) => [...prev, move].slice(-MAX_HISTORY_LENGTH));
+    }
     mergeMoveIntoSolveStack(solveStackRef.current, move);
     setSolveDepth(solveStackRef.current.length);
 

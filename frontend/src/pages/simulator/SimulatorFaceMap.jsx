@@ -40,7 +40,7 @@ function FacePreview({ face, label, size, compact = false }) {
   const gap = getGridGap(size, compact);
 
   return (
-    <div className={`flex min-w-0 flex-col items-center rounded-2xl border border-[--sim-border] bg-[--sim-card] shadow-[0_10px_30px_rgba(0,0,0,0.16)] ${
+    <div className={`flex min-w-0 flex-col items-center rounded-2xl border border-[--sim-face-border] bg-[--sim-card] shadow-[0_10px_30px_rgba(0,0,0,0.16)] ${
       compact ? 'gap-1 px-1.5 py-1.5' : 'gap-1 px-2 py-2 sm:px-3 sm:py-2.5'
     }`}>
       <span className={`font-mono uppercase tracking-[0.22em] sim-text ${
@@ -56,7 +56,7 @@ function FacePreview({ face, label, size, compact = false }) {
         {faceColors.map((token, index) => (
           <div
             key={`${label}-${index}`}
-            className="rounded-[4px] border-2 border-black/50 shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]"
+            className="rounded-[4px] border border-black/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.07)]"
             style={{
               ...cellStyle,
               backgroundColor: TOKEN_HEX[token] ?? '#333',

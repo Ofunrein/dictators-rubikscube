@@ -1,23 +1,39 @@
 /**
- * Navigation bar at the top of the landing page. Shows the team logo and
- * name, navigation links (Features, Protocol, Team), and a "Launch Simulator"
- * button. Collapses into a hamburger menu on mobile. Changes background
- * opacity when the user scrolls down (so it gets a dark backdrop). Uses GSAP
- * for smooth animation on the menu toggle.
+ * Navbar.jsx — Landing page navigation bar (route: /)
+ *
+ * This navbar is ONLY used on the landing page (App.jsx). Inner pages
+ * (Learn, Leaderboard, Profile) use PageNavbar.jsx instead.
+ *
+ * Features:
+ *   - Centered pill that morphs on scroll (transparent → frosted dark)
+ *   - Desktop: logo | Learn, Compete, Team links | Start Solving CTA
+ *   - Mobile: hamburger → full-screen overlay with all links + auth
+ *   - Auth: Log In / Sign Up in mobile menu; the desktop auth buttons live
+ *     in App.jsx as a separate fixed top-right element so they don't conflict
+ *     with the centered pill on any screen size
+ *   - Renders AuthModal when the mobile menu triggers login/signup
+ *
+ * Nav links:
+ *   Learn   → /learn      (inner page)
+ *   Compete → /leaderboard (inner page)
+ *   Team    → #team       (anchor on landing page)
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import gsap from 'gsap';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import AuthModal from './AuthModal';
 
 const Navbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [authModal, setAuthModal] = useState(null);
     const navRef = useRef(null);
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
 
     useEffect(() => {
-        // We use IntersectionObserver on the hero section to trigger the navbar morph
         const observer = new IntersectionObserver(
             ([entry]) => {
                 setIsScrolled(!entry.isIntersecting);
@@ -34,9 +50,9 @@ const Navbar = () => {
     }, []);
 
     const navLinks = [
-        { label: 'Learn', href: '#learn' },
-        { label: 'Compete', href: '#compete' },
-        { label: 'Team', href: '#team' },
+        { label: 'Learn', href: '/learn', isRoute: true },
+        { label: 'Compete', href: '/leaderboard', isRoute: true },
+        { label: 'Team', href: '#team', isRoute: false },
     ];
 
     return (
@@ -93,11 +109,11 @@ const Navbar = () => {
                         ))}
                     </div>
 
-                    {/* CTA Button (Desktop) & Mobile Toggle */}
-                    <div className="flex items-center gap-4">
+                    {/* Right side: auth + CTA + mobile toggle */}
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={() => navigate('/simulator')}
-                            className="hidden md:block btn-magnetic bg-dictator-red text-white px-6 py-2 rounded-full font-body text-sm font-semibold tracking-wide border border-transparent hover:border-dictator-red/50">
+                            className="hidden md:block btn-magnetic bg-dictator-red text-white px-5 py-1.5 rounded-full font-heading text-sm font-semibold tracking-wide border border-transparent hover:border-dictator-red/50">
                             <span>Start Solving</span>
                         </button>
 
@@ -118,24 +134,69 @@ const Navbar = () => {
           ${mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
             >
                 {navLinks.map((link, i) => (
-                    <a
-                        key={link.label}
-                        href={link.href}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="font-heading text-4xl uppercase tracking-tighter text-white hover:text-dictator-red transition-colors"
-                        style={{ transitionDelay: `${i * 50}ms`, transform: mobileMenuOpen ? 'translateY(0)' : 'translateY(20px)', opacity: mobileMenuOpen ? 1 : 0 }}
-                    >
-                        {link.label}
-                    </a>
+                    link.isRoute ? (
+                        <button
+                            key={link.label}
+                            onClick={() => { setMobileMenuOpen(false); navigate(link.href); }}
+                            className="font-heading text-4xl uppercase tracking-tighter text-white hover:text-dictator-red transition-colors"
+                            style={{ transitionDelay: `${i * 50}ms`, transform: mobileMenuOpen ? 'translateY(0)' : 'translateY(20px)', opacity: mobileMenuOpen ? 1 : 0 }}
+                        >
+                            {link.label}
+                        </button>
+                    ) : (
+                        <a
+                            key={link.label}
+                            href={link.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="font-heading text-4xl uppercase tracking-tighter text-white hover:text-dictator-red transition-colors"
+                            style={{ transitionDelay: `${i * 50}ms`, transform: mobileMenuOpen ? 'translateY(0)' : 'translateY(20px)', opacity: mobileMenuOpen ? 1 : 0 }}
+                        >
+                            {link.label}
+                        </a>
+                    )
                 ))}
+
+                {/* Auth state in mobile menu */}
+                {currentUser ? (
+                    <button
+                        onClick={() => { setMobileMenuOpen(false); navigate('/profile'); }}
+                        className="flex items-center gap-2 font-mono text-sm uppercase tracking-widest text-dictator-chrome hover:text-white transition-colors"
+                        style={{ transitionDelay: '150ms', opacity: mobileMenuOpen ? 1 : 0 }}
+                    >
+                        <div className="w-5 h-5 rounded-full bg-dictator-red/30 border border-dictator-red/50 flex items-center justify-center text-dictator-red font-bold" style={{ fontSize: '8px' }}>
+                            {currentUser.username.charAt(0).toUpperCase()}
+                        </div>
+                        {currentUser.username}
+                    </button>
+                ) : (
+                    <div className="flex gap-3" style={{ transitionDelay: '150ms', opacity: mobileMenuOpen ? 1 : 0 }}>
+                        <button
+                            onClick={() => { setMobileMenuOpen(false); setAuthModal('login'); }}
+                            className="font-mono text-sm uppercase tracking-widest px-6 py-2.5 rounded-full border border-white/20 text-white hover:border-white/50 transition-colors"
+                        >
+                            Log In
+                        </button>
+                        <button
+                            onClick={() => { setMobileMenuOpen(false); setAuthModal('signup'); }}
+                            className="font-mono text-sm uppercase tracking-widest px-6 py-2.5 rounded-full bg-dictator-red text-white hover:bg-dictator-deep transition-colors"
+                        >
+                            Sign Up
+                        </button>
+                    </div>
+                )}
+
                 <button
                     onClick={() => { setMobileMenuOpen(false); navigate('/simulator'); }}
-                    className="mt-8 btn-magnetic bg-dictator-red text-white px-10 py-4 rounded-full font-body text-lg font-bold w-[200px]"
+                    className="mt-4 btn-magnetic bg-dictator-red text-white px-10 py-4 rounded-full font-heading text-lg font-bold w-[200px]"
                     style={{ transitionDelay: '200ms', transform: mobileMenuOpen ? 'translateY(0)' : 'translateY(20px)', opacity: mobileMenuOpen ? 1 : 0 }}
                 >
                     <span>Start Solving</span>
                 </button>
             </div>
+
+            {authModal && (
+                <AuthModal initialMode={authModal} onClose={() => setAuthModal(null)} />
+            )}
         </>
     );
 };

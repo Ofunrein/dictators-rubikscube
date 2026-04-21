@@ -45,10 +45,13 @@ export default function SimulatorControls({
 
       {/* Cube size + actions */}
       <div className="border-b border-[--sim-border] p-2 sm:p-3 md:p-4">
+        {/* SIZE SELECTOR — 4x4 hidden until Vercel /tmp limit is resolved.
+            Full 3-button block preserved below in comment.
+            See: docs/sprint-3-martin.md § "4x4 on Vercel" */}
         <div className="flex items-center gap-2 mb-1.5 md:mb-2">
           <p className="font-mono text-[9px] md:text-[10px] uppercase tracking-widest sim-text shrink-0">Size</p>
-          <div className="grid grid-cols-3 gap-1 flex-1">
-            {CUBE_SIZE_OPTIONS.map((sizeOption) => {
+          <div className="grid grid-cols-2 gap-1 flex-1">
+            {CUBE_SIZE_OPTIONS.filter(s => s !== 4).map((sizeOption) => {
               const selected = cubeSize === sizeOption;
               return (
                 <button
@@ -60,7 +63,7 @@ export default function SimulatorControls({
                       ? 'border-dictator-red bg-dictator-red/15 text-dictator-red'
                       : interactionLocked
                         ? 'border-[--sim-border] bg-[--sim-kbd] sim-text/50 cursor-not-allowed'
-                        : 'border-dictator-chrome/20 bg-[--sim-kbd] sim-text hover:border-dictator-red/50 hover:text-dictator-red'
+                        : 'border-[--sim-btn-border] bg-[--sim-kbd] sim-text hover:border-dictator-red/50 hover:text-dictator-red'
                     }`}
                 >
                   {sizeOption}x{sizeOption}
@@ -69,6 +72,10 @@ export default function SimulatorControls({
             })}
           </div>
         </div>
+        {/*
+          4x4 BUTTON — hidden until Vercel /tmp space limit is resolved.
+          To restore: change grid-cols-2 above to grid-cols-3 and remove the .filter(s => s !== 4).
+        */}
 
         <div className="grid grid-cols-3 gap-1">
           <button
@@ -101,7 +108,7 @@ export default function SimulatorControls({
             className={`flex items-center justify-center gap-1 rounded-lg border px-1 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide transition-all min-w-0
               ${interactionLocked
                 ? 'bg-[--sim-kbd] border-[--sim-border] sim-text/60 cursor-not-allowed'
-                : 'bg-[--sim-kbd] border-dictator-chrome/20 sim-text hover:border-dictator-chrome/50 hover:sim-text active:scale-95'
+                : 'bg-[--sim-kbd] border-[--sim-btn-border] sim-text hover:border-dictator-chrome/50 hover:sim-text active:scale-95'
               }`}
           >
             <RotateCcw size={11} className="shrink-0" />
@@ -278,7 +285,7 @@ export default function SimulatorControls({
                     className={`flex-1 font-mono text-[11px] font-bold py-1.5 rounded-md border transition-all duration-150 min-w-0
                       ${manualInputLocked
                         ? 'bg-[--sim-kbd] border-[--sim-border] sim-text/30 cursor-not-allowed'
-                        : 'bg-[--sim-kbd] border-dictator-chrome/20 sim-text hover:bg-dictator-red hover:border-dictator-red active:scale-95'
+                        : 'bg-[--sim-kbd] border-[--sim-btn-border] sim-text hover:bg-dictator-red hover:border-dictator-red active:scale-95'
                       }`}
                   >
                     {move}
@@ -296,7 +303,7 @@ export default function SimulatorControls({
         <div className="grid grid-cols-2 gap-1 lg:grid-cols-3">
           {Object.entries(keyMap).map(([key, move]) => (
             <div key={key} className="flex items-center gap-1">
-              <kbd className="rounded border border-dictator-chrome/20 bg-[--sim-kbd] px-1 py-0.5 font-mono text-[10px] sim-text">
+              <kbd className="rounded border border-[--sim-btn-border] bg-[--sim-kbd] px-1 py-0.5 font-mono text-[10px] sim-text">
                 {key}
               </kbd>
               <span className="font-mono text-[10px] sim-text">→ {move}</span>
