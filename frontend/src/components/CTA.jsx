@@ -29,7 +29,7 @@ const CTA = () => {
 
                 <button onClick={() => navigate('/simulator')} className="btn-magnetic group bg-white text-dictator-red font-bold rounded-full px-12 py-5 shadow-xl transition-all hover:shadow-[#0D0D0D]/20 mb-6 border border-transparent">
                     {/* Default state */}
-                    <span className="relative z-10 transition-colors duration-300 group-hover:text-white font-body text-xl tracking-wide">
+                    <span className="relative z-10 transition-colors duration-300 group-hover:text-white font-heading text-xl tracking-wide">
                         Start Solving
                     </span>
                     {/* Hover background layer */}
