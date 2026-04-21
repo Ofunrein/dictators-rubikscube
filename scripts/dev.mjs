@@ -162,7 +162,7 @@
 //     process.exit(0);
 //   });
 // }
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import process from 'node:process';
@@ -187,20 +187,14 @@ function resolveFrontendDir() {
     return null;
 }
 function assertDependencies(frontendDir) {
-    const missing = [];
     if (!existsSync(resolve(repoRoot, frontendDir, 'node_modules'))) {
-        missing.push(`npm --prefix ${frontendDir} install`);
-    }
-    if (missing.length > 0) {
         // eslint-disable-next-line no-console
-        console.error('Missing dependencies for dev startup. Run:');
-        for (const command of missing) {
-            // eslint-disable-next-line no-console
-            console.error(`  ${command}`);
-        }
-        // eslint-disable-next-line no-console
-        console.error('Or run: npm run setup');
-        process.exit(1);
+        console.log(`Installing dependencies for ${frontendDir}...`);
+        execSync(`${npmCommand} install --legacy-peer-deps`, {
+            cwd: resolve(repoRoot, frontendDir),
+            stdio: 'inherit',
+            shell: process.platform === 'win32'
+        });
     }
 }
 const frontendDir = resolveFrontendDir();
@@ -213,13 +207,13 @@ if (!frontendDir) {
 }
 assertDependencies(frontendDir);
 const services = [
-    { name: 'API', cwd: resolve(repoRoot, 'backend/api'), args: ['run', 'serve'] },
+    { name: 'API', cwd: resolve(repoRoot, 'backend/api'), args: ['run', 'serve'], env: { API_PORT: '5200' } },
     { name: 'Frontend', cwd: resolve(repoRoot, frontendDir), args: ['run', 'dev'] }
 ];
-function startService({ name, cwd, args }) {
+function startService({ name, cwd, args, env = {} }) {
     const child = spawn(npmCommand, args, {
         cwd,
-        env: process.env,
+        env: { ...process.env, ...env },
         stdio: 'inherit',
         shell: process.platform === 'win32'
     });
@@ -230,7 +224,7 @@ function startService({ name, cwd, args }) {
     return child;
 }
 // eslint-disable-next-line no-console
-console.log(`Starting API on :4011 and ${frontendDir} dev server on :5173...`);
+console.log(`Starting API on :5200 and ${frontendDir} dev server on :5400...`);
 const children = services.map(startService);
 let shuttingDown = false;
 function shutdown(signal = 'SIGTERM') {
