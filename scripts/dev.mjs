@@ -217,7 +217,12 @@ async function ensureDependencies(frontendDir) {
         { path: resolve(repoRoot, frontendDir), label: frontendDir, args: ['--legacy-peer-deps'] }
     ];
     for (const { path, label, args } of dirs) {
-        if (!existsSync(resolve(path, 'node_modules'))) {
+        // Check for the vite binary specifically, not just node_modules, so a
+        // partial install (node_modules exists but vite missing) still triggers reinstall.
+        const binCheck = label === 'frontend'
+            ? resolve(path, 'node_modules', '.bin', 'vite')
+            : resolve(path, 'node_modules');
+        if (!existsSync(binCheck)) {
             await npmInstall(path, label, args);
         }
     }
