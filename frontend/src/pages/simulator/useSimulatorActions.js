@@ -47,6 +47,7 @@ export function useSimulatorActions({
   const [isScramblingRemote, setIsScramblingRemote] = useState(false);
   const [scrambleSeq, setScrambleSeq] = useState([]);
   const [timerPrimed, setTimerPrimed] = useState(false);
+  const [actionError, setActionError] = useState(null);
   const [scrambleMoveCount, setScrambleMoveCount] = useState(0);
   const [isTimedSolveSession, setIsTimedSolveSession] = useState(false);
 
@@ -129,11 +130,13 @@ export function useSimulatorActions({
       setScrambleMoveCount(armTimer ? payload.scramble.length : 0);
       if (armTimer) setIsTimedSolveSession(true);
 
-      enqueueMoves(payload.scramble);
+      // In timed solve mode, scramble moves are hidden from history —
+      // only the user's manual moves and solve moves should appear.
+      enqueueMoves(payload.scramble, { recordHistory: !armTimer });
     } catch (error) {
       clearTimedSolveState();
       console.error('Remote scramble failed.', error);
-      window.alert(error instanceof Error ? error.message : 'Remote scramble failed.');
+      setActionError(error instanceof Error ? error.message : 'Scramble failed. Check your connection.');
     } finally {
       setIsScramblingRemote(false);
     }
@@ -181,7 +184,7 @@ export function useSimulatorActions({
       clearTimedSolveState();
     } catch (error) {
       console.error('Remote solve failed.', error);
-      window.alert(error instanceof Error ? error.message : 'Remote solve failed.');
+      setActionError(error instanceof Error ? error.message : 'Solve failed. Check your connection.');
     } finally {
       setIsSolvingRemote(false);
     }
@@ -228,6 +231,8 @@ export function useSimulatorActions({
   }, [bumpLayout, clearPendingAnimation, clearSelectedStickerRef, clearTimedSolveState, cubeSize, cubeStateObjRef, interactionLocked, setCubeSize, setDisplayState, setMoveHistory, setSolveDepth, solveStackRef, timer]);
 
   return {
+    actionError,
+    clearActionError: () => setActionError(null),
     cancelTimedSolve,
     dispatchManualMove,
     handleReset,

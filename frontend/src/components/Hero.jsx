@@ -99,7 +99,7 @@ const Hero = () => {
                 <div className="hero-stagger opacity-0 flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-16">
                     <button
                         onClick={() => navigate('/simulator')}
-                        className="btn-magnetic bg-dictator-red text-white px-8 py-4 rounded-full font-body text-lg font-bold tracking-wide">
+                        className="btn-magnetic bg-dictator-red text-white px-8 py-4 rounded-full font-heading text-lg font-bold tracking-wide">
                         <span>Start Solving</span>
                     </button>
 
