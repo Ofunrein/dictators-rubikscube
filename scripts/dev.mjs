@@ -1,16 +1,3 @@
-/*
- * Dev Runner Script — starts both servers with one command.
- *
- * When you run "npm run dev" from the repo root, this script launches:
- *   1. The frontend Vite dev server on port 5400 (serves the React app)
- *   2. The backend API server on port 5200 (handles cube solving requests)
- *
- * Both run at the same time so you can develop the full app locally.
- * When you press Ctrl+C, it gracefully shuts down both processes.
- *
- * The first ~165 lines below are a commented-out older version of this
- * script that's kept around for reference. The active code starts after.
- */
 // import { spawn } from 'node:child_process';
 // import { existsSync } from 'node:fs';
 // import { dirname, resolve } from 'node:path';
@@ -20,7 +7,7 @@
 // const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // const isWindows = process.platform === 'win32';
 // const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-// const frontendCandidates = ['frontend'];
+// const frontendCandidates = ['dictators-website', 'dicators-website'];
 //
 // function resolveFrontendDir() {
 //   for (const dir of frontendCandidates) {
@@ -66,7 +53,7 @@
 // if (!frontendDir) {
 //   // eslint-disable-next-line no-console
 //   console.error(
-//     'Could not find frontend app folder. Expected: frontend/.'
+//     'Could not find frontend app folder. Expected one of: dictators-website/, dicators-website/.'
 //   );
 //   process.exit(1);
 // }
@@ -155,7 +142,7 @@
 // }
 //
 // // eslint-disable-next-line no-console
-// console.log(`Starting API on :5200 and ${frontendDir} dev server on :5400...`);
+// console.log(`Starting API on :4011 and ${frontendDir} dev server on :5173...`);
 // services.forEach(startService);
 //
 // function shutdown(signal = 'SIGTERM') {
@@ -175,15 +162,23 @@
 //     process.exit(0);
 //   });
 // }
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const frontendCandidates = ['frontend'];
-
+const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const frontendCandidates = ['dictators-website', 'dicators-website'];
 function resolveFrontendDir() {
+    for (const dir of frontendCandidates) {
+        if (
+            existsSync(resolve(repoRoot, dir, 'package.json')) &&
+            existsSync(resolve(repoRoot, dir, 'node_modules'))
+        ) {
+            return dir;
+        }
+    }
     for (const dir of frontendCandidates) {
         if (existsSync(resolve(repoRoot, dir, 'package.json'))) {
             return dir;
@@ -191,49 +186,36 @@ function resolveFrontendDir() {
     }
     return null;
 }
-
-function npmInstall(cwd, label, extraArgs = []) {
-    return new Promise((res, rej) => {
+function assertDependencies(frontendDir) {
+    if (!existsSync(resolve(repoRoot, frontendDir, 'node_modules'))) {
         // eslint-disable-next-line no-console
-        console.log(`Installing dependencies in ${label}...`);
-        const child = spawn('npm', ['install', ...extraArgs], {
-            cwd,
-            env: process.env,
+        console.log(`Installing dependencies for ${frontendDir}...`);
+        execSync(`${npmCommand} install --legacy-peer-deps`, {
+            cwd: resolve(repoRoot, frontendDir),
             stdio: 'inherit',
-            shell: true
+            shell: process.platform === 'win32'
         });
-        child.on('error', rej);
-        child.on('exit', (code) => {
-            if (code === 0) res();
-            else rej(new Error(`npm install failed in ${label} (exit ${code})`));
-        });
-    });
-}
-
-async function ensureDependencies(frontendDir) {
-    const dirs = [
-        { path: resolve(repoRoot, 'backend/api'), label: 'backend/api', args: [] },
-        // --legacy-peer-deps needed because @vitejs/plugin-react peer dep lags behind vite 8
-        { path: resolve(repoRoot, frontendDir), label: frontendDir, args: ['--legacy-peer-deps'] }
-    ];
-    for (const { path, label, args } of dirs) {
-        // Check for the vite binary specifically, not just node_modules, so a
-        // partial install (node_modules exists but vite missing) still triggers reinstall.
-        const binCheck = label === 'frontend'
-            ? resolve(path, 'node_modules', '.bin', 'vite')
-            : resolve(path, 'node_modules');
-        if (!existsSync(binCheck)) {
-            await npmInstall(path, label, args);
-        }
     }
 }
-
-function startService(name, cwd, args) {
-    const child = spawn('npm', args, {
+const frontendDir = resolveFrontendDir();
+if (!frontendDir) {
+    // eslint-disable-next-line no-console
+    console.error(
+        'Could not find frontend app folder. Expected one of: dictators-website/, dicators-website/.'
+    );
+    process.exit(1);
+}
+assertDependencies(frontendDir);
+const services = [
+    { name: 'API', cwd: resolve(repoRoot, 'backend/api'), args: ['run', 'serve'], env: { API_PORT: '5200' } },
+    { name: 'Frontend', cwd: resolve(repoRoot, frontendDir), args: ['run', 'dev'] }
+];
+function startService({ name, cwd, args, env = {} }) {
+    const child = spawn(npmCommand, args, {
         cwd,
-        env: process.env,
+        env: { ...process.env, ...env },
         stdio: 'inherit',
-        shell: true
+        shell: process.platform === 'win32'
     });
     child.on('error', (error) => {
         // eslint-disable-next-line no-console
@@ -241,131 +223,33 @@ function startService(name, cwd, args) {
     });
     return child;
 }
-
-function pythonFound() {
-    const isWin = process.platform === 'win32';
-    const candidates = isWin ? ['py', 'python', 'python3'] : ['python3', 'python'];
-    for (const cmd of candidates) {
-        const result = spawnSync(cmd, ['--version'], { stdio: 'pipe', timeout: 5000, shell: isWin });
-        if (result.status === 0) return cmd;
+// eslint-disable-next-line no-console
+console.log(`Starting API on :5200 and ${frontendDir} dev server on :5400...`);
+const children = services.map(startService);
+let shuttingDown = false;
+function shutdown(signal = 'SIGTERM') {
+    if (shuttingDown) {
+        return;
     }
-    return null;
-}
-
-function tryInstallPython() {
-    const isWin = process.platform === 'win32';
-    const isMac = process.platform === 'darwin';
-
-    if (isWin) {
-        // eslint-disable-next-line no-console
-        console.log('Python not found. Attempting auto-install via winget...');
-        const result = spawnSync(
-            'winget',
-            ['install', '-e', '--id', 'Python.Python.3', '--silent',
-             '--accept-package-agreements', '--accept-source-agreements'],
-            { stdio: 'inherit', shell: true, timeout: 120000 }
-        );
-        if (result.status === 0) {
-            // eslint-disable-next-line no-console
-            console.log('\nPython installed. Open a new terminal and run npm run dev again.');
-            // eslint-disable-next-line no-console
-            console.log('Also disable: Settings → Apps → Advanced app settings → App execution aliases → python.exe / python3.exe');
-            process.exit(0);
-        }
-        // eslint-disable-next-line no-console
-        console.warn('winget install failed — see manual instructions below.');
-        return false;
-    }
-
-    if (isMac) {
-        // eslint-disable-next-line no-console
-        console.log('Python not found. Attempting auto-install via Homebrew (brew)...');
-        const result = spawnSync('brew', ['install', 'python3'], { stdio: 'inherit', timeout: 120000 });
-        if (result.status === 0) {
-            // eslint-disable-next-line no-console
-            console.log('\nPython installed. Open a new terminal and run npm run dev again.');
-            process.exit(0);
-        }
-        // eslint-disable-next-line no-console
-        console.warn('brew install failed (Homebrew may not be installed) — see manual instructions below.');
-        return false;
-    }
-
-    return false;
-}
-
-async function ensurePython() {
-    if (pythonFound()) return;
-
-    const isWin = process.platform === 'win32';
-    const isMac = process.platform === 'darwin';
-
-    tryInstallPython();
-
-    // eslint-disable-next-line no-console
-    console.warn([
-        '',
-        'WARNING: Python not found — 2x2 and 4x4 solving will not work until Python is installed.',
-        isWin
-            ? 'Install: https://python.org  (check "Add Python to PATH")  then disable the Store alias:\n         Settings → Apps → Advanced app settings → App execution aliases → off for python.exe + python3.exe'
-            : isMac
-                ? 'Install via Homebrew:  brew install python3\n         Or download from: https://python.org'
-                : 'Install Python 3 via your package manager, e.g.:  sudo apt install python3',
-        'Then restart this terminal and run: npm run dev',
-        '',
-    ].join('\n'));
-}
-
-async function main() {
-    const frontendDir = resolveFrontendDir();
-    if (!frontendDir) {
-        // eslint-disable-next-line no-console
-        console.error('Could not find frontend app folder. Expected: frontend/.');
-        process.exit(1);
-    }
-
-    await ensurePython();
-    await ensureDependencies(frontendDir);
-
-    // eslint-disable-next-line no-console
-    console.log(`Starting active frontend "${frontendDir}" on :5400 and local API on :5200...`);
-    // eslint-disable-next-line no-console
-    console.log('Local dev routing: browser -> http://localhost:5400, API proxy -> /api/v1/*, direct API -> http://localhost:5200/v1/*');
-
-    const services = [
-        { name: 'API', cwd: resolve(repoRoot, 'backend/api'), args: ['run', 'serve'] },
-        { name: 'Frontend', cwd: resolve(repoRoot, frontendDir), args: ['run', 'dev'] }
-    ];
-
-    const children = services.map(({ name, cwd, args }) => startService(name, cwd, args));
-    let shuttingDown = false;
-
-    function shutdown(signal = 'SIGTERM') {
-        if (shuttingDown) return;
-        shuttingDown = true;
-        for (const child of children) {
-            if (!child.killed) child.kill(signal);
-        }
-    }
-
-    for (const signal of ['SIGINT', 'SIGTERM']) {
-        process.on(signal, () => {
-            shutdown(signal);
-            process.exit(0);
-        });
-    }
-
+    shuttingDown = true;
     for (const child of children) {
-        child.on('exit', (code) => {
-            if (shuttingDown) return;
-            shutdown('SIGTERM');
-            process.exit(typeof code === 'number' ? code : 1);
-        });
+        if (!child.killed) {
+            child.kill(signal);
+        }
     }
 }
-
-main().catch((error) => {
-    // eslint-disable-next-line no-console
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exit(1);
-});
+for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => {
+        shutdown(signal);
+        process.exit(0);
+    });
+}
+for (const child of children) {
+    child.on('exit', (code) => {
+        if (shuttingDown) {
+            return;
+        }
+        shutdown('SIGTERM');
+        process.exit(typeof code === 'number' ? code : 1);
+    });
+}
