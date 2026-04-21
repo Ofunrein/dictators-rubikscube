@@ -23,7 +23,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { ArrowLeft, ChevronRight, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Sun, Moon, UserCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import AuthModal from '../../components/AuthModal';
 import * as THREE from 'three';
 import { CubeState } from '../../cube/CubeState';
 import {
@@ -45,12 +47,14 @@ import SimulatorControls from './SimulatorControls';
 import TutorialPanel from './TutorialPanel';
 import SimulatorFaceMap from './SimulatorFaceMap';
 import CanvasFallbackPanel from './CanvasFallbackPanel';
-import { useTheme } from './useTheme';
+import { useTheme } from '../../context/ThemeContext';
 import { getThemeClasses } from './simulatorTheme';
 
 const SimulatorPage = () => {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
+  const { currentUser } = useAuth();
+  const [authModal, setAuthModal] = useState(null);
   const t = getThemeClasses(isDark);
 
   // Core cube state — owned here, passed to hooks via refs
@@ -235,11 +239,13 @@ const SimulatorPage = () => {
       }`}
       style={{
         '--sim-panel': isDark ? '#0A0A0A' : '#F0EDE8',
-        '--sim-card': isDark ? '#111111' : '#FFFFFF',
-        '--sim-border': isDark ? 'rgba(176,176,176,0.1)' : '#E5E0D8',
+        '--sim-card': isDark ? '#111111' : '#F5F1EC',
+        '--sim-border': isDark ? 'rgba(176,176,176,0.1)' : '#A89F94',
         '--sim-text': isDark ? '#FFFFFF' : '#2C2A26',
         '--sim-text-muted': isDark ? 'rgba(255,255,255,0.6)' : 'rgba(44,42,38,0.5)',
-        '--sim-kbd': isDark ? '#1A1A1A' : '#FFFFFF',
+        '--sim-kbd': isDark ? '#1A1A1A' : '#F5F1EC',
+        '--sim-btn-border': isDark ? 'rgba(176,176,176,0.12)' : 'rgba(44,42,38,0.15)',
+        '--sim-face-border': isDark ? 'rgba(176,176,176,0.08)' : 'rgba(168,159,148,0.45)',
       }}
     >
       <header className={`flex items-center justify-between px-6 py-4 border-b ${t.headerBorder} ${t.headerBg} sticky top-0 z-50`}>
@@ -260,15 +266,43 @@ const SimulatorPage = () => {
           </span>
         </div>
 
-        <button
-          onClick={toggleTheme}
-          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${t.border} ${t.headerText} hover:border-dictator-red/40`}
-          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {isDark ? <Sun size={12} /> : <Moon size={12} />}
-          {isDark ? 'Light' : 'Dark'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${t.border} ${t.headerText} hover:border-dictator-red/40`}
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {isDark ? <Sun size={12} /> : <Moon size={12} />}
+            {isDark ? 'Light' : 'Dark'}
+          </button>
+
+          {currentUser ? (
+            <button
+              onClick={() => navigate('/profile')}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${t.border} ${t.headerText} hover:border-dictator-red/40`}
+              title="Profile"
+            >
+              <div className="w-4 h-4 rounded-full bg-dictator-red/30 border border-dictator-red/50 flex items-center justify-center text-dictator-red font-bold" style={{ fontSize: '8px' }}>
+                {currentUser.username.charAt(0).toUpperCase()}
+              </div>
+              <span className="hidden sm:inline">{currentUser.username}</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setAuthModal('login')}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${t.border} ${t.headerText} hover:border-dictator-red/40`}
+              title="Log in"
+            >
+              <UserCircle size={12} />
+              <span className="hidden sm:inline">Log In</span>
+            </button>
+          )}
+        </div>
       </header>
+
+      {authModal && (
+        <AuthModal initialMode={authModal} onClose={() => setAuthModal(null)} />
+      )}
 
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
@@ -402,6 +436,19 @@ const SimulatorPage = () => {
                   <span className="font-mono text-[10px] uppercase tracking-widest text-dictator-red">
                     {actions.solveStatusLabel}
                   </span>
+                </div>
+              )}
+
+              {actions.actionError && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-start gap-2 rounded-xl border border-dictator-red/40 bg-dictator-void/90 backdrop-blur px-4 py-3 shadow-xl max-w-xs w-[calc(100%-2rem)]">
+                  <span className="mt-0.5 w-2 h-2 rounded-full bg-dictator-red shrink-0" />
+                  <p className="font-mono text-[11px] text-white/90 leading-relaxed flex-1">{actions.actionError}</p>
+                  <button
+                    onClick={actions.clearActionError}
+                    className="font-mono text-[10px] text-dictator-chrome hover:text-white transition-colors shrink-0 ml-1"
+                  >
+                    ✕
+                  </button>
                 </div>
               )}
 
