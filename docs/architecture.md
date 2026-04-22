@@ -27,6 +27,7 @@
 │  │  POST /v1/cube/moves/apply → apply single move     │    │
 │  │  POST /v1/cube/scramble    → generate scramble      │    │
 │  │  POST /v1/cube/solve       → request solution       │    │
+│  │  POST /v1/ai/help          → cube coach guidance    │    │
 │  │                                                    │    │
 │  │  Imports: cube.js, validation.js, moves.js         │    │
 │  └────────────────────────────────────────────────────┘    │
@@ -59,7 +60,8 @@
 2. **SimulatorPage** calls `applyMove(state, move)` from `moves.js`
 3. **CubeState** updates → cube re-renders with new sticker colors
 4. **API calls** (scramble, solve) go to `/api/v1/*` → serverless function → same `moves.js` logic
-5. **Shared move logic** — frontend and API import the same `moves.js` module, guaranteeing state parity
+5. **AI help calls** (`POST /api/v1/ai/help`) send simulator context (state, move history, step, timer, idle) and receive mode-based coach output (`hint`, `guide`, `solve`, `explain`)
+6. **Shared move logic** — frontend and API import the same `moves.js` module, guaranteeing state parity
 
 ## Key Design Decisions
 
@@ -68,3 +70,4 @@
 - **Single-origin deployment** — Vercel serves both static site and API functions, eliminating CORS
 - **18-move engine** — M, E, S slice turns added alongside the 12 standard face turns
 - **Shared logic, zero duplication** — serverless functions import backend modules directly
+- **Contract-first AI coaching** — `ai/help` request/response payload is frozen in v1 for frontend/backend stability while model behavior iterates

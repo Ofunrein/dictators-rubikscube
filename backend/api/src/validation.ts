@@ -1,9 +1,10 @@
 import { FACE_ORDER, MOVE_TOKENS, cloneCubeState, isStickerToken, isSupportedMove, type CubeState } from './cube.js';
 
-import type { ApiErrorDetail } from './types/contracts.js';
+import type { AiCoachMode, AiHelpRequest, ApiErrorDetail } from './types/contracts.js';
 
 const FACE_SET = new Set(FACE_ORDER);
 const ALLOWED_STRATEGIES = new Set(['beginner', 'cfop']);
+const AI_COACH_MODES = new Set<AiCoachMode>(['hint', 'guide', 'solve', 'explain']);
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -193,6 +194,253 @@ export function validateSolveRequest(payload: unknown):
     value: {
       state: cloneCubeState(payload.state as CubeState),
       strategy,
+    },
+  };
+}
+
+function validateStringArrayField(
+  details: ApiErrorDetail[],
+  parent: Record<string, unknown>,
+  field: string,
+  path: string,
+  maxLength: number,
+): string[] | null {
+  if (!Object.hasOwn(parent, field)) {
+    details.push({ path, message: `${field} is required.` });
+    return null;
+  }
+
+  const value = parent[field];
+  if (!Array.isArray(value)) {
+    details.push({ path, message: `${field} must be an array of strings.` });
+    return null;
+  }
+
+  if (value.length > maxLength) {
+    details.push({ path, message: `${field} must contain at most ${maxLength} items.` });
+  }
+
+  const normalized: string[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const item = value[index];
+    if (typeof item !== 'string') {
+      details.push({ path: `${path}[${index}]`, message: 'Value must be a string.' });
+      continue;
+    }
+    normalized.push(item);
+  }
+
+  return normalized;
+}
+
+export function validateAiHelpRequest(payload: unknown):
+  | { ok: true; value: AiHelpRequest }
+  | { ok: false; details: ApiErrorDetail[] } {
+  if (!isPlainObject(payload)) {
+    return {
+      ok: false,
+      details: [{ path: 'body', message: 'Request body must be a JSON object.' }],
+    };
+  }
+
+  const details: ApiErrorDetail[] = [];
+  const unknown = findUnknownKeys(payload, ['mode', 'context', 'message', 'previousCoachResponse']);
+  for (const key of unknown) {
+    details.push({ path: key, message: 'Unknown request field.' });
+  }
+
+  let mode: AiCoachMode | null = null;
+  if (!Object.hasOwn(payload, 'mode')) {
+    details.push({ path: 'mode', message: 'mode is required.' });
+  } else if (typeof payload.mode !== 'string' || !AI_COACH_MODES.has(payload.mode as AiCoachMode)) {
+    details.push({ path: 'mode', message: 'mode must be one of hint, guide, solve, explain.' });
+  } else {
+    mode = payload.mode as AiCoachMode;
+  }
+
+  if (Object.hasOwn(payload, 'message')) {
+    if (typeof payload.message !== 'string') {
+      details.push({ path: 'message', message: 'message must be a string.' });
+    } else if (payload.message.length > 1000) {
+      details.push({ path: 'message', message: 'message must be 1000 characters or less.' });
+    }
+  }
+
+  let previousCoachResponse: AiHelpRequest['previousCoachResponse'] | undefined;
+  if (Object.hasOwn(payload, 'previousCoachResponse')) {
+    const previous = payload.previousCoachResponse;
+    if (!isPlainObject(previous)) {
+      details.push({ path: 'previousCoachResponse', message: 'previousCoachResponse must be an object.' });
+    } else {
+      const unknownPrevious = findUnknownKeys(previous, ['id', 'mode', 'content']);
+      for (const key of unknownPrevious) {
+        details.push({ path: `previousCoachResponse.${key}`, message: 'Unknown request field.' });
+      }
+
+      const id = previous.id;
+      const previousMode = previous.mode;
+      const content = previous.content;
+
+      if (typeof id !== 'string' || id.length === 0) {
+        details.push({ path: 'previousCoachResponse.id', message: 'id must be a non-empty string.' });
+      }
+      if (typeof previousMode !== 'string' || !AI_COACH_MODES.has(previousMode as AiCoachMode)) {
+        details.push({
+          path: 'previousCoachResponse.mode',
+          message: 'mode must be one of hint, guide, solve, explain.',
+        });
+      }
+      if (typeof content !== 'string' || content.length === 0) {
+        details.push({ path: 'previousCoachResponse.content', message: 'content must be a non-empty string.' });
+      }
+
+      if (typeof id === 'string' && id.length > 0
+        && typeof previousMode === 'string' && AI_COACH_MODES.has(previousMode as AiCoachMode)
+        && typeof content === 'string' && content.length > 0) {
+        previousCoachResponse = {
+          id,
+          mode: previousMode as AiCoachMode,
+          content,
+        };
+      }
+    }
+  }
+
+  let contextValue: AiHelpRequest['context'] | null = null;
+  if (!Object.hasOwn(payload, 'context')) {
+    details.push({ path: 'context', message: 'context is required.' });
+  } else if (!isPlainObject(payload.context)) {
+    details.push({ path: 'context', message: 'context must be an object.' });
+  } else {
+    const context = payload.context;
+    const unknownContext = findUnknownKeys(context, [
+      'cubeState',
+      'moveHistory',
+      'scramble',
+      'tutorialStepIndex',
+      'tutorialStepTitle',
+      'timerMs',
+      'idleMs',
+      'solveDepth',
+      'queueActive',
+      'isSolved',
+    ]);
+    for (const key of unknownContext) {
+      details.push({ path: `context.${key}`, message: 'Unknown request field.' });
+    }
+
+    let cubeState: CubeState | null = null;
+    if (!Object.hasOwn(context, 'cubeState')) {
+      details.push({ path: 'context.cubeState', message: 'cubeState is required.' });
+    } else {
+      details.push(...validateCubeState(context.cubeState, 'context.cubeState'));
+      if (details.length === 0) {
+        cubeState = cloneCubeState(context.cubeState as CubeState);
+      }
+    }
+
+    const moveHistory = validateStringArrayField(details, context, 'moveHistory', 'context.moveHistory', 5000);
+    const scramble = validateStringArrayField(details, context, 'scramble', 'context.scramble', 400);
+
+    const tutorialStepIndex = context.tutorialStepIndex;
+    if (!Object.hasOwn(context, 'tutorialStepIndex')) {
+      details.push({ path: 'context.tutorialStepIndex', message: 'tutorialStepIndex is required.' });
+    } else if (typeof tutorialStepIndex !== 'number' || !Number.isInteger(tutorialStepIndex) || tutorialStepIndex < 0) {
+      details.push({
+        path: 'context.tutorialStepIndex',
+        message: 'tutorialStepIndex must be a non-negative integer.',
+      });
+    }
+
+    const tutorialStepTitle = context.tutorialStepTitle;
+    if (!Object.hasOwn(context, 'tutorialStepTitle')) {
+      details.push({ path: 'context.tutorialStepTitle', message: 'tutorialStepTitle is required.' });
+    } else if (typeof tutorialStepTitle !== 'string' || tutorialStepTitle.length === 0) {
+      details.push({ path: 'context.tutorialStepTitle', message: 'tutorialStepTitle must be a non-empty string.' });
+    }
+
+    const timerMs = context.timerMs;
+    if (!Object.hasOwn(context, 'timerMs')) {
+      details.push({ path: 'context.timerMs', message: 'timerMs is required.' });
+    } else if (typeof timerMs !== 'number' || !Number.isInteger(timerMs) || timerMs < 0) {
+      details.push({ path: 'context.timerMs', message: 'timerMs must be a non-negative integer.' });
+    }
+
+    const idleMs = context.idleMs;
+    if (!Object.hasOwn(context, 'idleMs')) {
+      details.push({ path: 'context.idleMs', message: 'idleMs is required.' });
+    } else if (typeof idleMs !== 'number' || !Number.isInteger(idleMs) || idleMs < 0) {
+      details.push({ path: 'context.idleMs', message: 'idleMs must be a non-negative integer.' });
+    }
+
+    const solveDepth = context.solveDepth;
+    if (!Object.hasOwn(context, 'solveDepth')) {
+      details.push({ path: 'context.solveDepth', message: 'solveDepth is required.' });
+    } else if (typeof solveDepth !== 'number' || !Number.isInteger(solveDepth) || solveDepth < 0) {
+      details.push({ path: 'context.solveDepth', message: 'solveDepth must be a non-negative integer.' });
+    }
+
+    const queueActive = context.queueActive;
+    if (!Object.hasOwn(context, 'queueActive')) {
+      details.push({ path: 'context.queueActive', message: 'queueActive is required.' });
+    } else if (typeof queueActive !== 'boolean') {
+      details.push({ path: 'context.queueActive', message: 'queueActive must be a boolean.' });
+    }
+
+    const isSolved = context.isSolved;
+    if (!Object.hasOwn(context, 'isSolved')) {
+      details.push({ path: 'context.isSolved', message: 'isSolved is required.' });
+    } else if (typeof isSolved !== 'boolean') {
+      details.push({ path: 'context.isSolved', message: 'isSolved must be a boolean.' });
+    }
+
+    if (
+      cubeState
+      && moveHistory
+      && scramble
+      && typeof tutorialStepIndex === 'number'
+      && Number.isInteger(tutorialStepIndex)
+      && tutorialStepIndex >= 0
+      && typeof tutorialStepTitle === 'string'
+      && tutorialStepTitle.length > 0
+      && typeof timerMs === 'number'
+      && Number.isInteger(timerMs)
+      && timerMs >= 0
+      && typeof idleMs === 'number'
+      && Number.isInteger(idleMs)
+      && idleMs >= 0
+      && typeof solveDepth === 'number'
+      && Number.isInteger(solveDepth)
+      && solveDepth >= 0
+      && typeof queueActive === 'boolean'
+      && typeof isSolved === 'boolean'
+    ) {
+      contextValue = {
+        cubeState,
+        moveHistory: [...moveHistory],
+        scramble: [...scramble],
+        tutorialStepIndex,
+        tutorialStepTitle,
+        timerMs,
+        idleMs,
+        solveDepth,
+        queueActive,
+        isSolved,
+      };
+    }
+  }
+
+  if (details.length > 0 || !mode || !contextValue) {
+    return { ok: false, details };
+  }
+
+  return {
+    ok: true,
+    value: {
+      mode,
+      context: contextValue,
+      ...(typeof payload.message === 'string' ? { message: payload.message } : {}),
+      ...(previousCoachResponse ? { previousCoachResponse } : {}),
     },
   };
 }

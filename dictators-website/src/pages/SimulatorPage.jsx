@@ -5,7 +5,8 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { CubeState } from '../cube/CubeState';
 import { applyMove, MOVES } from '../cube/moves';
-import { ArrowLeft, RotateCcw, Shuffle, Timer, ChevronRight, Check } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Shuffle, Timer, ChevronRight, Check, Bot, X } from 'lucide-react';
+import { requestAiHelp } from '../net/api';
 import {
   CUBIE_LAYOUT,
   TURN_DURATION_SECONDS,
@@ -34,6 +35,7 @@ const AXIS_VECTORS = {
   y: new THREE.Vector3(0, 1, 0),
   z: new THREE.Vector3(0, 0, 1),
 };
+const IDLE_HELP_THRESHOLD_MS = 70000;
 
 class SimulatorCanvasBoundary extends React.Component {
   constructor(props) {
@@ -375,6 +377,21 @@ function formatTime(ms) {
   return `${minutes > 0 ? `${minutes}:` : ''}${String(seconds).padStart(2, '0')}.${String(centis).padStart(2, '0')}`;
 }
 
+function formatIdleTime(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  return `${minutes}m ${String(remaining).padStart(2, '0')}s`;
+}
+
+function cloneCubeStateForRequest(state) {
+  return FACE_ORDER.reduce((accumulator, face) => {
+    accumulator[face] = Array.isArray(state[face]) ? [...state[face]] : [];
+    return accumulator;
+  }, {});
+}
+
 // ─── Main Simulator Page ──────────────────────────────────────────────────────
 const SimulatorPage = () => {
   const navigate = useNavigate();
@@ -403,6 +420,17 @@ const SimulatorPage = () => {
 
   // Tutorial panel
   const [tutorialStep, setTutorialStep] = useState(0);
+  const [idleMs, setIdleMs] = useState(0);
+  const [showHelpPrompt, setShowHelpPrompt] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachError, setCoachError] = useState('');
+  const [coachInput, setCoachInput] = useState('');
+  const [coachMessages, setCoachMessages] = useState([]);
+  const [lastCoachResponse, setLastCoachResponse] = useState(null);
+  const lastActivityAtRef = useRef(Date.now());
+  const idlePromptShownRef = useRef(false);
+  const coachMessagesRef = useRef(null);
   const TUTORIAL_STEPS = [
     { title: 'Notation Basics', body: 'Each letter represents a face: U (Up), D (Down), R (Right), L (Left), F (Front), B (Back). A plain letter = clockwise. A prime (′) = counter-clockwise.' },
     { title: 'The Cross', body: 'Start by solving a cross on the U (white) face. Find the 4 white edge pieces and bring them to the top layer, matching the center colors on each side.' },
@@ -414,6 +442,99 @@ const SimulatorPage = () => {
   const queueActive = activeMove !== null || queuedMoveCount > 0;
   const manualInputLocked = queueActive;
   const canAnimateMoves = !canvasFailed;
+  const isCubeSolved = FACE_ORDER.every((face) => {
+    const stickers = displayState[face];
+    return Array.isArray(stickers) && stickers.every((sticker) => sticker === stickers[0]);
+  });
+
+  const markUserActivity = useCallback(() => {
+    lastActivityAtRef.current = Date.now();
+    setIdleMs(0);
+    setShowHelpPrompt(false);
+    idlePromptShownRef.current = false;
+  }, []);
+
+  const buildCoachContext = useCallback(() => ({
+    cubeState: cloneCubeStateForRequest(displayState),
+    moveHistory: [...moveHistory],
+    scramble: [...scrambleSeq],
+    tutorialStepIndex: tutorialStep,
+    tutorialStepTitle: TUTORIAL_STEPS[tutorialStep]?.title ?? 'Notation Basics',
+    timerMs,
+    idleMs,
+    solveDepth,
+    queueActive,
+    isSolved: isCubeSolved,
+  }), [displayState, moveHistory, scrambleSeq, tutorialStep, timerMs, idleMs, solveDepth, queueActive, isCubeSolved, TUTORIAL_STEPS]);
+
+  const submitCoachRequest = useCallback(async (mode, rawMessage = '') => {
+    if (coachLoading) {
+      return;
+    }
+
+    if (mode === 'explain' && !lastCoachResponse) {
+      setCoachError('Ask for a hint or guide first, then tap Explain Why.');
+      return;
+    }
+
+    const message = rawMessage.trim();
+    lastActivityAtRef.current = Date.now();
+    setIdleMs(0);
+    setCoachError('');
+    setCoachLoading(true);
+    setCoachOpen(true);
+    setShowHelpPrompt(false);
+
+    if (message.length > 0) {
+      setCoachMessages((prev) => ([
+        ...prev,
+        {
+          id: `user_${Date.now()}`,
+          role: 'user',
+          content: message,
+        },
+      ]));
+    }
+
+    try {
+      const response = await requestAiHelp({
+        mode,
+        context: buildCoachContext(),
+        ...(message.length > 0 ? { message } : {}),
+        ...(mode === 'explain' && lastCoachResponse ? { previousCoachResponse: lastCoachResponse } : {}),
+      });
+
+      const assistantMessage = {
+        id: response.coachMessage?.id ?? `coach_${Date.now()}`,
+        role: 'assistant',
+        mode: response.mode,
+        content: response.coachMessage?.content ?? 'Coach response was empty.',
+        moves: Array.isArray(response.coachMessage?.moves) ? response.coachMessage.moves : [],
+        nextActions: Array.isArray(response.coachMessage?.nextActions) ? response.coachMessage.nextActions : [],
+        disclaimer: typeof response.coachMessage?.disclaimer === 'string' ? response.coachMessage.disclaimer : '',
+      };
+
+      setCoachMessages((prev) => [...prev, assistantMessage]);
+      setLastCoachResponse({
+        id: assistantMessage.id,
+        mode: response.mode,
+        content: assistantMessage.content,
+      });
+    } catch (error) {
+      setCoachError(error instanceof Error ? error.message : 'Unable to reach AI coach.');
+    } finally {
+      setCoachLoading(false);
+    }
+  }, [buildCoachContext, coachLoading, lastCoachResponse]);
+
+  const handleCoachSendMessage = useCallback(() => {
+    const message = coachInput.trim();
+    if (message.length === 0) {
+      return;
+    }
+    setCoachInput('');
+    void submitCoachRequest('guide', message);
+  }, [coachInput, submitCoachRequest]);
 
   const applyMovesInstantly = useCallback((moves) => {
     const normalized = normalizeMoveSequence(moves);
@@ -547,13 +668,69 @@ const SimulatorPage = () => {
   // ── Auto-stop timer on solve ─────────────────────────────────────────────────
   useEffect(() => {
     if (!timerRunning) return;
-    const isSolved = FACE_ORDER.every(f => displayState[f].every(s => s === displayState[f][0]));
-    if (isSolved) {
+    if (isCubeSolved) {
       clearInterval(timerRef.current);
       setTimerRunning(false);
       setBestTime(prev => timerMs > 0 && (prev === null || timerMs < prev) ? timerMs : prev);
     }
-  }, [displayState, timerRunning, timerMs]);
+  }, [isCubeSolved, timerRunning, timerMs]);
+
+  useEffect(() => {
+    const handleInteraction = (event) => {
+      if (event.type === 'keydown') {
+        const targetTag = event.target?.tagName;
+        if (targetTag === 'INPUT' || targetTag === 'TEXTAREA') {
+          return;
+        }
+      }
+
+      markUserActivity();
+    };
+
+    window.addEventListener('pointerdown', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction, { passive: true });
+    window.addEventListener('keydown', handleInteraction);
+
+    return () => {
+      window.removeEventListener('pointerdown', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+    };
+  }, [markUserActivity]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextIdleMs = Math.max(0, Date.now() - lastActivityAtRef.current);
+      setIdleMs(nextIdleMs);
+
+      const shouldPrompt =
+        nextIdleMs >= IDLE_HELP_THRESHOLD_MS
+        && !queueActive
+        && !isCubeSolved
+        && !coachOpen
+        && !coachLoading;
+
+      if (shouldPrompt && !idlePromptShownRef.current) {
+        setShowHelpPrompt(true);
+        idlePromptShownRef.current = true;
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [queueActive, isCubeSolved, coachOpen, coachLoading]);
+
+  useEffect(() => {
+    if (isCubeSolved || queueActive || coachOpen) {
+      setShowHelpPrompt(false);
+    }
+  }, [isCubeSolved, queueActive, coachOpen]);
+
+  useEffect(() => {
+    if (!coachMessagesRef.current) {
+      return;
+    }
+    coachMessagesRef.current.scrollTop = coachMessagesRef.current.scrollHeight;
+  }, [coachMessages, coachLoading, coachError]);
 
   // ── Timer controls ───────────────────────────────────────────────────────────
   const startTimer = useCallback(() => {
@@ -670,18 +847,36 @@ const SimulatorPage = () => {
           <span className="font-heading text-sm font-bold uppercase tracking-widest hidden sm:block">The Dictators — Simulator</span>
         </div>
 
-        {/* Timer */}
-        <button
-          onClick={toggleTimer}
-          className={`flex items-center gap-2 font-mono text-sm font-bold px-4 py-2 rounded-full border transition-all duration-200
-            ${timerRunning
-              ? 'bg-dictator-red/20 border-dictator-red text-dictator-red'
-              : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-red/50 hover:text-white'
-            }`}
-        >
-          <Timer size={14} />
-          {formatTime(timerMs)}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setCoachOpen((prev) => !prev);
+              setShowHelpPrompt(false);
+            }}
+            className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-3 py-2 rounded-full border transition-all duration-200
+              ${coachOpen
+                ? 'bg-dictator-red/20 border-dictator-red text-dictator-red'
+                : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-red/50'
+              }`}
+          >
+            <Bot size={14} />
+            Coach
+          </button>
+
+          {/* Timer */}
+          <button
+            onClick={toggleTimer}
+            className={`flex items-center gap-2 font-mono text-sm font-bold px-4 py-2 rounded-full border transition-all duration-200
+              ${timerRunning
+                ? 'bg-dictator-red/20 border-dictator-red text-dictator-red'
+                : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-red/50 hover:text-white'
+              }`}
+          >
+            <Timer size={14} />
+            {formatTime(timerMs)}
+          </button>
+        </div>
       </header>
 
       {/* ── Main Layout ─────────────────────────────────────────────────────── */}
@@ -992,6 +1187,181 @@ const SimulatorPage = () => {
 
         </aside>
       </div>
+
+      {showHelpPrompt && (
+        <div className="fixed bottom-6 right-6 z-[70] w-[min(92vw,340px)] rounded-2xl border border-dictator-red/50 bg-black/90 p-4 shadow-2xl backdrop-blur">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-red mb-1">AI Coach</p>
+          <p className="font-heading text-base text-white mb-1">Need help with this step?</p>
+          <p className="font-mono text-[10px] text-white/60 mb-3">Idle for {formatIdleTime(idleMs)}</p>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                markUserActivity();
+                void submitCoachRequest('hint');
+              }}
+              className="font-mono text-[10px] uppercase tracking-widest rounded-lg border border-dictator-red/50 bg-dictator-red/20 px-2 py-2 text-white hover:bg-dictator-red/30"
+            >
+              Hint
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                markUserActivity();
+                void submitCoachRequest('guide');
+              }}
+              className="font-mono text-[10px] uppercase tracking-widest rounded-lg border border-dictator-chrome/30 bg-[#1A1A1A] px-2 py-2 text-white hover:border-dictator-red/50"
+            >
+              Guide
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowHelpPrompt(false);
+                setCoachOpen(false);
+              }}
+              className="font-mono text-[10px] uppercase tracking-widest rounded-lg border border-dictator-chrome/30 bg-[#1A1A1A] px-2 py-2 text-white/80 hover:text-white"
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {coachOpen && (
+        <div className="fixed bottom-6 right-6 z-[80] w-[min(95vw,420px)] max-h-[75vh] rounded-2xl border border-dictator-red/40 bg-black/90 shadow-2xl backdrop-blur flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-dictator-chrome/20">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-red">AI Cube Coach</p>
+              <p className="font-mono text-[10px] text-white/60">
+                {isCubeSolved ? 'Cube solved' : `Idle ${formatIdleTime(idleMs)} · Step ${tutorialStep + 1}`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCoachOpen(false)}
+              className="rounded-lg border border-dictator-chrome/30 p-1.5 text-white/70 hover:text-white hover:border-dictator-red/40"
+              aria-label="Close AI coach"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <div ref={coachMessagesRef} className="px-4 py-3 overflow-y-auto space-y-2 flex-1 min-h-32">
+            {coachMessages.length === 0 && !coachLoading && (
+              <div className="rounded-xl border border-dictator-chrome/20 bg-[#111] p-3">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-red mb-1">Ready</p>
+                <p className="font-body text-sm text-white">
+                  Ask for a hint, full guide, solve sequence, or an explanation of why a step works.
+                </p>
+              </div>
+            )}
+
+            {coachMessages.map((message) => (
+              <div
+                key={message.id}
+                className={`rounded-xl border p-3 ${message.role === 'user'
+                  ? 'border-dictator-red/30 bg-dictator-red/10'
+                  : 'border-dictator-chrome/20 bg-[#111]'}`}
+              >
+                <p className={`font-mono text-[10px] uppercase tracking-widest mb-1 ${message.role === 'user' ? 'text-dictator-red' : 'text-white/60'}`}>
+                  {message.role === 'user' ? 'You' : `Coach${message.mode ? ` · ${message.mode}` : ''}`}
+                </p>
+                <p className="font-body text-sm text-white leading-relaxed">{message.content}</p>
+                {Array.isArray(message.moves) && message.moves.length > 0 && (
+                  <p className="font-mono text-xs text-dictator-red mt-2 break-all">{message.moves.join(' ')}</p>
+                )}
+                {Array.isArray(message.nextActions) && message.nextActions.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {message.nextActions.map((item, index) => (
+                      <li key={`${message.id}_next_${index}`} className="font-body text-xs text-white/85">
+                        {index + 1}. {item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {message.disclaimer && (
+                  <p className="mt-2 font-mono text-[10px] text-white/55">{message.disclaimer}</p>
+                )}
+              </div>
+            ))}
+
+            {coachLoading && (
+              <div className="rounded-xl border border-dictator-chrome/20 bg-[#111] p-3">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-red mb-1">Thinking</p>
+                <p className="font-body text-sm text-white">Generating context-aware coaching guidance...</p>
+              </div>
+            )}
+
+            {coachError && (
+              <div className="rounded-xl border border-dictator-red/40 bg-dictator-red/10 p-3">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-red mb-1">Coach Error</p>
+                <p className="font-body text-sm text-white">{coachError}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="px-4 py-3 border-t border-dictator-chrome/20">
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              <button
+                type="button"
+                disabled={coachLoading}
+                onClick={() => void submitCoachRequest('hint')}
+                className="font-mono text-[10px] uppercase tracking-widest rounded-lg border border-dictator-red/50 bg-dictator-red/20 px-2 py-2 text-white hover:bg-dictator-red/30 disabled:opacity-50"
+              >
+                Hint
+              </button>
+              <button
+                type="button"
+                disabled={coachLoading}
+                onClick={() => void submitCoachRequest('guide')}
+                className="font-mono text-[10px] uppercase tracking-widest rounded-lg border border-dictator-chrome/30 bg-[#1A1A1A] px-2 py-2 text-white hover:border-dictator-red/50 disabled:opacity-50"
+              >
+                Guide
+              </button>
+              <button
+                type="button"
+                disabled={coachLoading}
+                onClick={() => void submitCoachRequest('solve')}
+                className="font-mono text-[10px] uppercase tracking-widest rounded-lg border border-dictator-chrome/30 bg-[#1A1A1A] px-2 py-2 text-white hover:border-dictator-red/50 disabled:opacity-50"
+              >
+                Solve
+              </button>
+              <button
+                type="button"
+                disabled={coachLoading}
+                onClick={() => void submitCoachRequest('explain')}
+                className="font-mono text-[10px] uppercase tracking-widest rounded-lg border border-dictator-chrome/30 bg-[#1A1A1A] px-2 py-2 text-white hover:border-dictator-red/50 disabled:opacity-50"
+              >
+                Explain Why
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                value={coachInput}
+                onChange={(event) => setCoachInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    handleCoachSendMessage();
+                  }
+                }}
+                placeholder="Ask a question..."
+                className="flex-1 rounded-lg border border-dictator-chrome/30 bg-[#111] px-3 py-2 font-body text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-dictator-red/60"
+              />
+              <button
+                type="button"
+                disabled={coachLoading || coachInput.trim().length === 0}
+                onClick={handleCoachSendMessage}
+                className="rounded-lg border border-dictator-red/50 bg-dictator-red/20 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-white hover:bg-dictator-red/30 disabled:opacity-50"
+              >
+                Ask
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

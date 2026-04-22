@@ -1,10 +1,12 @@
-import { createSolvedState, FACE_ORDER } from '../../../backend/api/src/cube.js';
+import { createSolvedState, FACE_ORDER } from '../../backend/api/src/cube.ts';
 import {
   validateMoveApplyRequest,
+  validateAiHelpRequest,
   validateScrambleRequest,
   validateSolveRequest
-} from '../../../backend/api/src/validation.js';
-import { applyMoveToState, applyMoves, generateScramble } from '../../../backend/api/src/cube.js';
+} from '../../backend/api/src/validation.ts';
+import { applyMoveToState, applyMoves, generateScramble } from '../../backend/api/src/cube.ts';
+import { generateAiCoachResult } from '../../backend/api/src/lib/aiCoach.ts';
 
 const SERVICE_NAME = 'rubiks-api';
 const VERSION = '0.1.0';
@@ -102,6 +104,25 @@ export default async function handler(req, res) {
       note: alreadySolved
         ? 'Cube is already solved; returning an empty solution.'
         : 'Solver is stubbed in Sprint 2.',
+    });
+    return;
+  }
+
+  // POST /ai/help
+  if (req.method === 'POST' && path === '/ai/help') {
+    const validation = validateAiHelpRequest(req.body);
+    if (!validation.ok) {
+      sendError(res, 400, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
+      return;
+    }
+
+    const payload = validation.value;
+    const generated = await generateAiCoachResult(payload);
+    sendJson(res, 200, {
+      requestId: req.headers['x-request-id'] ?? `req_${Date.now()}`,
+      mode: payload.mode,
+      coachMessage: generated.coachMessage,
+      meta: generated.meta,
     });
     return;
   }
