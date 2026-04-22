@@ -299,6 +299,23 @@ export async function solveCubeRemote(state, strategy = 'beginner') {
   return payload;
 }
 
+export async function requestAiHelp(payload) {
+  if (!isPlainObject(payload)) {
+    throw new Error('payload must be an object.');
+  }
+
+  const response = await request('/api/v1/ai/help', {
+    method: 'POST',
+    body: payload,
+  });
+
+  if (!isPlainObject(response.coachMessage) || typeof response.coachMessage.content !== 'string') {
+    throw new ApiError('Backend returned an invalid AI help response.');
+  }
+
+  return response;
+}
+
 export async function listCubeSessions({ status, limit } = {}) {
   return request(withQuery('/api/v1/cube-sessions', { status, limit }), { auth: true });
 }

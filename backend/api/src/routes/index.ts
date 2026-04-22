@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 
+import aiHelpRoutes from './aiHelp.js';
 import authRoutes from './auth.js';
 import cubeRoutes from './cube.js';
 import cubeSessionRoutes from './cubeSessions.js';
@@ -16,6 +17,7 @@ export default async function registerRoutes(app: FastifyInstance): Promise<void
 
   app.register(authRoutes, { prefix: '/auth' });
   app.register(cubeRoutes, { prefix: '/cube' });
+  app.register(aiHelpRoutes, { prefix: '/ai' });
   app.register(cubeSessionRoutes, { prefix: '/cube-sessions' });
   app.register(solveRecordRoutes, { prefix: '/solve-records' });
   app.register(statsRoutes, { prefix: '/stats' });

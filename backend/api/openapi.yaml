@@ -30,6 +30,9 @@
     },
     {
       "name": "Stats"
+    },
+    {
+      "name": "AI"
     }
   ],
   "paths": {
@@ -761,6 +764,50 @@
           }
         }
       }
+    },
+    "/v1/ai/help": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Request context-aware cube coaching guidance",
+        "operationId": "requestAiHelp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiHelpRequest"
+              },
+              "examples": {
+                "default": {
+                  "$ref": "#/components/examples/ai_help_request"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mock AI coaching response payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiHelpResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/ai_help_response"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1485,6 +1532,196 @@
         "properties": {
           "summary": {
             "$ref": "#/components/schemas/StatsSummary"
+          }
+        }
+      },
+      "AiCoachMode": {
+        "type": "string",
+        "enum": [
+          "hint",
+          "guide",
+          "solve",
+          "explain"
+        ]
+      },
+      "PreviousCoachResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "mode",
+          "content"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AiCoachMode"
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "AiHelpContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cubeState",
+          "moveHistory",
+          "scramble",
+          "tutorialStepIndex",
+          "tutorialStepTitle",
+          "timerMs",
+          "idleMs",
+          "solveDepth",
+          "queueActive",
+          "isSolved"
+        ],
+        "properties": {
+          "cubeState": {
+            "$ref": "#/components/schemas/CubeState"
+          },
+          "moveHistory": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scramble": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tutorialStepIndex": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tutorialStepTitle": {
+            "type": "string"
+          },
+          "timerMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "idleMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "solveDepth": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "queueActive": {
+            "type": "boolean"
+          },
+          "isSolved": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AiHelpRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mode",
+          "context"
+        ],
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/AiCoachMode"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "context": {
+            "$ref": "#/components/schemas/AiHelpContext"
+          },
+          "previousCoachResponse": {
+            "$ref": "#/components/schemas/PreviousCoachResponse"
+          }
+        }
+      },
+      "AiCoachMessage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "content"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nextActions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "disclaimer": {
+            "type": "string"
+          }
+        }
+      },
+      "AiHelpMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "model",
+          "isMock",
+          "generatedAt"
+        ],
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "isMock": {
+            "type": "boolean"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AiHelpResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "mode",
+          "coachMessage",
+          "meta"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AiCoachMode"
+          },
+          "coachMessage": {
+            "$ref": "#/components/schemas/AiCoachMessage"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/AiHelpMeta"
           }
         }
       }
@@ -2398,6 +2635,123 @@
             "code": "NOT_FOUND",
             "message": "Session not found",
             "requestId": "req_123456"
+          }
+        }
+      },
+      "ai_help_request": {
+        "value": {
+          "mode": "hint",
+          "message": "I keep messing up the first two layers",
+          "context": {
+            "cubeState": {
+              "U": [
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W",
+                "W"
+              ],
+              "R": [
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R",
+                "R"
+              ],
+              "F": [
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G",
+                "G"
+              ],
+              "D": [
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y",
+                "Y"
+              ],
+              "L": [
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O",
+                "O"
+              ],
+              "B": [
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B",
+                "B"
+              ]
+            },
+            "moveHistory": [
+              "R",
+              "U",
+              "R'",
+              "U'"
+            ],
+            "scramble": [
+              "F",
+              "R",
+              "U",
+              "R'",
+              "U'"
+            ],
+            "tutorialStepIndex": 2,
+            "tutorialStepTitle": "First Two Layers (F2L)",
+            "timerMs": 48231,
+            "idleMs": 70311,
+            "solveDepth": 12,
+            "queueActive": false,
+            "isSolved": false
+          }
+        }
+      },
+      "ai_help_response": {
+        "value": {
+          "requestId": "req_01JZ8N3C2GQ1YJ3T47M9P4H2M1",
+          "mode": "hint",
+          "coachMessage": {
+            "id": "coach_hint_v1",
+            "content": "Try pairing the corner and edge in the top layer before inserting.",
+            "nextActions": [
+              "Find a white corner for your current slot",
+              "Use R U R' U' once to pair",
+              "Insert only after side colors line up"
+            ]
+          },
+          "meta": {
+            "provider": "mock",
+            "model": "mock-cube-coach-v1",
+            "isMock": true,
+            "generatedAt": "2026-04-21T18:40:12.103Z"
           }
         }
       }
