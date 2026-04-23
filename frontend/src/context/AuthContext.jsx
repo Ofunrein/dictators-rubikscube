@@ -23,14 +23,18 @@ const MOCK_USER = {
   joinedAt: 'January 2025',
   stats: {
     solves: 142,
-    best: { '3x3': 18.43, '2x2': 5.21, '4x4': 62.11 },
-    avg: { '3x3': 24.7, '2x2': 7.8, '4x4': 79.3 },
+    solvesBySize: { '3x3': 98, '2x2': 44 },
+    best: { '3x3': 18.43, '2x2': 5.21 },
+    avg: { '3x3': 24.7, '2x2': 7.8 },
+    ranks: {
+      '3x3': { fastest: 6, average: 6, solves: 6 },
+      '2x2': { fastest: 3, average: 3, solves: 4 },
+    },
   },
   recentSolves: [
     { cube: '3x3', time: 19.82, date: 'Apr 19' },
     { cube: '3x3', time: 21.05, date: 'Apr 19' },
     { cube: '2x2', time: 5.91, date: 'Apr 18' },
-    { cube: '4x4', time: 68.44, date: 'Apr 17' },
     { cube: '3x3', time: 18.43, date: 'Apr 16' },
   ],
 };
