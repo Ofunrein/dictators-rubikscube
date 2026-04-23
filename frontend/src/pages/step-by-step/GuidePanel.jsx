@@ -83,7 +83,7 @@ export default function GuidePanel({
               src={currentStep.gif}
               alt={currentStep.subtitle}
               onLoad={() => setImgLoaded(true)}
-              className={`w-full h-auto rounded-xl transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`w-full h-auto max-h-[200px] object-contain rounded-xl transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           </div>
         ) : (
