@@ -1,23 +1,22 @@
 /**
  * ProfilePage.jsx — /profile route — authenticated user profile and stats
  *
- * Redirects to home if no user is logged in (currentUser === null).
- * All displayed stats come from AuthContext's currentUser object, which is
- * currently populated with mock data. When the database is wired up:
- *   1. AuthContext.login() fetches real user data and sets currentUser
- *   2. This component requires no changes — it just reads from context
+ * Shows user stats matching Corey's database schema:
+ *   - Per-size (2x2, 3x3) stats: fastest time, avg time, # of solves
+ *   - Per-size ranks for each stat (e.g. "1st in 2x2 avg solve time")
+ *   - Recent solves list (placeholder until Corey adds DB support)
  *
- * Sections: avatar + username + email, statistics summary cards (solves, best,
- * avg per cube size), per-cube breakdown table, recent solves list.
- * Full light/dark mode support via ThemeContext.
+ * All data currently from AuthContext mock. When database is connected,
+ * AuthContext.login() fetches real data — this component just reads it.
  */
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Clock, Hash, Zap } from 'lucide-react';
+import { LogOut, Clock, Hash, Zap, Trophy } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import PageNavbar from '../components/PageNavbar';
 
 function formatTime(t) {
+  if (t === null || t === undefined) return '—';
   if (t >= 60) {
     const m = Math.floor(t / 60);
     const s = (t % 60).toFixed(2).padStart(5, '0');
@@ -26,7 +25,15 @@ function formatTime(t) {
   return `${t.toFixed(2)}s`;
 }
 
-const CUBE_SIZES = ['3x3', '2x2', '4x4'];
+function formatRank(r) {
+  if (!r) return '—';
+  if (r === 1) return '1st';
+  if (r === 2) return '2nd';
+  if (r === 3) return '3rd';
+  return `${r}th`;
+}
+
+const CUBE_SIZES = ['3x3', '2x2'];
 
 export default function ProfilePage() {
   const { currentUser, logout } = useAuth();
@@ -42,6 +49,7 @@ export default function ProfilePage() {
   const rowHover = isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-dictator-ink/[0.03]';
   const tagBg = isDark ? 'bg-white/5 border-white/8' : 'bg-dictator-ink/[0.06] border-dictator-ink/15';
   const primary = isDark ? 'text-white' : 'text-dictator-ink';
+  const rankHighlight = 'text-yellow-500';
 
   if (!currentUser) {
     return (
@@ -84,53 +92,70 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* Stats grid */}
-        <div className="mb-10">
-          <p className={`font-mono text-[10px] uppercase tracking-widest mb-4 ${muted}`}>Statistics</p>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            {[
-              { icon: <Hash size={13} />, value: stats.solves, label: 'Solves', color: primary },
-              { icon: <Zap size={13} className="text-dictator-red" />, value: formatTime(stats.best['3x3']), label: 'Best 3x3', color: 'text-dictator-red' },
-              { icon: <Clock size={13} />, value: formatTime(stats.avg['3x3']), label: 'Avg 3x3', color: primary },
-            ].map(({ icon, value, label, color }) => (
-              <div key={label} className={`rounded-xl px-4 py-4 text-center border ${cardBg} ${border}`}>
-                <div className={`mx-auto mb-2 flex justify-center ${muted}`}>{icon}</div>
-                <p className={`font-drama text-3xl ${color}`}>{value}</p>
-                <p className={`font-mono text-[10px] mt-1 uppercase tracking-wider ${muted}`}>{label}</p>
+        {/* Per-size stat cards */}
+        {CUBE_SIZES.map((size) => (
+          <div key={size} className="mb-8">
+            <p className={`font-mono text-[10px] uppercase tracking-widest mb-4 ${muted}`}>
+              {size} Statistics
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className={`rounded-xl px-4 py-4 text-center border ${cardBg} ${border}`}>
+                <div className={`mx-auto mb-2 flex justify-center ${muted}`}><Zap size={13} className="text-dictator-red" /></div>
+                <p className="font-drama text-2xl text-dictator-red">{formatTime(stats.best[size])}</p>
+                <p className={`font-mono text-[10px] mt-1 uppercase tracking-wider ${muted}`}>Fastest</p>
+                {stats.ranks?.[size]?.fastest && (
+                  <p className={`font-mono text-[10px] mt-1 ${stats.ranks[size].fastest <= 3 ? rankHighlight : muted}`}>
+                    <Trophy size={9} className="inline mr-0.5" />
+                    {formatRank(stats.ranks[size].fastest)}
+                  </p>
+                )}
               </div>
-            ))}
-          </div>
-
-          <div className={`border rounded-xl overflow-hidden ${border}`}>
-            <div className={`grid grid-cols-3 border-b ${border} ${headerBg}`}>
-              {['Cube', 'Best', 'Average'].map((h) => (
-                <span key={h} className={`font-mono text-[10px] uppercase tracking-widest px-5 py-3 ${muted}`}>{h}</span>
-              ))}
+              <div className={`rounded-xl px-4 py-4 text-center border ${cardBg} ${border}`}>
+                <div className={`mx-auto mb-2 flex justify-center ${muted}`}><Clock size={13} /></div>
+                <p className={`font-drama text-2xl ${primary}`}>{formatTime(stats.avg[size])}</p>
+                <p className={`font-mono text-[10px] mt-1 uppercase tracking-wider ${muted}`}>Average</p>
+                {stats.ranks?.[size]?.average && (
+                  <p className={`font-mono text-[10px] mt-1 ${stats.ranks[size].average <= 3 ? rankHighlight : muted}`}>
+                    <Trophy size={9} className="inline mr-0.5" />
+                    {formatRank(stats.ranks[size].average)}
+                  </p>
+                )}
+              </div>
+              <div className={`rounded-xl px-4 py-4 text-center border ${cardBg} ${border}`}>
+                <div className={`mx-auto mb-2 flex justify-center ${muted}`}><Hash size={13} /></div>
+                <p className={`font-drama text-2xl ${primary}`}>{stats.solvesBySize?.[size] ?? stats.solves ?? '—'}</p>
+                <p className={`font-mono text-[10px] mt-1 uppercase tracking-wider ${muted}`}>Solves</p>
+                {stats.ranks?.[size]?.solves && (
+                  <p className={`font-mono text-[10px] mt-1 ${stats.ranks[size].solves <= 3 ? rankHighlight : muted}`}>
+                    <Trophy size={9} className="inline mr-0.5" />
+                    {formatRank(stats.ranks[size].solves)}
+                  </p>
+                )}
+              </div>
             </div>
-            {CUBE_SIZES.map((size, i) => (
-              <div key={size} className={`grid grid-cols-3 px-5 py-3.5 ${i !== CUBE_SIZES.length - 1 ? `border-b ${rowBorder}` : ''}`}>
-                <span className={`font-mono text-sm ${primary}`}>{size}</span>
-                <span className="font-mono text-sm text-dictator-red tabular-nums">{formatTime(stats.best[size])}</span>
-                <span className={`font-mono text-sm tabular-nums ${muted}`}>{formatTime(stats.avg[size])}</span>
-              </div>
-            ))}
           </div>
-        </div>
+        ))}
 
         {/* Recent solves */}
         <div>
           <p className={`font-mono text-[10px] uppercase tracking-widest mb-4 ${muted}`}>Recent Solves</p>
           <div className={`border rounded-xl overflow-hidden ${border}`}>
-            {recentSolves.map((solve, i) => (
-              <div key={i} className={`flex items-center justify-between px-5 py-3.5 transition-colors ${rowHover} ${i !== recentSolves.length - 1 ? `border-b ${rowBorder}` : ''}`}>
-                <div className="flex items-center gap-3">
-                  <span className={`font-mono text-xs w-8 tabular-nums ${muted}`}>#{recentSolves.length - i}</span>
-                  <span className={`font-mono text-xs border px-2 py-0.5 rounded ${muted} ${tagBg}`}>{solve.cube}</span>
+            {recentSolves && recentSolves.length > 0 ? (
+              recentSolves.map((solve, i) => (
+                <div key={i} className={`flex items-center justify-between px-5 py-3.5 transition-colors ${rowHover} ${i !== recentSolves.length - 1 ? `border-b ${rowBorder}` : ''}`}>
+                  <div className="flex items-center gap-3">
+                    <span className={`font-mono text-xs w-8 tabular-nums ${muted}`}>#{recentSolves.length - i}</span>
+                    <span className={`font-mono text-xs border px-2 py-0.5 rounded ${muted} ${tagBg}`}>{solve.cube}</span>
+                  </div>
+                  <span className="font-mono text-sm text-dictator-red tabular-nums">{formatTime(solve.time)}</span>
+                  <span className={`font-mono text-xs ${isDark ? 'text-white/30' : 'text-dictator-ink/40'}`}>{solve.date}</span>
                 </div>
-                <span className="font-mono text-sm text-dictator-red tabular-nums">{formatTime(solve.time)}</span>
-                <span className={`font-mono text-xs ${isDark ? 'text-white/30' : 'text-dictator-ink/40'}`}>{solve.date}</span>
+              ))
+            ) : (
+              <div className={`px-5 py-8 text-center ${muted}`}>
+                <p className="font-mono text-xs">No recent solves yet</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
