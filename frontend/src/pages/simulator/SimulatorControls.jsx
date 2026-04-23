@@ -30,10 +30,9 @@ export default function SimulatorControls({
   timerPrimed = false,
   timerRunning = false,
 }) {
-  const actionsDisabled = interactionLocked || solveDepth === 0;
-  const t = getThemeClasses(isDark);
-
   const isTimedSolve = isTimedSolveSession || timerPrimed || timerRunning;
+  const actionsDisabled = interactionLocked || solveDepth === 0 || isTimedSolve;
+  const t = getThemeClasses(isDark);
   const hiddenMoves = /^[xyXY]'?$/;
   const visibleMoves = (isTimedSolve
     ? moveHistory.slice(scrambleMoveCount)
