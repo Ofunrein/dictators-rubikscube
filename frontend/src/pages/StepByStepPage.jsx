@@ -10,7 +10,7 @@
  *   useSimulatorQueue, useCubeControls, InteractiveCube, etc.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Sun, Moon } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
@@ -35,6 +35,7 @@ const CUBE_SIZE = 3;
 
 export default function StepByStepPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
   const t = getThemeClasses(isDark);
 
@@ -137,38 +138,78 @@ export default function StepByStepPage() {
         '--sim-text': isDark ? '#FFFFFF' : '#2C2A26',
       }}
     >
-      {/* Header */}
+      {/* Header with nav */}
       <header className={`flex items-center justify-between px-6 py-3 border-b ${t.headerBorder} ${t.headerBg} shrink-0`}>
-        <button
-          onClick={() => navigate('/learn')}
-          className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest ${t.headerText} transition-colors hover:-translate-x-1 duration-200`}
-        >
-          <ArrowLeft size={14} />
-          Back
-        </button>
-
-        <div className="flex items-center gap-3">
-          <div className={`w-6 h-6 rounded-full ${isDark ? 'bg-[#1A1A1A]' : 'bg-white'} border border-dictator-red/40 flex items-center justify-center font-mono text-dictator-red text-[10px] font-bold`}>
+        <button onClick={() => navigate('/')} className="flex items-center gap-2.5 group">
+          <div className="w-6 h-6 rounded-full bg-[#1A1A1A] border border-dictator-red/40 flex items-center justify-center font-mono text-dictator-red text-[10px] font-bold select-none">
             TD
           </div>
-          <span className={`font-heading text-sm font-bold uppercase tracking-widest hidden sm:block ${t.headerText}`}>
-            Solving Guide
+          <span className={`font-heading tracking-widest text-sm uppercase transition-colors hidden sm:block ${isDark ? 'text-dictator-chrome group-hover:text-white' : 'text-dictator-ink group-hover:text-dictator-red'}`}>
+            The Dictators
           </span>
+        </button>
+
+        <div className="flex items-center gap-6">
+          {[
+            { label: 'Learn', href: '/learn' },
+            { label: 'Step by Step', href: '/step-by-step' },
+            { label: 'Compete', href: '/leaderboard' },
+          ].map((link) => (
+            <button
+              key={link.label}
+              onClick={() => navigate(link.href)}
+              className={`font-mono text-xs uppercase tracking-widest transition-colors relative group ${
+                location.pathname === link.href
+                  ? (isDark ? 'text-white' : 'text-dictator-ink')
+                  : (isDark ? 'text-dictator-chrome hover:text-white' : 'text-dictator-ink/70 hover:text-dictator-ink')
+              }`}
+            >
+              {link.label}
+              <span className={`absolute -bottom-1 left-0 h-[1px] bg-dictator-red transition-all duration-300 ${
+                location.pathname === link.href ? 'w-full' : 'w-0 group-hover:w-full'
+              }`} />
+            </button>
+          ))}
         </div>
 
-        <button
-          onClick={toggleTheme}
-          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${t.border} ${t.headerText} hover:border-dictator-red/40`}
-        >
-          {isDark ? <Sun size={12} /> : <Moon size={12} />}
-          {isDark ? 'Light' : 'Dark'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${t.border} ${t.headerText} hover:border-dictator-red/40`}
+          >
+            {isDark ? <Sun size={12} /> : <Moon size={12} />}
+            {isDark ? 'Light' : 'Dark'}
+          </button>
+          <button
+            onClick={() => navigate('/simulator')}
+            className="font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full bg-dictator-red text-white hover:bg-dictator-deep transition-colors"
+          >
+            Simulator
+          </button>
+        </div>
       </header>
 
-      {/* Main content: side-by-side on desktop, stacked on mobile */}
+      {/* Main content: guide LEFT, cube RIGHT on desktop; stacked on mobile */}
       <div className={`flex flex-1 min-h-0 ${isMobile ? 'flex-col' : 'flex-row'}`}>
-        {/* 3D Cube area */}
-        <div className={`relative ${isMobile ? 'min-h-[260px] flex-1' : 'flex-[1.85] min-w-0'}`}>
+        {/* Guide panel — LEFT side */}
+        <div className={`${isMobile ? 'flex-1 min-h-[200px]' : 'flex-[0.82] min-w-[340px]'} border-r ${isDark ? 'border-white/5 bg-[#0A0A0A]' : 'border-dictator-ink/10 bg-dictator-linen'} ${isMobile ? 'order-2' : 'order-1'}`}>
+          <GuidePanel
+            currentStep={current}
+            currentIndex={currentIndex}
+            totalSlides={STEPS.length}
+            canPrev={canPrev}
+            canNext={canNext}
+            onPrev={goPrev}
+            onNext={goNext}
+            onApplyAlgorithm={handleApplyAlgorithm}
+            queueActive={queue.queueActive}
+            isDark={isDark}
+            onNavigateSimulator={() => navigate('/simulator')}
+          />
+        </div>
+
+        {/* 3D Cube area — RIGHT side */}
+        <div className={`relative ${isMobile ? 'min-h-[260px] flex-1 order-1' : 'flex-1 min-w-0 order-2'}`}>
           <SimulatorCanvasBoundary
             onError={(err) => console.error('Canvas error:', err)}
             fallback={<div className="flex items-center justify-center h-full text-dictator-red/50 font-mono text-sm">WebGL unavailable</div>}
@@ -228,23 +269,6 @@ export default function StepByStepPage() {
           <div className={`pointer-events-none absolute bottom-3 left-1/2 w-[calc(100%-2rem)] -translate-x-1/2 text-center font-mono text-[11px] uppercase tracking-widest ${t.textSecondary}`}>
             Drag stickers to turn · right-drag to orbit · scroll to zoom
           </div>
-        </div>
-
-        {/* Guide panel */}
-        <div className={`${isMobile ? 'flex-1 min-h-[200px]' : 'flex-[0.54] min-w-[320px] max-w-[500px]'} border-l ${isDark ? 'border-white/5 bg-[#0A0A0A]' : 'border-dictator-ink/10 bg-dictator-linen'}`}>
-          <GuidePanel
-            currentStep={current}
-            currentIndex={currentIndex}
-            totalSlides={STEPS.length}
-            canPrev={canPrev}
-            canNext={canNext}
-            onPrev={goPrev}
-            onNext={goNext}
-            onApplyAlgorithm={handleApplyAlgorithm}
-            queueActive={queue.queueActive}
-            isDark={isDark}
-            onNavigateSimulator={() => navigate('/simulator')}
-          />
         </div>
       </div>
     </div>
