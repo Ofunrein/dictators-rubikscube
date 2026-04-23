@@ -490,7 +490,7 @@ const SimulatorPage = () => {
           cubeSize={cubeSize}
           isDark={isDark}
           onApplyAlgorithm={handleApplyAlgorithm}
-          queueActive={queue.queueActive}
+          queueActive={queue.queueActive || actions.isTimedSolveSession || actions.timerPrimed || timer.timerRunning}
           isDrawer={useTutorialDrawer}
           drawerOpen={tutorialDrawerOpen}
           onClose={() => setTutorialDrawerOpen(false)}
