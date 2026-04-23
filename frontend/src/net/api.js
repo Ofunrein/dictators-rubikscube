@@ -183,12 +183,15 @@ export async function solveCubeRemote(state, strategy = 'beginner', size) {
   const normalizedSize = normalizeCubeSize(size ?? getFaceSize(state));
   validateCubeState(state, 'state', normalizedSize);
 
-  // Routing by size:
-  //   2x2 → /api/nxn-solve  (Python serverless, rubikscubennnsolver)
-  //   3x3 → /api/v1/cube/solve  (Node.js, Eric's C++ WASM solver)
-  // A blanket vercel.json rewrite was tried but broke 3x3 (kociemba invalid state).
-  // Explicit routing here keeps the two solver paths cleanly separated.
-  const endpoint = normalizedSize === 2 ? '/api/nxn-solve' : '/api/v1/cube/solve';
+  // Routing by size and environment:
+  //   Local dev: all sizes → /api/v1/cube/solve (Node.js backend handles 2x2/3x3/4x4)
+  //   Vercel prod: 2x2 → /api/nxn-solve (Python serverless), 3x3 → /api/v1/cube/solve (WASM)
+  // The Node.js backend has pythonNxNSolver.js which bridges to the vendored Python solver
+  // for 2x2/4x4, so local dev works through the unified /v1/cube/solve route.
+  const isLocalDev = !!import.meta.env.DEV;
+  const endpoint = (!isLocalDev && normalizedSize === 2)
+    ? '/api/nxn-solve'
+    : '/api/v1/cube/solve';
 
   const payload = await request(endpoint, {
     method: 'POST',

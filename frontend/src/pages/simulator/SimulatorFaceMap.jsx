@@ -6,8 +6,10 @@
  * Each face is shown as an NxN grid of sticker colors, labeled U/R/F/D/L/B.
  *
  * This component just reads displayState and renders — no logic, no state.
+ * Wrapped in React.memo to avoid unnecessary re-renders during rapid solve animations.
  */
 
+import React from 'react';
 import { getFaceSize } from '../../cube/cubeModel.js';
 import { FACE_ORDER, TOKEN_HEX } from './simulatorConstants';
 import { normalizeFaceStickers, orientFaceForMap } from './simulatorFaceMapUtils';
@@ -33,7 +35,7 @@ function getGridGap(size, compact) {
   return size >= 4 ? 'clamp(2px, 0.4vh, 4px)' : 'clamp(2px, 0.5vh, 5px)';
 }
 
-function FacePreview({ face, label, size, compact = false }) {
+const FacePreview = React.memo(function FacePreview({ face, label, size, compact = false }) {
   const normalized = normalizeFaceStickers(face, size);
   const faceColors = orientFaceForMap(normalized, label, size);
   const cellStyle = getCellStyle(size, compact);
@@ -66,9 +68,9 @@ function FacePreview({ face, label, size, compact = false }) {
       </div>
     </div>
   );
-}
+});
 
-export default function SimulatorFaceMap({ displayState, compact = false }) {
+export default React.memo(function SimulatorFaceMap({ displayState, compact = false }) {
   const cubeSize = getFaceSize(displayState) ?? 3;
 
   return (
@@ -91,4 +93,4 @@ export default function SimulatorFaceMap({ displayState, compact = false }) {
       </div>
     </div>
   );
-}
+});
