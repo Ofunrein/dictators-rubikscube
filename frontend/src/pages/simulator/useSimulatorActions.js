@@ -163,6 +163,7 @@ export function useSimulatorActions({
     try {
       const payload = await solveCubeRemote(cubeStateObjRef.current.getState(), 'beginner', cubeSize);
       clearPendingAnimation();
+      setMoveHistory([]);
 
       if (Array.isArray(payload.moves) && payload.moves.length > 0) {
         enqueueMoves(payload.moves, { durationSeconds: SOLVE_TURN_DURATION_SECONDS });
