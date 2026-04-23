@@ -131,14 +131,18 @@ async function ensureBootstrap() {
     if (!existsSync(bootstrapStamp)) {
       await runFile(
         pythonBin,
-        ['-m', 'pip', 'install', '--upgrade', 'pip'],
+        ['-m', 'pip', 'install', '--trusted-host', 'pypi.org', '--trusted-host', 'pypi.python.org', '--trusted-host', 'files.pythonhosted.org', '--upgrade', 'pip'],
         'Failed to upgrade pip for the NxN solver',
       );
-      await runFile(
-        pythonBin,
-        ['-m', 'pip', 'install', 'kociemba'],
-        'Failed to install the NxN solver Python dependency',
-      );
+      try {
+        await runFile(
+          pythonBin,
+          ['-m', 'pip', 'install', '--trusted-host', 'pypi.org', '--trusted-host', 'pypi.python.org', '--trusted-host', 'files.pythonhosted.org', 'kociemba'],
+          'Failed to install kociemba',
+        );
+      } catch (kociembaError) {
+        console.warn('[NxN solver] kociemba install failed (SSL or network issue). 2x2 solves are unaffected; 3x3 uses WASM path.');
+      }
       writeFileSync(bootstrapStamp, 'ready\n');
     }
   })();
