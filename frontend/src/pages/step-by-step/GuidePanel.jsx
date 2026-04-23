@@ -40,6 +40,7 @@ export default function GuidePanel({
   const dotInactive = isDark ? 'bg-white/15' : 'bg-dictator-ink/15';
 
   const isLastSlide = currentIndex === totalSlides - 1;
+  const nextBlocked = currentStep.step === 0 && !isScrambled;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -71,7 +72,7 @@ export default function GuidePanel({
         {/* GIF */}
         {currentStep.gif ? (
           <div className={`relative rounded-xl overflow-hidden ${isDark ? 'bg-black/30' : 'bg-dictator-ink/[0.03]'}`}
-            style={{ minHeight: '140px' }}
+            style={{ minHeight: '180px' }}
           >
             {!imgLoaded && (
               <div className="absolute inset-0 flex items-center justify-center">
@@ -83,7 +84,7 @@ export default function GuidePanel({
               src={currentStep.gif}
               alt={currentStep.subtitle}
               onLoad={() => setImgLoaded(true)}
-              className={`w-full h-auto max-h-[200px] object-contain rounded-xl transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`w-full h-auto rounded-xl transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'} ${currentStep.step === 0 ? 'max-h-[180px] object-contain' : ''}`}
             />
           </div>
         ) : (
@@ -195,9 +196,9 @@ export default function GuidePanel({
           ) : (
             <button
               onClick={onNext}
-              disabled={!canNext}
+              disabled={!canNext || nextBlocked}
               className={`flex items-center gap-1 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-all ${
-                canNext ? navBtn : navBtnDisabled
+                canNext && !nextBlocked ? navBtn : navBtnDisabled
               }`}
             >
               Next
