@@ -123,14 +123,14 @@ export default function SimulatorControls({
         {/* Mobile: inline row */}
         <div className={`md:hidden rounded-lg border px-2 py-1.5 ${
           timerPrimed
-            ? 'border-[#5B5FC7]/40 bg-[#5B5FC7]/5'
+            ? 'border-dictator-red/40 bg-dictator-red/5'
             : timerRunning
               ? 'border-dictator-red/30 bg-dictator-red/5'
               : 'border-[--sim-border] bg-[--sim-card]'
         }`}>
           {timerPrimed ? (
             <div className="flex items-center justify-between gap-2">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#5B5FC7]">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-dictator-red">
                 First move starts timer
               </p>
               <button
@@ -180,7 +180,7 @@ export default function SimulatorControls({
                       ? 'bg-[--sim-kbd] border border-[--sim-border] sim-text/30 cursor-not-allowed'
                       : timerRunning
                         ? 'bg-dictator-red text-white hover:bg-[#AA1515] active:scale-95'
-                        : 'bg-[#5B5FC7] text-white hover:bg-[#4A4EB3] active:scale-95'
+                        : 'bg-dictator-red text-white hover:bg-[#AA1515] active:scale-95'
                     }`}
                 >
                   {timerRunning ? <Square size={8} fill="currentColor" /> : <Play size={9} fill="currentColor" />}
@@ -194,13 +194,13 @@ export default function SimulatorControls({
         {/* Desktop: original stacked card */}
         <div className={`hidden md:block rounded-2xl border p-4 shadow-[0_4px_20px_rgba(0,0,0,0.08)] ${
           timerPrimed
-            ? 'border-[#5B5FC7]/40 bg-[#5B5FC7]/5'
+            ? 'border-dictator-red/40 bg-dictator-red/5'
             : timerRunning
               ? 'border-dictator-red/30 bg-dictator-red/5'
               : 'border-[--sim-border] bg-[--sim-card]'
         }`}>
           {timerPrimed ? (
-            <p className="text-center font-mono text-sm font-bold uppercase tracking-wider text-[#5B5FC7]">
+            <p className="text-center font-mono text-sm font-bold uppercase tracking-wider text-dictator-red">
               Make your first move
             </p>
           ) : (
@@ -243,7 +243,7 @@ export default function SimulatorControls({
                   ? 'bg-[--sim-kbd] border border-[--sim-border] sim-text/30 cursor-not-allowed'
                   : timerRunning
                     ? 'bg-dictator-red text-white hover:bg-[#AA1515] active:scale-95'
-                    : 'bg-[#5B5FC7] text-white hover:bg-[#4A4EB3] active:scale-95'
+                    : 'bg-dictator-red text-white hover:bg-[#AA1515] active:scale-95'
                 }`}
             >
               {timerRunning ? <Square size={10} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
@@ -319,7 +319,7 @@ export default function SimulatorControls({
         </p>
         <div className="flex max-h-16 flex-wrap gap-1 overflow-y-auto md:max-h-24 lg:max-h-28">
           {timerPrimed ? (
-            <span className="font-mono text-[10px] text-[#5B5FC7]">
+            <span className="font-mono text-[10px] text-dictator-red">
               Waiting for first move...
             </span>
           ) : visibleMoves.length === 0 ? (
