@@ -51,7 +51,7 @@ const Navbar = () => {
 
     const navLinks = [
         { label: 'Learn', href: '/learn', isRoute: true },
-        { label: 'Step-by-Step', href: '/step-by-step', isRoute: true },
+        { label: 'Guide', href: '/step-by-step', isRoute: true },
         { label: 'Compete', href: '/leaderboard', isRoute: true },
         { label: 'Team', href: '#team', isRoute: false },
     ];
