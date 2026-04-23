@@ -231,7 +231,7 @@ export default function StepByStepPage() {
         </div>
 
         {/* Guide panel */}
-        <div className={`${isMobile ? 'flex-1 min-h-[200px]' : 'w-[360px] xl:w-[400px] shrink-0'} border-l ${isDark ? 'border-white/5 bg-[#0A0A0A]' : 'border-dictator-ink/10 bg-dictator-linen'}`}>
+        <div className={`${isMobile ? 'flex-1 min-h-[200px]' : 'flex-[0.54] min-w-[320px] max-w-[500px]'} border-l ${isDark ? 'border-white/5 bg-[#0A0A0A]' : 'border-dictator-ink/10 bg-dictator-linen'}`}>
           <GuidePanel
             currentStep={current}
             currentIndex={currentIndex}
