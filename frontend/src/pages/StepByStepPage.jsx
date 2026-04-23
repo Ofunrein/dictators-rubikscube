@@ -10,13 +10,14 @@
  *   useSimulatorQueue, useCubeControls, InteractiveCube, etc.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Sun, Moon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Sun, Moon } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 
 import { useTheme } from '../context/ThemeContext';
+import PageNavbar from '../components/PageNavbar';
 import { CubeState } from '../cube/CubeState';
 import { FACE_ORDER, getKeyMap, generateScramble } from './simulator/simulatorConstants';
 import { useSimulatorQueue } from './simulator/useSimulatorQueue';
@@ -35,7 +36,6 @@ const CUBE_SIZE = 3;
 
 export default function StepByStepPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
   const t = getThemeClasses(isDark);
 
@@ -147,56 +147,7 @@ export default function StepByStepPage() {
         '--sim-text': isDark ? '#FFFFFF' : '#2C2A26',
       }}
     >
-      {/* Header with nav */}
-      <header className={`flex items-center justify-between px-6 py-3 border-b ${t.headerBorder} ${t.headerBg} shrink-0`}>
-        <button onClick={() => navigate('/')} className="flex items-center gap-2.5 group">
-          <div className="w-6 h-6 rounded-full bg-[#1A1A1A] border border-dictator-red/40 flex items-center justify-center font-mono text-dictator-red text-[10px] font-bold select-none">
-            TD
-          </div>
-          <span className={`font-heading tracking-widest text-sm uppercase transition-colors hidden sm:block ${isDark ? 'text-dictator-chrome group-hover:text-white' : 'text-dictator-ink group-hover:text-dictator-red'}`}>
-            The Dictators
-          </span>
-        </button>
-
-        <div className="flex items-center gap-6">
-          {[
-            { label: 'Learn', href: '/learn' },
-            { label: 'Step by Step', href: '/step-by-step' },
-            { label: 'Compete', href: '/leaderboard' },
-          ].map((link) => (
-            <button
-              key={link.label}
-              onClick={() => navigate(link.href)}
-              className={`font-mono text-xs uppercase tracking-widest transition-colors relative group ${
-                location.pathname === link.href
-                  ? (isDark ? 'text-white' : 'text-dictator-ink')
-                  : (isDark ? 'text-dictator-chrome hover:text-white' : 'text-dictator-ink/70 hover:text-dictator-ink')
-              }`}
-            >
-              {link.label}
-              <span className={`absolute -bottom-1 left-0 h-[1px] bg-dictator-red transition-all duration-300 ${
-                location.pathname === link.href ? 'w-full' : 'w-0 group-hover:w-full'
-              }`} />
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleTheme}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${t.border} ${t.headerText} hover:border-dictator-red/40`}
-          >
-            {isDark ? <Sun size={12} /> : <Moon size={12} />}
-            {isDark ? 'Light' : 'Dark'}
-          </button>
-          <button
-            onClick={() => navigate('/simulator')}
-            className="font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full bg-dictator-red text-white hover:bg-dictator-deep transition-colors"
-          >
-            Simulator
-          </button>
-        </div>
-      </header>
+      <PageNavbar />
 
       {/* Main content: guide LEFT, cube RIGHT on desktop; stacked on mobile */}
       <div className={`flex flex-1 min-h-0 ${isMobile ? 'flex-col' : 'flex-row'}`}>
