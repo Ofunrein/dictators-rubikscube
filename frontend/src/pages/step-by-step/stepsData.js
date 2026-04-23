@@ -6,7 +6,7 @@ export const STEPS = [
     title: 'Introduction',
     subtitle: 'Notation & Terminology',
     text: `This guide walks you through solving a 3×3 Rubik's Cube using the beginner layer-by-layer method.\n\n"Tiles" are the 9 colored squares on each face. "Pieces" are the physical cubies they sit on. Corner pieces have 3 tiles; edge pieces have 2. The center tile determines a face's color.\n\nNotation: U (Up), D (Down), L (Left), R (Right), F (Front), B (Back). An apostrophe (') means counterclockwise. A "2" means turn twice.`,
-    gif: null,
+    gif: '/cube-notation.svg',
     algorithms: [],
   },
   {
