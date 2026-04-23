@@ -5,7 +5,7 @@ export const STEPS = [
     step: 0,
     title: 'Introduction',
     subtitle: 'Notation & Terminology',
-    text: `This guide walks you through solving a 3×3 Rubik's Cube using the beginner layer-by-layer method.\n\n"Tiles" are the 9 colored squares on each face. "Pieces" are the physical cubies they sit on. Corner pieces have 3 tiles; edge pieces have 2. The center tile determines a face's color.\n\nNotation: U (Up), D (Down), L (Left), R (Right), F (Front), B (Back). An apostrophe (') means counterclockwise. A "2" means turn twice.`,
+    text: `This guide walks you through solving a 3×3 Rubik's Cube using a beginner algorithm optimized for straightforwardness, not speed. It details every step with moves in standard cube notation and visual aids.\n\nIn this guide, "tiles" refers to the 9 colored squares on each face (sometimes called "stickers"), while "pieces" refers to the cubic pieces tiles rest on (sometimes called "cubies"). "Corner" pieces sit at the corners and have 3 colored tiles. "Edge" pieces sit between corners and have 2 colored tiles. The center tile on each face determines that face's color — a face with a yellow center is the "yellow face."\n\nStandard notation for 90° clockwise rotations:\n• L — Left face\n• R — Right face\n• U — Up face\n• D — Down face\n• F — Front face\n• B — Back face\n• M — Middle layer (between L and R), follows L direction\n• E — Equator layer (between D and U), follows D direction\n• S — Standing layer (between F and B), follows F direction\n\nAdd an apostrophe (') for counterclockwise: U' means turn the Up face 90° counterclockwise. Add "2" for a double turn: F2 means turn the Front face twice.`,
     gif: '/cube-notation.svg',
     algorithms: [],
   },
@@ -78,7 +78,7 @@ export const STEPS = [
     step: 4,
     title: 'Step 4',
     subtitle: 'Second Layer — Right Insert',
-    text: `Find a non-yellow edge piece in the top layer. Line up the side color with its matching center tile. If the top color matches the right side:\n\nU R U' R' U' F' U F`,
+    text: `With the first layer solved, it's time to solve the second layer by inserting all non-yellow edge pieces. Find an edge piece in the top layer and look at the side tile's color — line it up with the corresponding side face center tile.\n\nIf the top tile on the edge piece matches the right side's color, perform the right-side insertion algorithm:\n\nU R U' R' U' F' U F\n\nNotice how you first move the corner piece next to the edge piece, then move pieces out of the way so they can be re-inserted with the front face rotations.`,
     gif: `${CDN}/Second_Layer_Right_Insert.gif`,
     algorithms: [
       { label: 'Right insert', moves: "U R U' R' U' F' U F" },
