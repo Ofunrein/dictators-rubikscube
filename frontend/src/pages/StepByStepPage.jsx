@@ -18,7 +18,7 @@ import * as THREE from 'three';
 
 import { useTheme } from '../context/ThemeContext';
 import { CubeState } from '../cube/CubeState';
-import { FACE_ORDER, getKeyMap } from './simulator/simulatorConstants';
+import { FACE_ORDER, getKeyMap, generateScramble } from './simulator/simulatorConstants';
 import { useSimulatorQueue } from './simulator/useSimulatorQueue';
 import { useCubeControls } from './simulator/useCubeControls';
 import { getThemeClasses } from './simulator/simulatorTheme';
@@ -95,6 +95,15 @@ export default function StepByStepPage() {
   const handleApplyAlgorithm = useCallback((moves) => {
     queue.enqueueMoves(moves);
   }, [queue]);
+
+  // Scramble handler
+  const [isScrambled, setIsScrambled] = useState(false);
+  const handleScramble = useCallback(() => {
+    if (isScrambled || queue.queueActive) return;
+    const scrambleMoves = generateScramble(CUBE_SIZE);
+    queue.enqueueMoves(scrambleMoves);
+    setIsScrambled(true);
+  }, [isScrambled, queue]);
 
   // Keyboard nav for steps (only when cube is not animating)
   useEffect(() => {
@@ -202,6 +211,8 @@ export default function StepByStepPage() {
             onPrev={goPrev}
             onNext={goNext}
             onApplyAlgorithm={handleApplyAlgorithm}
+            onScramble={handleScramble}
+            isScrambled={isScrambled}
             queueActive={queue.queueActive}
             isDark={isDark}
             onNavigateSimulator={() => navigate('/simulator')}

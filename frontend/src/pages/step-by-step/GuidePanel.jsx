@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react';
 import { TOTAL_STEPS } from './stepsData';
 
 function parseAlgorithmMoves(movesStr) {
@@ -15,6 +15,8 @@ export default function GuidePanel({
   onPrev,
   onNext,
   onApplyAlgorithm,
+  onScramble,
+  isScrambled,
   queueActive,
   isDark,
   onNavigateSimulator,
@@ -57,7 +59,7 @@ export default function GuidePanel({
             <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dictator-red mb-1">
               {currentStep.title}
             </p>
-            <h2 className={`font-heading text-lg tracking-tight ${isDark ? 'text-white' : 'text-dictator-ink'}`}>
+            <h2 className={`font-heading text-xl tracking-tight ${isDark ? 'text-white' : 'text-dictator-ink'}`}>
               {currentStep.subtitle}
             </h2>
           </div>
@@ -93,7 +95,7 @@ export default function GuidePanel({
         {/* Text */}
         <div>
           {currentStep.text.split('\n\n').map((para, i) => (
-            <p key={i} className={`font-body text-sm leading-relaxed mb-2.5 last:mb-0 ${textBody}`}>
+            <p key={i} className={`font-body text-base leading-relaxed mb-3 last:mb-0 ${textBody}`}>
               {para.split('\n').map((line, j) => (
                 <span key={j}>
                   {j > 0 && <br />}
@@ -103,6 +105,24 @@ export default function GuidePanel({
             </p>
           ))}
         </div>
+
+        {/* Scramble button — shown on intro step */}
+        {currentStep.step === 0 && (
+          <button
+            onClick={onScramble}
+            disabled={queueActive || isScrambled}
+            className={`w-full flex items-center justify-center gap-2 rounded-xl border py-3 font-mono text-sm uppercase tracking-widest transition-all ${
+              isScrambled
+                ? 'border-green-500/30 bg-green-500/10 text-green-400 cursor-default'
+                : queueActive
+                  ? 'border-white/5 text-white/20 cursor-not-allowed'
+                  : 'border-dictator-red/40 bg-dictator-red/15 text-dictator-red hover:bg-dictator-red/25 hover:border-dictator-red/60 active:scale-[0.98]'
+            }`}
+          >
+            <Shuffle size={16} />
+            {isScrambled ? 'Cube Scrambled — Start Solving!' : 'Scramble Cube'}
+          </button>
+        )}
 
         {/* Algorithm buttons */}
         {currentStep.algorithms.length > 0 && (
@@ -116,7 +136,7 @@ export default function GuidePanel({
                   key={i}
                   onClick={() => onApplyAlgorithm(parseAlgorithmMoves(alg.moves))}
                   disabled={queueActive}
-                  className={`rounded-lg border px-3 py-2 font-mono text-xs transition-all ${
+                  className={`rounded-lg border px-3 py-2 font-mono text-sm transition-all ${
                     queueActive
                       ? 'border-white/5 text-white/20 cursor-not-allowed'
                       : 'border-dictator-red/30 bg-dictator-red/10 text-dictator-red hover:bg-dictator-red/20 hover:border-dictator-red/50 active:scale-95'
