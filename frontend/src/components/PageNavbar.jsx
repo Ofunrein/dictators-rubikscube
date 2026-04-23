@@ -23,6 +23,7 @@ import { useTheme } from '../context/ThemeContext';
 
 const NAV_LINKS = [
   { label: 'Learn', href: '/learn' },
+  { label: 'Step-by-Step', href: '/step-by-step' },
   { label: 'Compete', href: '/leaderboard' },
 ];
 
