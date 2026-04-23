@@ -23,6 +23,7 @@ import { ThemeProvider } from './context/ThemeContext'
 import App from './App.jsx'
 import SimulatorPage from './pages/simulator/SimulatorPage.jsx'
 import LearnPage from './pages/LearnPage.jsx'
+import StepByStepPage from './pages/StepByStepPage.jsx'
 import LeaderboardPage from './pages/LeaderboardPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 
@@ -36,6 +37,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/simulator/*" element={<SimulatorPage />} />
           <Route path="/page/simulator/*" element={<SimulatorPage />} />
           <Route path="/learn" element={<LearnPage />} />
+          <Route path="/step-by-step" element={<StepByStepPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
