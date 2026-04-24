@@ -1,3 +1,29 @@
+/**
+ * useCubeControls.test.js — Unit tests for the drag-control helper layer
+ *
+ * What this covers:
+ *   - dragDirectionToArrow: maps a raw (dx, dy) swipe vector to an arrow-key
+ *     string, optionally projected onto the visible face's local basis vectors
+ *     so that dragging "right" always means right relative to the rendered face
+ *     regardless of cube orientation.
+ *   - hasExceededDragThreshold / DRAG_THRESHOLD_PX: ensures small pointer
+ *     movements are treated as taps, not drags, preventing accidental moves.
+ *   - resolveDragMoveFromCandidates: given a list of candidate cube moves for
+ *     the grabbed sticker, selects the one whose projected drag axis best
+ *     matches the dominant swipe direction.
+ *   - getStickerMove: translates a face (U/D), arrow direction, sticker column,
+ *     and cube size into the correct slice-move notation (e.g. R, S, R').
+ *
+ * Key concepts:
+ *   - "face basis" is a {right, up} pair of 2-D screen vectors that describe
+ *     how the face's local axes map to screen pixels after the 3-D projection.
+ *     When the basis is degenerate (zero-length vectors) the code falls back to
+ *     plain screen-space mapping.
+ *   - Candidate moves each carry a dragAxis ('horizontal' | 'vertical') and a
+ *     screenDelta; the resolver picks whichever candidate's axis dominates the
+ *     actual swipe and whose direction sign matches.
+ */
+
 import { describe, expect, it } from 'vitest';
 import {
   DRAG_THRESHOLD_PX,
