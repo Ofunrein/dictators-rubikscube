@@ -111,17 +111,53 @@ frontend/src/pages/simulator/
   simulatorFaceMapUtils.js   face-map normalization and orientation helpers
 ```
 
-## Inner Pages (Sprint 3)
+## Pages
 
-Added in Sprint 3. These pages use `PageNavbar` for navigation and read from
-`ThemeContext` and `AuthContext` for shared state.
+| Route | File | Description |
+|-------|------|-------------|
+| / | App.jsx | Landing page with GSAP animations |
+| /simulator | pages/simulator/SimulatorPage.jsx | Full interactive simulator |
+| /step-by-step | pages/StepByStepPage.jsx | Guided solving with live cube |
+| /learn | pages/LearnPage.jsx | Eric's learning modules |
+| /leaderboard | pages/LeaderboardPage.jsx | 6 leaderboards with dropdown |
+| /profile | pages/ProfilePage.jsx | Per-size stats + ranks |
 
-```text
-frontend/src/pages/
-  LearnPage.jsx          /learn       — coming-soon placeholder for learning content
-  LeaderboardPage.jsx    /leaderboard — mock global rankings (3x3 / 2x2 / 4x4 tabs)
-  ProfilePage.jsx        /profile     — user stats; redirects home if not logged in
-```
+## Step-by-Step Solving Guide
+
+A guided simulator that walks users through a solve method one step at a time.
+
+**Layout:** Guide panel on the left (~45% width) and an interactive cube on the right (~55%). On mobile the panels stack vertically.
+
+**Files:**
+- `frontend/src/pages/StepByStepPage.jsx` — page composition, scramble gate, step state
+- `frontend/src/components/GuidePanel.jsx` — step text, GIFs, and algorithm buttons
+- `frontend/src/data/stepsData.js` — step definitions (title, description, gif, algorithms)
+
+**Shared simulator code:** Reuses `useSimulatorQueue`, `useCubeControls`, and `InteractiveCube` directly from the simulator package so the cube behavior is identical.
+
+**GIFs:** Hosted in the `Ofunrein/cube-solving-guide-gifs` GitHub repository and referenced by URL.
+
+**Key behaviors:**
+- Scramble gate — the guide is locked until the user applies a scramble, ensuring the cube is in a solvable state before step 1.
+- Carry-forward state — cube state persists across step transitions; the user is always working on the same physical cube.
+- Algorithm buttons in `GuidePanel` call `enqueueMoves()` from `useSimulatorQueue` to animate each algorithm on the live cube.
+- Locked to 3×3; the size selector, timer, and auto-solve controls from the main simulator are not shown.
+
+## Sprint 3 Changes
+
+**Bug fixes:**
+- 2×2 solve routing was sending moves to the wrong handler; fixed by aligning size keys in the solver dispatch.
+- Move history had a race between the queue flush and the history state update; resolved by moving the history append into the queue drain callback.
+- `SimulatorFaceMap` wrapped in `React.memo` to prevent re-renders on every queue tick.
+
+**New features:**
+- Mobile navbar gains a hamburger menu with animated open/close transition.
+- Leaderboard expanded from 3 tabs to 6 boards (3×3, 2×2, 4×4, 5×5, 6×6, 7×7) with a dropdown selector.
+- Profile page shows per-size personal bests and ranks instead of a single aggregate view.
+
+**Accessibility:**
+- Introduced `--dictator-red` CSS custom property mapping to a WCAG AA-compliant red value used across button and accent styles.
+- Heavy state updates in leaderboard and profile wrapped in `startTransition` to keep Interaction to Next Paint (INP) low.
 
 ## Auth and Theme System
 
