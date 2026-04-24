@@ -12,6 +12,9 @@ An interactive, browser-based 3D Rubik's Cube platform with real-time manipulati
 | **Size-Aware Engine** | Supports 2x2, 3x3, and 4x4 cubes |
 | **Full Move Notation** | Face turns (U/D/L/R/F/B), slices (M/E/S), inner slices (r/l/u/d/f/b for 4x4) |
 | **Tutorial System** | Step-by-step learning: cross, F2L, OLL, PLL |
+| **Step-by-Step Guide** | Interactive solving guide with GIF animations, algorithm buttons, and live 3D cube |
+| **Leaderboard** | 6 boards (2x2/3x3 × fastest/avg/solves) with result count dropdown |
+| **Profile** | Per-size stats with rank display |
 | **Algorithm Reference** | Quick-apply sequences (Sexy Move, Sune, U-Perm, etc.) |
 | **REST API** | 5 endpoints: health, solved state, apply move, scramble, solve |
 | **C++ WASM Solver** | Eric's CFOP solver compiled to WebAssembly — handles 3x3 |
@@ -20,6 +23,15 @@ An interactive, browser-based 3D Rubik's Cube platform with real-time manipulati
 | **Timer & History** | Move counting, solve timing, full move log |
 | **2D Face Map** | Real-time unfolded cube visualization |
 | **Keyboard Shortcuts** | Full notation mapped to keyboard (u/d/l/r/f/b/m/e/s) |
+
+## Screenshots
+
+| Page | Preview |
+|------|---------|
+| Landing | ![Landing](docs/screenshots/landing.png) |
+| Simulator | ![Simulator](docs/screenshots/simulator.png) |
+| Step-by-Step Guide | ![Guide](docs/screenshots/step-guide-solving.png) |
+| Leaderboard | ![Leaderboard](docs/screenshots/leaderboard.png) |
 
 ## Quick Start
 
@@ -66,6 +78,17 @@ Why the API is on `5200`:
 - keeping the API on `5200` avoids a port collision
 - this mirrors a clean split: browser app on one port, API on another, with the frontend proxy hiding that split during development
 
+## Routes
+
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/` | Landing page | Hero, features, team |
+| `/simulator` | `SimulatorPage.jsx` | Interactive 3D cube |
+| `/step-by-step` | `StepByStepPage.jsx` | Guided solving with GIFs and live cube |
+| `/learn` | `LearnPage.jsx` | Learning modules |
+| `/leaderboard` | `LeaderboardPage.jsx` | 6 leaderboards (2x2/3x3 × fastest/avg/solves) |
+| `/profile` | `ProfilePage.jsx` | Per-size stats with rank display |
+
 ## Project Structure
 
 ```
@@ -93,6 +116,13 @@ the-dictators/
 │       │   ├── useSimulatorActions.js Scramble, solve, reset actions
 │       │   ├── simulatorAnimation.js GSAP animation config
 │       │   └── simulatorConstants.js Key mappings, move groups
+│       ├── pages/step-by-step/           Step-by-step solving guide
+│       │   ├── GuidePanel.jsx            Left panel: text, GIFs, algorithm buttons
+│       │   └── stepsData.js              25-slide guide data with algorithms
+│       ├── pages/StepByStepPage.jsx      Guide + live cube side-by-side
+│       ├── pages/LeaderboardPage.jsx     6 leaderboards (2x2/3x3 × 3 stats)
+│       ├── pages/ProfilePage.jsx         Per-size stats with rank display
+│       ├── pages/LearnPage.jsx           Learning modules (Eric Solano)
 │       └── utils/                    Shared utilities
 │
 ├── backend/
@@ -133,24 +163,26 @@ the-dictators/
                                 │
               ┌─────────────────┴──────────────────┐
               │                                     │
-       Landing Page                          Simulator Page
-    (components/*.jsx)              (pages/simulator/*.jsx)
-              │                                     │
-              │                          ┌──────────┴──────────┐
-              │                          │                      │
-              │                   3D Cube Rendering      Move Buttons /
-              │                  (InteractiveCube)       Keyboard Input
-              │                          │              (useCubeControls)
-              │                          │                      │
-              │                          └──────────┬──────────┘
-              │                                     │
-              │                              cube/moves.js
-              │                           (shared move engine)
-              │                                     │
-              │                              net/api.js
-              │                          (calls the backend)
-              │                                     │
-              └─────────────────┬──────────────────┘
+       Landing Page              ┌──────────────────┴──────────────────┐
+    (components/*.jsx)           │                                      │
+              │           Simulator Page              Step-by-Step Guide Page
+              │      (pages/simulator/*.jsx)         (pages/StepByStepPage.jsx)
+              │                  │                                      │
+              │       ┌──────────┴──────────┐                          │
+              │       │                      │                          │
+              │  3D Cube Rendering     Move Buttons /                   │
+              │  (InteractiveCube)     Keyboard Input                   │
+              │       │              (useCubeControls)                  │
+              │       │                      │                          │
+              │       └──────────┬──────────┘                          │
+              │                  │                                      │
+              │           cube/moves.js ◄────────────────────────────-─┘
+              │        (shared move engine)
+              │                  │
+              │           net/api.js
+              │       (calls the backend)
+              │                  │
+              └─────────────────┬┘
                                 │
                          ┌──────┴──────┐
                          │   API       │
