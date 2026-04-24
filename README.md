@@ -1,7 +1,5 @@
 # The Dictators — 3D Rubik's Cube Platform
 
-> **Team 5** · CS 3398 Software Engineering · Spring 2026 · Texas State University
-
 An interactive, browser-based 3D Rubik's Cube platform with real-time manipulation, guided tutorials, and a full-stack API.
 
 ## Features
