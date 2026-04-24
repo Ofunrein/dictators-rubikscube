@@ -109,20 +109,27 @@ export default function GuidePanel({
 
         {/* Scramble button — shown on intro step */}
         {currentStep.step === 0 && (
-          <button
-            onClick={onScramble}
-            disabled={queueActive || isScrambled}
-            className={`w-full flex items-center justify-center gap-2 rounded-xl border py-3 font-mono text-sm uppercase tracking-widest transition-all ${
-              isScrambled
-                ? 'border-green-500/30 bg-green-500/10 text-green-400 cursor-default'
-                : queueActive
-                  ? 'border-white/5 text-white/20 cursor-not-allowed'
-                  : 'border-dictator-red/40 bg-dictator-red/15 text-dictator-red hover:bg-dictator-red/25 hover:border-dictator-red/60 active:scale-[0.98]'
-            }`}
-          >
-            <Shuffle size={16} />
-            {isScrambled ? 'Cube Scrambled — Start Solving!' : 'Scramble Cube'}
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={onScramble}
+              disabled={queueActive || isScrambled}
+              className={`w-full flex items-center justify-center gap-2.5 rounded-xl py-4 font-mono text-sm font-bold uppercase tracking-widest transition-all shadow-lg ${
+                isScrambled
+                  ? 'bg-green-600 text-white shadow-green-600/20 cursor-default'
+                  : queueActive
+                    ? 'bg-dictator-red/30 text-white/40 cursor-not-allowed'
+                    : 'bg-dictator-red text-white hover:bg-dictator-deep hover:shadow-dictator-red/30 active:scale-[0.98]'
+              }`}
+            >
+              <Shuffle size={18} />
+              {isScrambled ? 'Scrambled! Click Next to Begin' : 'Scramble the Cube to Start'}
+            </button>
+            {!isScrambled && !queueActive && (
+              <p className={`text-center font-mono text-xs ${isDark ? 'text-white/40' : 'text-dictator-ink/50'}`}>
+                You must scramble the cube before following the guide
+              </p>
+            )}
+          </div>
         )}
 
         {/* Algorithm buttons */}
@@ -197,11 +204,12 @@ export default function GuidePanel({
             <button
               onClick={onNext}
               disabled={!canNext || nextBlocked}
+              title={nextBlocked ? 'Scramble the cube first' : ''}
               className={`flex items-center gap-1 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-all ${
                 canNext && !nextBlocked ? navBtn : navBtnDisabled
               }`}
             >
-              Next
+              {nextBlocked ? 'Scramble First' : 'Next'}
               <ChevronRight size={12} />
             </button>
           )}
