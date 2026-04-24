@@ -20,6 +20,13 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-dictator-red: #CC1A1A;
+  }
+  .dark {
+    --color-dictator-red: #EF4444;
+  }
+
   body {
     @apply bg-[#F2F0ED] text-[#1A1A1A] font-body;
   }
