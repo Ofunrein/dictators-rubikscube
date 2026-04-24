@@ -1,3 +1,37 @@
+/**
+ * stepsData.js — Data module for the step-by-step solving guide
+ *
+ * Why it exists:
+ *   Centralises all content for the guided solve pages so that GuidePanel.jsx
+ *   and StepByStepPage.jsx can stay logic-focused.  Adding or editing a guide
+ *   step only requires touching this file.
+ *
+ * CDN:
+ *   All GIF assets are hosted on GitHub via the raw-content CDN:
+ *     https://raw.githubusercontent.com/Ofunrein/cube-solving-guide-gifs/main
+ *   The CDN constant is exported so other modules can build asset URLs without
+ *   hard-coding the base path.
+ *
+ * STEPS array shape:
+ *   Each object in STEPS represents one slide in the guide:
+ *     step       {number}   — logical step number (multiple slides can share a
+ *                             step number to show sub-stages of the same stage)
+ *     title      {string}   — short heading shown at the top of GuidePanel
+ *     subtitle   {string}   — secondary heading below the title
+ *     text       {string}   — explanatory prose shown in the guide body
+ *     gif        {string}   — URL of the illustrative GIF (or local SVG for step 0)
+ *     algorithms {Array}    — list of clickable algorithm buttons, each with:
+ *                               label {string}  — button display text
+ *                               moves {string}  — space-separated move notation
+ *                                                 string (e.g. "R U R'")
+ *
+ *   An empty algorithms array means no buttons are rendered for that slide.
+ *
+ * TOTAL_STEPS:
+ *   Derived count of distinct logical steps (not slides); used by the progress
+ *   indicator in GuidePanel to show "Step X of N".
+ */
+
 export const CDN = 'https://raw.githubusercontent.com/Ofunrein/cube-solving-guide-gifs/main';
 
 export const STEPS = [
