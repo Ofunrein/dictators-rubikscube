@@ -1,3 +1,32 @@
+/**
+ * GuidePanel.jsx — Left-side guide panel for the step-by-step solving page
+ *
+ * Why it exists:
+ *   StepByStepPage splits the viewport into a guide side (this component) and
+ *   an interactive cube side.  GuidePanel is responsible for all of the textual
+ *   and media content so that the page component stays focused on cube state.
+ *
+ * What this renders:
+ *   - A thin progress bar at the top that fills as the user advances through slides.
+ *   - Step header (title + subtitle + slide counter dot-trail).
+ *   - Explanatory text body from the current STEPS entry.
+ *   - A GIF illustrating the move, with a fade-in once the image has loaded.
+ *   - Algorithm buttons: each button calls onApplyAlgorithm with the parsed
+ *     move tokens so the parent can queue them on the interactive cube.
+ *   - Prev / Next navigation controls.
+ *
+ * Gate on intro step:
+ *   When currentStep.step === 0 (the intro / notation slide) the Next button is
+ *   disabled until the cube has been scrambled (isScrambled prop is true).  This
+ *   forces the user to interact with the scramble button before advancing,
+ *   ensuring they start the guide with a mixed-up cube.
+ *
+ * parseAlgorithmMoves(movesStr):
+ *   Splits a whitespace-delimited notation string (e.g. "R U R'") into an array
+ *   of individual move tokens (["R", "U", "R'"]).  Empty tokens are filtered out
+ *   so that extra spaces in the data file don't produce no-op moves.
+ */
+
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react';
 import { TOTAL_STEPS } from './stepsData';
