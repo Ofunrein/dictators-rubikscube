@@ -150,16 +150,16 @@ export default function LeaderboardPage() {
     }`}>
       <PageNavbar />
 
-      <div className="flex-1 w-full max-w-2xl mx-auto px-6 py-14">
+      <div className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-14">
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dictator-red mb-3">
           Global Rankings
         </p>
-        <h1 className="font-drama text-5xl md:text-6xl uppercase tracking-tight mb-10">
+        <h1 className="font-drama text-4xl sm:text-5xl md:text-6xl uppercase tracking-tight mb-6 sm:mb-10">
           Leaderboard
         </h1>
 
-        {/* Size tabs */}
-        <div className="flex items-center justify-between mb-4">
+        {/* Size tabs + dropdown */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div className={`flex gap-1 rounded-lg p-1 w-fit ${pillBg}`}>
             {CUBE_TABS.map((tab) => (
               <button
@@ -207,7 +207,7 @@ export default function LeaderboardPage() {
 
         {/* Table */}
         <div className={`border ${border} rounded-xl overflow-hidden`}>
-          <div className={`grid grid-cols-[2rem_1fr_auto] gap-4 px-5 py-3 border-b ${border} ${tableHeader}`}>
+          <div className={`grid grid-cols-[1.5rem_1fr_auto] sm:grid-cols-[2rem_1fr_auto] gap-2 sm:gap-4 px-3 sm:px-5 py-3 border-b ${border} ${tableHeader}`}>
             <span className={`font-mono text-[10px] uppercase tracking-widest ${muted}`}>#</span>
             <span className={`font-mono text-[10px] uppercase tracking-widest ${muted}`}>Player</span>
             <span className={`font-mono text-[10px] uppercase tracking-widest ${muted} text-right`}>{valueLabel(activeStat)}</span>
@@ -216,7 +216,7 @@ export default function LeaderboardPage() {
           {entries.map((entry, i) => (
             <div
               key={entry.rank}
-              className={`grid grid-cols-[2rem_1fr_auto] gap-4 px-5 py-3.5 items-center transition-colors ${rowHover} ${
+              className={`grid grid-cols-[1.5rem_1fr_auto] sm:grid-cols-[2rem_1fr_auto] gap-2 sm:gap-4 px-3 sm:px-5 py-3 sm:py-3.5 items-center transition-colors ${rowHover} ${
                 i !== entries.length - 1 ? `border-b ${isDark ? 'border-white/5' : 'border-dictator-sand/60'}` : ''
               } ${entry.rank <= 3 ? topRow : ''}`}
             >
