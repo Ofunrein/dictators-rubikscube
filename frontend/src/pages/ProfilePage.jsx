@@ -73,15 +73,15 @@ export default function ProfilePage() {
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${bg}`}>
       <PageNavbar />
 
-      <div className="flex-1 w-full max-w-2xl mx-auto px-6 py-14">
+      <div className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-14">
         {/* Profile header */}
-        <div className="flex items-start justify-between mb-10">
-          <div className="flex items-center gap-5">
-            <div className="w-14 h-14 rounded-full bg-dictator-red/15 border border-dictator-red/30 flex items-center justify-center font-mono text-dictator-red text-xl font-bold select-none">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8 sm:mb-10">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-dictator-red/20 border-2 border-dictator-red/50 flex items-center justify-center font-mono text-dictator-red text-lg sm:text-xl font-bold select-none">
               {username.charAt(0).toUpperCase()}
             </div>
             <div>
-              <h1 className={`font-heading text-2xl font-bold ${primary}`}>{username}</h1>
+              <h1 className={`font-heading text-xl sm:text-2xl font-bold ${primary}`}>{username}</h1>
               <p className={`font-mono text-xs mt-0.5 ${muted}`}>{email}</p>
               <p className={`font-mono text-[10px] mt-1 ${isDark ? 'text-white/30' : 'text-dictator-ink/40'}`}>Joined {joinedAt}</p>
             </div>
@@ -98,7 +98,7 @@ export default function ProfilePage() {
             <p className={`font-mono text-[10px] uppercase tracking-widest mb-4 ${muted}`}>
               {size} Statistics
             </p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className={`rounded-xl px-4 py-4 text-center border ${cardBg} ${border}`}>
                 <div className={`mx-auto mb-2 flex justify-center ${muted}`}><Zap size={13} className="text-dictator-red" /></div>
                 <p className="font-drama text-2xl text-dictator-red">{formatTime(stats.best[size])}</p>
@@ -142,7 +142,7 @@ export default function ProfilePage() {
           <div className={`border rounded-xl overflow-hidden ${border}`}>
             {recentSolves && recentSolves.length > 0 ? (
               recentSolves.map((solve, i) => (
-                <div key={i} className={`flex items-center justify-between px-5 py-3.5 transition-colors ${rowHover} ${i !== recentSolves.length - 1 ? `border-b ${rowBorder}` : ''}`}>
+                <div key={i} className={`flex items-center justify-between px-3 sm:px-5 py-3 sm:py-3.5 transition-colors ${rowHover} ${i !== recentSolves.length - 1 ? `border-b ${rowBorder}` : ''}`}>
                   <div className="flex items-center gap-3">
                     <span className={`font-mono text-xs w-8 tabular-nums ${muted}`}>#{recentSolves.length - i}</span>
                     <span className={`font-mono text-xs border px-2 py-0.5 rounded ${muted} ${tagBg}`}>{solve.cube}</span>
