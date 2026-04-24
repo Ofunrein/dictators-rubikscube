@@ -32,7 +32,9 @@ export default {
       colors: {
         dictator: {
           void: '#0D0D0D',
-          red: '#CC1A1A',
+          red: 'var(--color-dictator-red)',
+          'red-light': '#EF4444',
+          'red-base': '#CC1A1A',
           chrome: '#B0B0B0',
           smoke: '#F2F0ED',
           charcoal: '#1A1A1A',
