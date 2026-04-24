@@ -27,7 +27,7 @@
  *   so that extra spaces in the data file don't produce no-op moves.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react';
 import { TOTAL_STEPS } from './stepsData';
 
@@ -51,9 +51,18 @@ export default function GuidePanel({
   onNavigateSimulator,
 }) {
   const [imgLoaded, setImgLoaded] = useState(false);
+  const imgRef = useRef(null);
 
   useEffect(() => {
     setImgLoaded(false);
+    // Handle cached images: if the browser already has the image, onLoad
+    // may fire before React attaches the handler. Check after a tick.
+    const timer = setTimeout(() => {
+      if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
+        setImgLoaded(true);
+      }
+    }, 50);
+    return () => clearTimeout(timer);
   }, [currentStep.gif]);
 
   const cardBg = isDark ? 'bg-[#111] border-white/8' : 'bg-white border-dictator-ink/10';
@@ -112,6 +121,7 @@ export default function GuidePanel({
               </div>
             )}
             <img
+              ref={imgRef}
               key={currentStep.gif}
               src={currentStep.gif}
               alt={currentStep.subtitle}
