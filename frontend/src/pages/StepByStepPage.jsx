@@ -220,9 +220,9 @@ export default function StepByStepPage() {
           </SimulatorCanvasBoundary>
 
           {queue.queueActive && (
-            <div className={`absolute top-4 right-4 ${t.overlay} border border-dictator-red/30 rounded-full px-3 py-1.5 flex items-center gap-2 backdrop-blur`}>
-              <span className="w-2 h-2 rounded-full bg-dictator-red animate-pulse" />
-              <span className="font-mono text-[10px] uppercase tracking-widest text-dictator-red">
+            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${t.overlay} border border-dictator-red/30 rounded-2xl px-6 py-4 flex items-center gap-3 backdrop-blur-md shadow-xl z-10`}>
+              <span className="w-3 h-3 rounded-full bg-dictator-red animate-pulse" />
+              <span className="font-mono text-base font-bold uppercase tracking-widest text-dictator-red">
                 {queue.activeMove ? `Turning ${queue.activeMove}` : `${queue.queuedMoveCount} Queued`}
               </span>
             </div>
