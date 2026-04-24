@@ -9,7 +9,7 @@
  * Reuses all simulator engine components from pages/simulator/:
  *   useSimulatorQueue, useCubeControls, InteractiveCube, etc.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sun, Moon } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
@@ -46,11 +46,11 @@ export default function StepByStepPage() {
   const canNext = currentIndex < STEPS.length - 1;
 
   const goNext = useCallback(() => {
-    if (canNext) setCurrentIndex((i) => i + 1);
+    if (canNext) startTransition(() => setCurrentIndex((i) => i + 1));
   }, [canNext]);
 
   const goPrev = useCallback(() => {
-    if (canPrev) setCurrentIndex((i) => i - 1);
+    if (canPrev) startTransition(() => setCurrentIndex((i) => i - 1));
   }, [canPrev]);
 
   // Preload next GIF
