@@ -75,8 +75,11 @@ export default function GuidePanel({
             style={{ minHeight: '180px' }}
           >
             {!imgLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-dictator-red/30 border-t-dictator-red rounded-full animate-spin" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <div className="w-8 h-8 border-2 border-dictator-red/30 border-t-dictator-red rounded-full animate-spin" />
+                <p className={`font-mono text-[10px] ${isDark ? 'text-white/30' : 'text-dictator-ink/30'}`}>
+                  Loading animation...
+                </p>
               </div>
             )}
             <img
