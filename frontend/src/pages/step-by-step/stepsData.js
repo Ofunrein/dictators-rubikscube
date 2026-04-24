@@ -40,7 +40,7 @@ export const STEPS = [
     title: 'Introduction',
     subtitle: 'Notation & Terminology',
     text: `This guide walks you through solving a 3×3 Rubik's Cube using a beginner algorithm optimized for straightforwardness, not speed. It details every step with moves in standard cube notation and visual aids.\n\nIn this guide, "tiles" refers to the 9 colored squares on each face (sometimes called "stickers"), while "pieces" refers to the cubic pieces tiles rest on (sometimes called "cubies"). "Corner" pieces sit at the corners and have 3 colored tiles. "Edge" pieces sit between corners and have 2 colored tiles. The center tile on each face determines that face's color — a face with a yellow center is the "yellow face."\n\nStandard notation for 90° clockwise rotations:\n• L — Left face\n• R — Right face\n• U — Up face\n• D — Down face\n• F — Front face\n• B — Back face\n• M — Middle layer (between L and R), follows L direction\n• E — Equator layer (between D and U), follows D direction\n• S — Standing layer (between F and B), follows F direction\n\nAdd an apostrophe (') for counterclockwise: U' means turn the Up face 90° counterclockwise. Add "2" for a double turn: F2 means turn the Front face twice.`,
-    gif: '/cube-notation.svg',
+    gif: 'https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExcGxmY3F4YXp0MHJoMzR6aGw3MTlkdXBkcGQ4YThwbjF1MG5xNG5kdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/7LE0z2EEAiVCU/giphy.gif',
     algorithms: [],
   },
   {
