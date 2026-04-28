@@ -1,10 +1,9 @@
 /**
- * LeaderboardPage.jsx — /leaderboard route — global rankings by cube size
+ * LeaderboardPage.jsx — /leaderboard route — global rankings by cube size and stat
  *
- * Fetches leaderboard data from Supabase using the get_leaderboard_avg_2x2
- * and get_leaderboard_avg_3x3 database functions.
- *
- * Supports 2x2 and 3x3 categories with a result count dropdown (10/50/100).
+ * Fetches leaderboard data from Supabase using size-specific and stat-specific
+ * database functions. Supports 2x2 and 3x3 sizes, each with Fastest, Avg, and
+ * Solves stat types, and a result count dropdown (10/50/100).
  */
 import { useState, useEffect } from 'react';
 import { Crown, Medal } from 'lucide-react';
@@ -13,9 +12,15 @@ import { useTheme } from '../context/ThemeContext';
 import { getLeaderboard } from '../lib/stats';
 
 const CUBE_TABS = ['3x3', '2x2'];
+const STAT_TABS = [
+  { key: 'fastest', label: 'Fastest' },
+  { key: 'avg', label: 'Avg' },
+  { key: 'solves', label: 'Solves' },
+];
 const RESULT_COUNTS = [10, 50, 100];
 
 function formatValue(value, statKey) {
+  if (value === null || value === undefined) return '—';
   if (statKey === 'solves') return value.toLocaleString();
   if (value >= 60) {
     const m = Math.floor(value / 60);
@@ -27,8 +32,8 @@ function formatValue(value, statKey) {
 
 function valueLabel(statKey) {
   if (statKey === 'solves') return 'Solves';
-  if (statKey === 'average') return 'Avg Time';
-  return 'Best Time';
+  if (statKey === 'fastest') return 'Best Time';
+  return 'Avg Time';
 }
 
 function RankIcon({ rank }) {
@@ -40,19 +45,20 @@ function RankIcon({ rank }) {
 
 export default function LeaderboardPage() {
   const [activeSize, setActiveSize] = useState('3x3');
+  const [activeStat, setActiveStat] = useState('fastest');
   const [resultCount, setResultCount] = useState(10);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { isDark } = useTheme();
 
-  // Fetch leaderboard data whenever size or count changes
+  // Fetch leaderboard data whenever size, stat, or count changes
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await getLeaderboard(activeSize, resultCount);
+      const { data, error: fetchError } = await getLeaderboard(activeSize, activeStat, resultCount);
 
       if (fetchError) {
         setError(fetchError.message);
@@ -65,7 +71,7 @@ export default function LeaderboardPage() {
     }
 
     fetchData();
-  }, [activeSize, resultCount]);
+  }, [activeSize, activeStat, resultCount]);
 
   const border = isDark ? 'border-white/8' : 'border-dictator-ink/20';
   const rowHover = isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-dictator-ink/[0.04]';
@@ -89,20 +95,37 @@ export default function LeaderboardPage() {
           Leaderboard
         </h1>
 
-        {/* Size tabs + dropdown */}
+        {/* Size tabs */}
+        <div className={`flex gap-1 rounded-lg p-1 w-fit mb-3 ${pillBg}`}>
+          {CUBE_TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveSize(tab)}
+              className={`px-5 py-1.5 rounded-md font-mono text-xs uppercase tracking-widest transition-all ${
+                activeSize === tab
+                  ? 'bg-dictator-red text-white'
+                  : isDark ? 'text-dictator-chrome hover:text-white' : 'text-dictator-chrome hover:text-dictator-ink'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Stat type tabs + result count */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div className={`flex gap-1 rounded-lg p-1 w-fit ${pillBg}`}>
-            {CUBE_TABS.map((tab) => (
+            {STAT_TABS.map((tab) => (
               <button
-                key={tab}
-                onClick={() => setActiveSize(tab)}
-                className={`px-5 py-1.5 rounded-md font-mono text-xs uppercase tracking-widest transition-all ${
-                  activeSize === tab
+                key={tab.key}
+                onClick={() => setActiveStat(tab.key)}
+                className={`px-4 py-1.5 rounded-md font-mono text-xs uppercase tracking-widest transition-all ${
+                  activeStat === tab.key
                     ? 'bg-dictator-red text-white'
                     : isDark ? 'text-dictator-chrome hover:text-white' : 'text-dictator-chrome hover:text-dictator-ink'
                 }`}
               >
-                {tab}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -124,7 +147,7 @@ export default function LeaderboardPage() {
           <div className={`grid grid-cols-[1.5rem_1fr_auto] sm:grid-cols-[2rem_1fr_auto] gap-2 sm:gap-4 px-3 sm:px-5 py-3 border-b ${border} ${tableHeader}`}>
             <span className={`font-mono text-[10px] uppercase tracking-widest ${muted}`}>#</span>
             <span className={`font-mono text-[10px] uppercase tracking-widest ${muted}`}>Player</span>
-            <span className={`font-mono text-[10px] uppercase tracking-widest ${muted} text-right`}>Avg Time</span>
+            <span className={`font-mono text-[10px] uppercase tracking-widest ${muted} text-right`}>{valueLabel(activeStat)}</span>
           </div>
 
           {loading ? (
@@ -154,7 +177,7 @@ export default function LeaderboardPage() {
                   {entry.username}
                 </span>
                 <span className="font-mono text-sm text-dictator-red tabular-nums text-right">
-                  {formatValue(entry.value, 'average')}
+                  {formatValue(entry.value, activeStat)}
                 </span>
               </div>
             ))
