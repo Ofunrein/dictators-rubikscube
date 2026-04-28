@@ -142,7 +142,7 @@
 // }
 //
 // // eslint-disable-next-line no-console
-// console.log(`Starting API on :5200 and ${frontendDir} dev server on :5400...`);
+// console.log(`Starting API on :4011 and ${frontendDir} dev server on :5173...`);
 // services.forEach(startService);
 //
 // function shutdown(signal = 'SIGTERM') {
@@ -169,7 +169,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const frontendCandidates = ['dictators-website', 'dicators-website'];
+const frontendCandidates = ['frontend'];
 function resolveFrontendDir() {
     for (const dir of frontendCandidates) {
         if (
@@ -201,7 +201,9 @@ const frontendDir = resolveFrontendDir();
 if (!frontendDir) {
     // eslint-disable-next-line no-console
     console.error(
-        'Could not find frontend app folder. Expected one of: dictators-website/, dicators-website/.'
+        `Could not find frontend app folder. Expected one of: ${frontendCandidates
+            .map((dir) => `${dir}/`)
+            .join(', ')}.`
     );
     process.exit(1);
 }
@@ -224,11 +226,7 @@ function startService({ name, cwd, args, env = {} }) {
     return child;
 }
 // eslint-disable-next-line no-console
-console.log(`Starting active frontend "${frontendDir}" on :5400 and local API on :5200...`);
-// eslint-disable-next-line no-console
-console.log('Local dev routing: browser -> http://localhost:5400, API proxy -> /api/v1/*, direct API -> http://localhost:5200/v1/*');
-// eslint-disable-next-line no-console
-console.log('Repo note: dictators-website/ is the active frontend. frontend/ is an older prototype and is not used by npm run dev.');
+console.log(`Starting API on :5200 and ${frontendDir} dev server on :5400...`);
 const children = services.map(startService);
 let shuttingDown = false;
 function shutdown(signal = 'SIGTERM') {
