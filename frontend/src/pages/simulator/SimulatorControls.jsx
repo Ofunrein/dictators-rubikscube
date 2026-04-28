@@ -2,6 +2,7 @@
  * SimulatorControls.jsx — Left sidebar panel with all the action buttons and controls
  */
 
+import { useEffect, useRef } from 'react';
 import { Check, Play, RotateCcw, Shuffle, Square } from 'lucide-react';
 import { CUBE_SIZE_OPTIONS } from './simulatorConstants';
 import { getThemeClasses } from './simulatorTheme';
@@ -34,10 +35,48 @@ export default function SimulatorControls({
   const actionsDisabled = interactionLocked || solveDepth === 0 || isTimedSolve;
   const t = getThemeClasses(isDark);
   const hiddenMoves = /^[xyXY]'?$/;
-  const visibleMoves = (isTimedSolve
+
+  // In free-solve mode, the scramble portion is driven by moveHistory itself
+  // (the first scrambleSeq.length entries). This way the greyed-out badges
+  // appear one-by-one in sync with each scramble move's animation, instead of
+  // all showing up the moment the scramble starts.
+  // In timed-solve, scramble moves are never recorded to history, so we just
+  // slice past scrambleMoveCount as before.
+  const visibleScrambleMoves = !isTimedSolve && scrambleSeq.length > 0
+    ? moveHistory.slice(0, scrambleSeq.length).filter((m) => !hiddenMoves.test(m))
+    : [];
+
+  const visibleUserMoves = (isTimedSolve
     ? moveHistory.slice(scrambleMoveCount)
-    : moveHistory
+    : moveHistory.slice(scrambleSeq.length)
   ).filter((m) => !hiddenMoves.test(m));
+
+  // Dim the scramble row only after the user engages — either by making
+  // their first move, or by pressing Solve (which appends solve moves to
+  // history). Until then the scramble is the focus and stays full color.
+  const dimScramble = visibleUserMoves.length > 0;
+
+  // Auto-scroll the move history to the bottom as new moves come in (so the
+  // user can follow the solve in real time). Respects manual scrolling — if
+  // the user scrolls up to read earlier moves, we stop following until they
+  // scroll back near the bottom.
+  const historyScrollRef = useRef(null);
+  const userScrolledUpRef = useRef(false);
+  const totalVisibleMoves = visibleScrambleMoves.length + visibleUserMoves.length;
+
+  useEffect(() => {
+    const el = historyScrollRef.current;
+    if (!el) return;
+    if (userScrolledUpRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [totalVisibleMoves]);
+
+  const handleHistoryScroll = () => {
+    const el = historyScrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    userScrolledUpRef.current = distanceFromBottom > 16;
+  };
 
   return (
     <aside className="w-full max-h-[40vh] border-b sim-border sim-panel-bg md:max-h-none md:w-[260px] md:min-w-[220px] md:border-b-0 md:border-r lg:w-[280px] lg:min-w-[240px] xl:w-[300px] xl:min-w-[260px] flex flex-col overflow-y-auto shrink-0">
@@ -316,22 +355,42 @@ export default function SimulatorControls({
         <p className="mb-2 font-mono text-[10px] uppercase tracking-widest sim-text">
           Move History
         </p>
-        <div className="flex max-h-16 flex-wrap gap-1 overflow-y-auto md:max-h-24 lg:max-h-28">
+        <div
+          ref={historyScrollRef}
+          onScroll={handleHistoryScroll}
+          className="flex max-h-16 flex-wrap gap-1 overflow-y-auto md:max-h-24 lg:max-h-28"
+        >
           {timerPrimed ? (
             <span className="font-mono text-[10px] text-dictator-red">
               Waiting for first move...
             </span>
-          ) : visibleMoves.length === 0 ? (
-            <span className="font-mono text-[10px] sim-text/90">No moves yet</span>
           ) : (
-            visibleMoves.map((move, index) => (
-              <span
-                key={`${move}-${index}`}
-                className="rounded border border-[--sim-border] bg-[--sim-kbd] px-1.5 py-0.5 font-mono text-[10px] sim-text"
-              >
-                {move}
-              </span>
-            ))
+            <>
+              <div className="flex flex-wrap gap-1">
+                {visibleScrambleMoves.map((move, index) => (
+                  <span
+                    key={`scr-${move}-${index}`}
+                    className={`rounded border border-[--sim-border] bg-[--sim-kbd] px-1.5 py-0.5 font-mono text-[10px] transition-opacity duration-300 ${
+                      dimScramble ? 'sim-text/50 opacity-60' : 'sim-text'
+                    }`}
+                  >
+                    {move}
+                  </span>
+                ))}
+                {visibleUserMoves.length === 0 && visibleScrambleMoves.length === 0 ? (
+                  <span className="font-mono text-[10px] sim-text/90">No moves yet</span>
+                ) : (
+                  visibleUserMoves.map((move, index) => (
+                    <span
+                      key={`usr-${move}-${index}`}
+                      className="rounded border border-[--sim-border] bg-[--sim-kbd] px-1.5 py-0.5 font-mono text-[10px] sim-text"
+                    >
+                      {move}
+                    </span>
+                  ))
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
