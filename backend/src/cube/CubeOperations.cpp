@@ -1,3 +1,46 @@
+/**
+ * CubeOperations.cpp — Face rotations, layer rotations, and the 3×3 solve algorithm
+ *
+ * Why it exists:
+ *   PuzzleCube stores the raw tile grid but knows nothing about cube notation or
+ *   solving logic.  This translation layer converts named moves (U, R', F2, M, …)
+ *   into the axis/layer/direction calls that PuzzleCube understands, and houses
+ *   the beginner-method solve algorithm for 3×3 cubes.
+ *
+ * Coordinate system — face enum ordering in PuzzleCube.h:
+ *   Index 0 = Up    (white center, solved state)
+ *   Index 1 = Left
+ *   Index 2 = Front
+ *   Index 3 = Right
+ *   Index 4 = Back
+ *   Index 5 = Down  (yellow center, solved state)
+ *
+ *   RotationAxis::X  — vertical columns (L/R face moves)
+ *   RotationAxis::Y  — horizontal rows  (U/D face moves)
+ *   RotationAxis::Z  — front-to-back slices (F/B face moves)
+ *
+ *   Layer 0 is always the layer closest to the face whose axis points in the
+ *   positive direction (Right for X, Up for Y, Front for Z).
+ *   Layer N-1 is the far side.  Middle slice M/E/S target layer N/2 on odd cubes.
+ *
+ * WASM compilation:
+ *   This file is compiled alongside solver_bridge.cpp via Emscripten.  The bridge
+ *   exposes the high-level functions (applyMoves, solveCube, scramble, …) to
+ *   Node.js; CubeOperations provides the move-application and solving internals
+ *   that the bridge delegates to.
+ *
+ * Key responsibilities:
+ *   - applyMove / applyMoves: parse standard notation tokens and forward to
+ *     PuzzleCube::rotate, including wide moves (r, u, f) and whole-cube
+ *     rotations (x, y, z) by rotating multiple layers at once.
+ *   - isSolved / solveCube: beginner-method 3×3 solver that operates in stages
+ *     (daisy → white cross → first layer → second layer → OLL → PLL).
+ *   - generateScramble: produces a random move sequence, avoiding redundant
+ *     consecutive moves on the same face.
+ *   - MoveRecorder (gRecorder): optional recording shim that captures every
+ *     applied move token — used by the solver to build the solution move list.
+ */
+
 #include "CubeOperations.h"
 #include "PuzzleCube.h"
 #include <array>
