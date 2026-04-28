@@ -70,3 +70,30 @@ export interface AiHelpResponse {
   coachMessage: AiCoachMessage;
   meta: AiHelpMeta;
 }
+
+export type AiMoveCoachStatus = 'approved' | 'warning' | 'correction';
+
+export interface AiMoveValidationRequest {
+  state: Record<CubeFaceName, string[]>;
+  candidateMove: string;
+  moveHistory?: string[];
+  tutorialStepTitle?: string;
+  isTimedSolve?: boolean;
+}
+
+export interface AiMoveValidationResult {
+  move: string;
+  isLegal: boolean;
+  status: AiMoveCoachStatus;
+  reason: string;
+  shouldBlock: boolean;
+  alternativeMoves?: string[];
+  scoreBefore?: number;
+  scoreAfter?: number;
+  scoreDelta?: number;
+}
+
+export interface AiMoveValidationResponse {
+  requestId: string;
+  validation: AiMoveValidationResult;
+}

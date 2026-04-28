@@ -210,4 +210,47 @@ describe('buildApp', () => {
 
     await app.close();
   });
+
+  it('analyzes candidate moves for coach validation', async () => {
+    const app = buildApp({ prisma: createPrismaStub() as never, logger: false });
+    await app.ready();
+
+    const okResponse = await app.inject({
+      method: 'POST',
+      url: '/v1/ai/move/validate',
+      payload: {
+        state: SOLVED_STATE,
+        candidateMove: 'R',
+        moveHistory: ['U', 'R', "U'"],
+        tutorialStepTitle: 'First Two Layers (F2L)',
+      },
+    });
+
+    expect(okResponse.statusCode).toBe(200);
+    expect(okResponse.json().requestId).toBeTruthy();
+    expect(okResponse.json().validation).toMatchObject({
+      move: 'R',
+      isLegal: true,
+    });
+    expect(typeof okResponse.json().validation.reason).toBe('string');
+
+    const badResponse = await app.inject({
+      method: 'POST',
+      url: '/v1/ai/move/validate',
+      payload: {
+        state: SOLVED_STATE,
+        candidateMove: 'BAD',
+      },
+    });
+
+    expect(badResponse.statusCode).toBe(200);
+    expect(badResponse.json().validation).toMatchObject({
+      move: 'BAD',
+      isLegal: false,
+      status: 'correction',
+      shouldBlock: true,
+    });
+
+    await app.close();
+  });
 });

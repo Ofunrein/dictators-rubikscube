@@ -316,6 +316,31 @@ export async function requestAiHelp(payload) {
   return response;
 }
 
+export async function requestAiMoveValidation(payload) {
+  if (!isPlainObject(payload)) {
+    throw new Error('payload must be an object.');
+  }
+
+  if (!isPlainObject(payload.state)) {
+    throw new Error('payload.state must be a cube state object.');
+  }
+
+  if (typeof payload.candidateMove !== 'string' || payload.candidateMove.trim().length === 0) {
+    throw new Error('payload.candidateMove must be a non-empty string.');
+  }
+
+  const response = await request('/api/v1/ai/move/validate', {
+    method: 'POST',
+    body: payload,
+  });
+
+  if (!isPlainObject(response.validation) || typeof response.validation.reason !== 'string') {
+    throw new ApiError('Backend returned an invalid move validation response.');
+  }
+
+  return response;
+}
+
 export async function listCubeSessions({ status, limit } = {}) {
   return request(withQuery('/api/v1/cube-sessions', { status, limit }), { auth: true });
 }

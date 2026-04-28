@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { CubeState } from '../cube/CubeState';
 import { applyMove, MOVES } from '../cube/moves';
 import { ArrowLeft, RotateCcw, Shuffle, Timer, ChevronRight, Check, Bot, X } from 'lucide-react';
-import { requestAiHelp } from '../net/api';
+import { requestAiHelp, requestAiMoveValidation } from '../net/api';
 import {
   CUBIE_LAYOUT,
   TURN_DURATION_SECONDS,
@@ -36,6 +36,12 @@ const AXIS_VECTORS = {
   z: new THREE.Vector3(0, 0, 1),
 };
 const IDLE_HELP_THRESHOLD_MS = 70000;
+
+const MOVE_FEEDBACK_STYLES = {
+  approved: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100',
+  warning: 'border-amber-500/30 bg-amber-500/10 text-amber-100',
+  correction: 'border-dictator-red/40 bg-dictator-red/10 text-white',
+};
 
 class SimulatorCanvasBoundary extends React.Component {
   constructor(props) {
@@ -354,6 +360,14 @@ const KEY_MAP = {
   s: 'S', S: "S'",
 };
 
+const TUTORIAL_STEPS = [
+  { title: 'Notation Basics', body: 'Each letter represents a face: U (Up), D (Down), R (Right), L (Left), F (Front), B (Back). A plain letter = clockwise. A prime (′) = counter-clockwise.' },
+  { title: 'The Cross', body: 'Start by solving a cross on the U (white) face. Find the 4 white edge pieces and bring them to the top layer, matching the center colors on each side.' },
+  { title: 'First Two Layers (F2L)', body: 'Pair each corner with its matching edge piece and insert them into the correct slot using R U R′ U′ or L′ U′ L U.' },
+  { title: 'Orient Last Layer (OLL)', body: 'Make the top face all one color using OLL algorithms. The most common beginner OLL: F R U R′ U′ F′.' },
+  { title: 'Permute Last Layer (PLL)', body: 'Move the top layer pieces into their correct positions. Common PLL: R U R′ U R U2 R′ (U-Perm).' },
+];
+
 // ─── Scramble generator ───────────────────────────────────────────────────────
 function generateScramble(length = 20) {
   const result = [];
@@ -410,6 +424,7 @@ const SimulatorPage = () => {
   const moveQueueRef = useRef([]);
   const activeMoveRef = useRef(null);
   const solveStackRef = useRef([]);
+  const moveValidationRequestRef = useRef(0);
 
   // Timer
   const [timerRunning, setTimerRunning] = useState(false);
@@ -428,19 +443,17 @@ const SimulatorPage = () => {
   const [coachInput, setCoachInput] = useState('');
   const [coachMessages, setCoachMessages] = useState([]);
   const [lastCoachResponse, setLastCoachResponse] = useState(null);
+  const [moveCoachEnabled, setMoveCoachEnabled] = useState(true);
+  const [moveValidationLoading, setMoveValidationLoading] = useState(false);
+  const [moveValidation, setMoveValidation] = useState(null);
+  const [pendingBlockedMove, setPendingBlockedMove] = useState(null);
   const lastActivityAtRef = useRef(Date.now());
   const idlePromptShownRef = useRef(false);
   const coachMessagesRef = useRef(null);
-  const TUTORIAL_STEPS = [
-    { title: 'Notation Basics', body: 'Each letter represents a face: U (Up), D (Down), R (Right), L (Left), F (Front), B (Back). A plain letter = clockwise. A prime (′) = counter-clockwise.' },
-    { title: 'The Cross', body: 'Start by solving a cross on the U (white) face. Find the 4 white edge pieces and bring them to the top layer, matching the center colors on each side.' },
-    { title: 'First Two Layers (F2L)', body: 'Pair each corner with its matching edge piece and insert them into the correct slot using R U R′ U′ or L′ U′ L U.' },
-    { title: 'Orient Last Layer (OLL)', body: 'Make the top face all one color using OLL algorithms. The most common beginner OLL: F R U R′ U′ F′.' },
-    { title: 'Permute Last Layer (PLL)', body: 'Move the top layer pieces into their correct positions. Common PLL: R U R′ U R U2 R′ (U-Perm).' },
-  ];
 
   const queueActive = activeMove !== null || queuedMoveCount > 0;
-  const manualInputLocked = queueActive;
+  const controlsLocked = queueActive || moveValidationLoading;
+  const manualInputLocked = controlsLocked;
   const canAnimateMoves = !canvasFailed;
   const isCubeSolved = FACE_ORDER.every((face) => {
     const stickers = displayState[face];
@@ -454,6 +467,11 @@ const SimulatorPage = () => {
     idlePromptShownRef.current = false;
   }, []);
 
+  const invalidateMoveValidation = useCallback(() => {
+    moveValidationRequestRef.current += 1;
+    setMoveValidationLoading(false);
+  }, []);
+
   const buildCoachContext = useCallback(() => ({
     cubeState: cloneCubeStateForRequest(displayState),
     moveHistory: [...moveHistory],
@@ -465,7 +483,7 @@ const SimulatorPage = () => {
     solveDepth,
     queueActive,
     isSolved: isCubeSolved,
-  }), [displayState, moveHistory, scrambleSeq, tutorialStep, timerMs, idleMs, solveDepth, queueActive, isCubeSolved, TUTORIAL_STEPS]);
+  }), [displayState, moveHistory, scrambleSeq, tutorialStep, timerMs, idleMs, solveDepth, queueActive, isCubeSolved]);
 
   const submitCoachRequest = useCallback(async (mode, rawMessage = '') => {
     if (coachLoading) {
@@ -631,11 +649,99 @@ const SimulatorPage = () => {
     startNextMove();
   }, [cubeStateObj, startNextMove]);
 
-  const dispatchManualMove = useCallback((move) => {
-    if (!move) return;
+  const validateCandidateMove = useCallback(async (candidateMove) => {
+    if (!moveCoachEnabled) {
+      return {
+        move: candidateMove,
+        status: 'approved',
+        reason: 'Move validation disabled.',
+        shouldBlock: false,
+      };
+    }
+
+    const response = await requestAiMoveValidation({
+      state: cloneCubeStateForRequest(cubeStateObj.getState()),
+      candidateMove,
+      moveHistory: [...moveHistory],
+      tutorialStepTitle: TUTORIAL_STEPS[tutorialStep]?.title ?? 'Notation Basics',
+      isTimedSolve: timerRunning,
+    });
+
+    return response.validation;
+  }, [cubeStateObj, moveCoachEnabled, moveHistory, tutorialStep, timerRunning]);
+
+  const dispatchManualMove = useCallback(async (move) => {
+    if (!move || moveValidationLoading) return;
     if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
-    enqueueMoves([move]);
-  }, [enqueueMoves]);
+
+    setPendingBlockedMove(null);
+    markUserActivity();
+
+    if (!moveCoachEnabled) {
+      setMoveValidation({
+        move,
+        status: 'approved',
+        reason: 'Coach guard is off. Move queued.',
+        shouldBlock: false,
+      });
+      enqueueMoves([move]);
+      return;
+    }
+
+    setMoveValidationLoading(true);
+    const requestId = moveValidationRequestRef.current + 1;
+    moveValidationRequestRef.current = requestId;
+
+    try {
+      const validation = await validateCandidateMove(move);
+      if (moveValidationRequestRef.current !== requestId) {
+        return;
+      }
+
+      setMoveValidation(validation);
+
+      if (validation.shouldBlock) {
+        setPendingBlockedMove(move);
+        return;
+      }
+
+      enqueueMoves([move]);
+    } catch (error) {
+      if (moveValidationRequestRef.current !== requestId) {
+        return;
+      }
+
+      setMoveValidation({
+        move,
+        status: 'warning',
+        reason: error instanceof Error
+          ? `Move queued without coach validation: ${error.message}`
+          : 'Move queued without coach validation.',
+        shouldBlock: false,
+      });
+      enqueueMoves([move]);
+    } finally {
+      if (moveValidationRequestRef.current === requestId) {
+        setMoveValidationLoading(false);
+      }
+    }
+  }, [enqueueMoves, markUserActivity, moveCoachEnabled, moveValidationLoading, validateCandidateMove]);
+
+  const runBlockedMoveAnyway = useCallback(() => {
+    if (!pendingBlockedMove) return;
+    if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
+
+    markUserActivity();
+    enqueueMoves([pendingBlockedMove]);
+    setMoveValidation((prev) => ({
+      ...(prev ?? {}),
+      move: pendingBlockedMove,
+      status: 'warning',
+      reason: 'Move queued by user override.',
+      shouldBlock: false,
+    }));
+    setPendingBlockedMove(null);
+  }, [enqueueMoves, markUserActivity, pendingBlockedMove]);
 
   // ── Watchdog: force-complete a stalled animation ─────────────────────────────
   useEffect(() => {
@@ -770,6 +876,7 @@ const SimulatorPage = () => {
   const handleScramble = useCallback(() => {
     if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
 
+    invalidateMoveValidation();
     const seq = generateScramble(20);
     setScrambleSeq(seq);
 
@@ -777,24 +884,29 @@ const SimulatorPage = () => {
     setMoveHistory([]);
     solveStackRef.current = [];
     setSolveDepth(0);
+    setMoveValidation(null);
+    setPendingBlockedMove(null);
 
     enqueueMoves(seq);
-  }, [enqueueMoves, resetCubeToSolved]);
+  }, [enqueueMoves, invalidateMoveValidation, resetCubeToSolved]);
 
   // ── Solve ────────────────────────────────────────────────────────────────────
   const handleSolve = useCallback(() => {
     if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
     if (solveStackRef.current.length === 0) return;
 
+    invalidateMoveValidation();
     const solution = [...solveStackRef.current].reverse().map(inverseMove);
+    setPendingBlockedMove(null);
     enqueueMoves(solution);
     stopTimer();
-  }, [enqueueMoves, stopTimer]);
+  }, [enqueueMoves, invalidateMoveValidation, stopTimer]);
 
   // ── Reset ────────────────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
     if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
 
+    invalidateMoveValidation();
     moveQueueRef.current = [];
     activeMoveRef.current = null;
     setQueuedMoveCount(0);
@@ -804,11 +916,13 @@ const SimulatorPage = () => {
     setSolveDepth(0);
     setMoveHistory([]);
     setScrambleSeq([]);
+    setMoveValidation(null);
+    setPendingBlockedMove(null);
 
     resetCubeToSolved();
     stopTimer();
     setTimerMs(0);
-  }, [resetCubeToSolved, stopTimer]);
+  }, [invalidateMoveValidation, resetCubeToSolved, stopTimer]);
 
   // ── 2D face preview ──────────────────────────────────────────────────────────
   const FacePreview = ({ face, label }) => {
@@ -889,9 +1003,9 @@ const SimulatorPage = () => {
           <div className="p-6 border-b border-dictator-chrome/10 grid grid-cols-3 gap-2">
             <button
               onClick={handleScramble}
-              disabled={queueActive}
+              disabled={controlsLocked}
               className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl transition-colors
-                ${queueActive
+                ${controlsLocked
                   ? 'bg-dictator-red/30 text-white/70 cursor-not-allowed'
                   : 'bg-dictator-red text-white hover:bg-[#AA1515] active:scale-95'
                 }`}
@@ -901,9 +1015,9 @@ const SimulatorPage = () => {
             </button>
             <button
               onClick={handleSolve}
-              disabled={queueActive || solveDepth === 0}
+              disabled={controlsLocked || solveDepth === 0}
               className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl border transition-all
-                ${queueActive || solveDepth === 0
+                ${controlsLocked || solveDepth === 0
                   ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
                   : 'bg-[#1A1A1A] border-dictator-red/40 text-dictator-red hover:border-dictator-red hover:text-white active:scale-95'
                 }`}
@@ -913,9 +1027,9 @@ const SimulatorPage = () => {
             </button>
             <button
               onClick={handleReset}
-              disabled={queueActive}
+              disabled={controlsLocked}
               className={`flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-widest py-3 rounded-xl border transition-all
-                ${queueActive
+                ${controlsLocked
                   ? 'bg-[#1A1A1A] border-dictator-chrome/10 text-white/60 cursor-not-allowed'
                   : 'bg-[#1A1A1A] border-dictator-chrome/20 text-white hover:border-dictator-chrome/50 hover:text-white active:scale-95'
                 }`}
@@ -941,6 +1055,25 @@ const SimulatorPage = () => {
                 {manualInputLocked ? `Locked ${activeMove ? `· ${activeMove}` : ''}` : 'Ready'}
               </span>
             </div>
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-dictator-chrome/20 bg-[#111] px-3 py-2">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-white/75">Coach Guard</span>
+              <button
+                type="button"
+                onClick={() => {
+                  invalidateMoveValidation();
+                  setMoveCoachEnabled((previous) => !previous);
+                  setPendingBlockedMove(null);
+                  setMoveValidation(null);
+                }}
+                className={`rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-widest border transition-colors ${
+                  moveCoachEnabled
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                    : 'border-dictator-chrome/30 bg-[#1A1A1A] text-white/70'
+                }`}
+              >
+                {moveCoachEnabled ? 'On' : 'Off'}
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               {MOVE_GROUPS.map(({ label, moves }) => (
                 <div key={label} className="flex flex-col gap-1.5">
@@ -964,6 +1097,37 @@ const SimulatorPage = () => {
                 </div>
               ))}
             </div>
+            {(moveValidationLoading || moveValidation || pendingBlockedMove) && (
+              <div className={`mt-4 rounded-lg border p-3 ${
+                moveValidationLoading
+                  ? 'border-dictator-chrome/25 bg-[#111] text-white'
+                  : MOVE_FEEDBACK_STYLES[moveValidation?.status ?? 'warning']
+              }`}
+              >
+                <p className="font-mono text-[10px] uppercase tracking-widest mb-1">
+                  {moveValidationLoading ? 'Analyzing Move' : `Coach Check${moveValidation?.move ? ` · ${moveValidation.move}` : ''}`}
+                </p>
+                <p className="font-body text-xs leading-relaxed">
+                  {moveValidationLoading
+                    ? 'Validating move against cube state...'
+                    : (moveValidation?.reason ?? 'Move analyzed.')}
+                </p>
+                {!moveValidationLoading && Array.isArray(moveValidation?.alternativeMoves) && moveValidation.alternativeMoves.length > 0 && (
+                  <p className="mt-2 font-mono text-[10px] text-white/85">
+                    Try: {moveValidation.alternativeMoves.join(' ')}
+                  </p>
+                )}
+                {!moveValidationLoading && pendingBlockedMove && (
+                  <button
+                    type="button"
+                    onClick={runBlockedMoveAnyway}
+                    className="mt-2 rounded-md border border-white/30 bg-white/10 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-white hover:bg-white/20"
+                  >
+                    Run Anyway
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Keyboard hint */}

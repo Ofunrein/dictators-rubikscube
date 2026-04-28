@@ -2,11 +2,13 @@ import { createSolvedState, FACE_ORDER } from '../../backend/api/src/cube.ts';
 import {
   validateMoveApplyRequest,
   validateAiHelpRequest,
+  validateAiMoveValidationRequest,
   validateScrambleRequest,
   validateSolveRequest
 } from '../../backend/api/src/validation.ts';
 import { applyMoveToState, applyMoves, generateScramble } from '../../backend/api/src/cube.ts';
 import { generateAiCoachResult } from '../../backend/api/src/lib/aiCoach.ts';
+import { analyzeMoveValidation } from '../../backend/api/src/lib/moveCoach.ts';
 
 const SERVICE_NAME = 'rubiks-api';
 const VERSION = '0.1.0';
@@ -123,6 +125,22 @@ export default async function handler(req, res) {
       mode: payload.mode,
       coachMessage: generated.coachMessage,
       meta: generated.meta,
+    });
+    return;
+  }
+
+  // POST /ai/move/validate
+  if (req.method === 'POST' && path === '/ai/move/validate') {
+    const validation = validateAiMoveValidationRequest(req.body);
+    if (!validation.ok) {
+      sendError(res, 400, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
+      return;
+    }
+
+    const analyzed = analyzeMoveValidation(validation.value);
+    sendJson(res, 200, {
+      requestId: req.headers['x-request-id'] ?? `req_${Date.now()}`,
+      validation: analyzed,
     });
     return;
   }

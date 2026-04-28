@@ -147,4 +147,35 @@ describe('vercel catch-all handler', () => {
     expect(optionsRes.headers['Access-Control-Allow-Origin']).toBe('*');
     expect(optionsRes.headers['Access-Control-Allow-Methods']).toContain('OPTIONS');
   });
+
+  it('handles move validation success and validation error flows', async () => {
+    const okReq = createMockRequest('/api/v1/ai/move/validate', {
+      state: SOLVED_STATE,
+      candidateMove: 'R',
+      moveHistory: ['U', 'R', "U'"],
+      tutorialStepTitle: 'First Two Layers (F2L)',
+    });
+    const okRes = createMockResponse();
+    await handler(okReq as never, okRes as never);
+
+    expect(okRes.statusCode).toBe(200);
+    expect((okRes.payload as any).validation?.move).toBe('R');
+    expect((okRes.payload as any).validation?.isLegal).toBe(true);
+    expect(typeof (okRes.payload as any).validation?.reason).toBe('string');
+
+    const badReq = createMockRequest('/api/v1/ai/move/validate', {
+      state: SOLVED_STATE,
+      candidateMove: 'BAD',
+    });
+    const badRes = createMockResponse();
+    await handler(badReq as never, badRes as never);
+
+    expect(badRes.statusCode).toBe(200);
+    expect((badRes.payload as any).validation).toMatchObject({
+      move: 'BAD',
+      isLegal: false,
+      status: 'correction',
+      shouldBlock: true,
+    });
+  });
 });
