@@ -1,4 +1,4 @@
-/**
+`/**
  * Supported move tokens for a basic 3x3 cube.
  */
 export const MOVES = ['U', 'D', 'L', 'R', 'F', 'B', "U'", "D'", "L'", "R'", "F'", "B'", 'M', "M'", 'E', "E'", 'S', "S'"];
