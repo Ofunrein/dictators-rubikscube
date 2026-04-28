@@ -1,6 +1,11 @@
 import { FACE_ORDER, MOVE_TOKENS, cloneCubeState, isStickerToken, isSupportedMove, type CubeState } from './cube.js';
 
-import type { AiCoachMode, AiHelpRequest, ApiErrorDetail } from './types/contracts.js';
+import type {
+  AiCoachMode,
+  AiHelpRequest,
+  AiMoveValidationRequest,
+  ApiErrorDetail,
+} from './types/contracts.js';
 
 const FACE_SET = new Set(FACE_ORDER);
 const ALLOWED_STRATEGIES = new Set(['beginner', 'cfop']);
@@ -194,6 +199,98 @@ export function validateSolveRequest(payload: unknown):
     value: {
       state: cloneCubeState(payload.state as CubeState),
       strategy,
+    },
+  };
+}
+
+export function validateAiMoveValidationRequest(payload: unknown):
+  | { ok: true; value: AiMoveValidationRequest }
+  | { ok: false; details: ApiErrorDetail[] } {
+  if (!isPlainObject(payload)) {
+    return {
+      ok: false,
+      details: [{ path: 'body', message: 'Request body must be a JSON object.' }],
+    };
+  }
+
+  const details: ApiErrorDetail[] = [];
+  const unknown = findUnknownKeys(payload, ['state', 'candidateMove', 'moveHistory', 'tutorialStepTitle', 'isTimedSolve']);
+  for (const key of unknown) {
+    details.push({ path: key, message: 'Unknown request field.' });
+  }
+
+  let state: CubeState | null = null;
+  if (!Object.hasOwn(payload, 'state')) {
+    details.push({ path: 'state', message: 'state is required.' });
+  } else {
+    details.push(...validateCubeState(payload.state, 'state'));
+    if (details.length === 0) {
+      state = cloneCubeState(payload.state as CubeState);
+    }
+  }
+
+  let candidateMove: string | null = null;
+  if (!Object.hasOwn(payload, 'candidateMove')) {
+    details.push({ path: 'candidateMove', message: 'candidateMove is required.' });
+  } else if (typeof payload.candidateMove !== 'string' || payload.candidateMove.trim().length === 0) {
+    details.push({
+      path: 'candidateMove',
+      message: 'candidateMove must be a non-empty string.',
+    });
+  } else {
+    candidateMove = payload.candidateMove.trim();
+  }
+
+  let moveHistory: string[] = [];
+  if (Object.hasOwn(payload, 'moveHistory')) {
+    if (!Array.isArray(payload.moveHistory)) {
+      details.push({ path: 'moveHistory', message: 'moveHistory must be an array of strings.' });
+    } else if (payload.moveHistory.length > 5000) {
+      details.push({ path: 'moveHistory', message: 'moveHistory must contain at most 5000 items.' });
+    } else {
+      for (let index = 0; index < payload.moveHistory.length; index += 1) {
+        const item = payload.moveHistory[index];
+        if (typeof item !== 'string') {
+          details.push({ path: `moveHistory[${index}]`, message: 'Value must be a string.' });
+          continue;
+        }
+        moveHistory.push(item);
+      }
+    }
+  }
+
+  let tutorialStepTitle: string | undefined;
+  if (Object.hasOwn(payload, 'tutorialStepTitle')) {
+    if (typeof payload.tutorialStepTitle !== 'string') {
+      details.push({ path: 'tutorialStepTitle', message: 'tutorialStepTitle must be a string.' });
+    } else if (payload.tutorialStepTitle.length > 120) {
+      details.push({ path: 'tutorialStepTitle', message: 'tutorialStepTitle must be 120 characters or less.' });
+    } else if (payload.tutorialStepTitle.trim().length > 0) {
+      tutorialStepTitle = payload.tutorialStepTitle.trim();
+    }
+  }
+
+  let isTimedSolve: boolean | undefined;
+  if (Object.hasOwn(payload, 'isTimedSolve')) {
+    if (typeof payload.isTimedSolve !== 'boolean') {
+      details.push({ path: 'isTimedSolve', message: 'isTimedSolve must be a boolean.' });
+    } else {
+      isTimedSolve = payload.isTimedSolve;
+    }
+  }
+
+  if (details.length > 0 || !state || !candidateMove) {
+    return { ok: false, details };
+  }
+
+  return {
+    ok: true,
+    value: {
+      state,
+      candidateMove,
+      moveHistory,
+      ...(tutorialStepTitle ? { tutorialStepTitle } : {}),
+      ...(typeof isTimedSolve === 'boolean' ? { isTimedSolve } : {}),
     },
   };
 }

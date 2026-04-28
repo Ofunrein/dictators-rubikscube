@@ -808,6 +808,50 @@
           }
         }
       }
+    },
+    "/v1/ai/move/validate": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Validate a candidate cube move and return coaching feedback",
+        "operationId": "validateAiMove",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiMoveValidationRequest"
+              },
+              "examples": {
+                "default": {
+                  "$ref": "#/components/examples/ai_move_validation_request"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Move validation and coaching guidance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiMoveValidationResponse"
+                },
+                "examples": {
+                  "default": {
+                    "$ref": "#/components/examples/ai_move_validation_response"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1722,6 +1766,105 @@
           },
           "meta": {
             "$ref": "#/components/schemas/AiHelpMeta"
+          }
+        }
+      },
+      "AiMoveCoachStatus": {
+        "type": "string",
+        "enum": [
+          "approved",
+          "warning",
+          "correction"
+        ]
+      },
+      "AiMoveValidationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "candidateMove"
+        ],
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/CubeState"
+          },
+          "candidateMove": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "moveHistory": {
+            "type": "array",
+            "maxItems": 5000,
+            "items": {
+              "type": "string"
+            }
+          },
+          "tutorialStepTitle": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "isTimedSolve": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AiMoveValidationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "move",
+          "isLegal",
+          "status",
+          "reason",
+          "shouldBlock"
+        ],
+        "properties": {
+          "move": {
+            "type": "string"
+          },
+          "isLegal": {
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AiMoveCoachStatus"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "shouldBlock": {
+            "type": "boolean"
+          },
+          "alternativeMoves": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scoreBefore": {
+            "type": "integer"
+          },
+          "scoreAfter": {
+            "type": "integer"
+          },
+          "scoreDelta": {
+            "type": "integer"
+          }
+        }
+      },
+      "AiMoveValidationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "validation"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/AiMoveValidationResult"
           }
         }
       }
@@ -2752,6 +2895,104 @@
             "model": "mock-cube-coach-v1",
             "isMock": true,
             "generatedAt": "2026-04-21T18:40:12.103Z"
+          }
+        }
+      },
+      "ai_move_validation_request": {
+        "value": {
+          "state": {
+            "U": [
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W",
+              "W"
+            ],
+            "R": [
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R",
+              "R"
+            ],
+            "F": [
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G",
+              "G"
+            ],
+            "D": [
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y",
+              "Y"
+            ],
+            "L": [
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O",
+              "O"
+            ],
+            "B": [
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B",
+              "B"
+            ]
+          },
+          "candidateMove": "R'",
+          "moveHistory": [
+            "R"
+          ],
+          "tutorialStepTitle": "First Two Layers (F2L)",
+          "isTimedSolve": true
+        }
+      },
+      "ai_move_validation_response": {
+        "value": {
+          "requestId": "req_01JZ8N5JP7K7F6Q7SX9DNMYYAA",
+          "validation": {
+            "move": "R'",
+            "isLegal": true,
+            "status": "correction",
+            "reason": "This immediately undoes your last move during a timed solve.",
+            "shouldBlock": true,
+            "alternativeMoves": [
+              "U",
+              "F",
+              "L"
+            ],
+            "scoreBefore": 0,
+            "scoreAfter": 12,
+            "scoreDelta": 12
           }
         }
       }
