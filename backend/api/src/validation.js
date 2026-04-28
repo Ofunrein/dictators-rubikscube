@@ -1,79 +1,68 @@
 /**
- * validation.js — Request validation for all API endpoints
+ * validation.js — Request validation for the size-aware cube API
  *
- * Before the API processes any request, it runs through these validators to make
- * sure the input is well-formed. This prevents crashes from bad data and gives
- * clear error messages back to the frontend.
+ * Every POST route (apply move, scramble, solve) needs to validate the incoming
+ * JSON before passing it to the cube engine. This file centralizes those checks.
  *
- * Each validator returns { ok: true, value: ... } on success or
- * { ok: false, details: [...] } on failure (with specific error messages).
+ * The pattern:
+ *   Each validate*() function returns either:
+ *     { ok: true, value: { ... cleaned fields ... } }   → safe to use
+ *     { ok: false, details: [ { path, message } ... ] } → send 400 error
  *
- * Validators:
- *   validateMoveApplyRequest(body)  → checks { state, move } is valid
- *   validateScrambleRequest(body)   → checks { length?, seed? } is valid
- *   validateSolveRequest(body)      → checks { state, strategy? } is valid
+ *   The "details" array lists every problem found (not just the first one),
+ *   so the frontend can show all validation errors at once.
  *
- * What gets validated:
- *   - state must be an object with exactly 6 faces (U, R, F, D, L, B)
- *   - each face must have exactly 9 sticker tokens (W, R, G, Y, O, B)
- *   - move must be a recognized move token from the MOVES list
- *   - scramble length must be between 1 and 100
- *   - strategy must be "beginner" or "cfop" (defaults to "beginner")
+ * Why size is always required:
+ *   The API supports 2x2, 3x3, and 4x4. Each size has different valid moves
+ *   and different sticker counts per face. The size field tells the validator
+ *   which rules to apply.
  */
 
-import { FACE_ORDER, MOVE_TOKENS, cloneCubeState, isStickerToken, isSupportedMove } from './cube.js';
+import {
+  SUPPORTED_CUBE_SIZES,
+  cloneCubeState,
+  collectCubeStateDetails,
+  getDefaultScrambleLength,
+  getSupportedMoveTokens,
+  isPlainObject,
+  isSupportedMove,
+  normalizeCubeSize,
+} from './cube.js';
 
-const FACE_SET = new Set(FACE_ORDER);
 const ALLOWED_STRATEGIES = new Set(['beginner', 'cfop']);
-
-function isPlainObject(value) {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
 
 function findUnknownKeys(value, allowedKeys) {
   return Object.keys(value).filter((key) => !allowedKeys.includes(key));
 }
 
-export function validateCubeState(candidate, path = 'state') {
-  const details = [];
+function validateSize(value, path = 'size') {
+  if (!Number.isInteger(value)) {
+    return [{ path, message: 'size must be an integer.' }];
+  }
 
-  if (!isPlainObject(candidate)) {
-    details.push({
+  if (!SUPPORTED_CUBE_SIZES.includes(value)) {
+    return [{
       path,
-      message: 'Cube state must be an object with U, R, F, D, L, B faces.'
-    });
-    return details;
+      message: `size must be one of ${SUPPORTED_CUBE_SIZES.join(', ')}.`,
+    }];
   }
 
-  const unknownFaces = Object.keys(candidate).filter((key) => !FACE_SET.has(key));
-  for (const face of unknownFaces) {
-    details.push({ path: `${path}.${face}`, message: 'Unknown face key.' });
+  return [];
+}
+
+function readRequiredSize(payload, details) {
+  if (!Object.hasOwn(payload, 'size')) {
+    details.push({ path: 'size', message: 'size is required.' });
+    return null;
   }
 
-  for (const face of FACE_ORDER) {
-    const stickers = candidate[face];
-    if (!Array.isArray(stickers)) {
-      details.push({ path: `${path}.${face}`, message: 'Face must be an array of 9 stickers.' });
-      continue;
-    }
+  const numericSize = Number(payload.size);
+  details.push(...validateSize(numericSize));
+  return details.length === 0 ? normalizeCubeSize(numericSize) : null;
+}
 
-    if (stickers.length !== 9) {
-      details.push({ path: `${path}.${face}`, message: 'Face must contain exactly 9 stickers.' });
-      continue;
-    }
-
-    for (let i = 0; i < stickers.length; i += 1) {
-      const token = stickers[i];
-      if (!isStickerToken(token)) {
-        details.push({
-          path: `${path}.${face}[${i}]`,
-          message: 'Sticker must be one of W, R, G, Y, O, B.'
-        });
-      }
-    }
-  }
-
-  return details;
+export function validateCubeState(candidate, size, path = 'state') {
+  return collectCubeStateDetails(candidate, size, path);
 }
 
 export function validateMoveApplyRequest(payload) {
@@ -85,23 +74,25 @@ export function validateMoveApplyRequest(payload) {
     };
   }
 
-  const unknown = findUnknownKeys(payload, ['state', 'move']);
+  const unknown = findUnknownKeys(payload, ['size', 'state', 'move']);
   for (const key of unknown) {
     details.push({ path: key, message: 'Unknown request field.' });
   }
 
+  const size = readRequiredSize(payload, details);
+
   if (!Object.hasOwn(payload, 'state')) {
     details.push({ path: 'state', message: 'state is required.' });
   } else {
-    details.push(...validateCubeState(payload.state, 'state'));
+    details.push(...validateCubeState(payload.state, size ?? undefined, 'state'));
   }
 
   if (!Object.hasOwn(payload, 'move')) {
     details.push({ path: 'move', message: 'move is required.' });
-  } else if (!isSupportedMove(payload.move)) {
+  } else if (size !== null && !isSupportedMove(payload.move, size)) {
     details.push({
       path: 'move',
-      message: `Move must be one of ${MOVE_TOKENS.join(', ')}.`
+      message: `Move must be one of ${getSupportedMoveTokens(size).join(', ')}.`,
     });
   }
 
@@ -112,9 +103,10 @@ export function validateMoveApplyRequest(payload) {
   return {
     ok: true,
     value: {
+      size,
       state: cloneCubeState(payload.state),
-      move: payload.move
-    }
+      move: payload.move,
+    },
   };
 }
 
@@ -128,12 +120,14 @@ export function validateScrambleRequest(payload) {
   }
 
   const details = [];
-  const unknown = findUnknownKeys(body, ['length', 'seed']);
+  const unknown = findUnknownKeys(body, ['size', 'length', 'seed']);
   for (const key of unknown) {
     details.push({ path: key, message: 'Unknown request field.' });
   }
 
-  let length = 25;
+  const size = readRequiredSize(body, details);
+
+  let length = size === null ? 25 : getDefaultScrambleLength(size);
   if (Object.hasOwn(body, 'length')) {
     if (!Number.isInteger(body.length)) {
       details.push({ path: 'length', message: 'length must be an integer.' });
@@ -162,9 +156,10 @@ export function validateScrambleRequest(payload) {
   return {
     ok: true,
     value: {
+      size,
       length,
-      seed
-    }
+      seed,
+    },
   };
 }
 
@@ -177,15 +172,17 @@ export function validateSolveRequest(payload) {
   }
 
   const details = [];
-  const unknown = findUnknownKeys(payload, ['state', 'strategy']);
+  const unknown = findUnknownKeys(payload, ['size', 'state', 'strategy']);
   for (const key of unknown) {
     details.push({ path: key, message: 'Unknown request field.' });
   }
 
+  const size = readRequiredSize(payload, details);
+
   if (!Object.hasOwn(payload, 'state')) {
     details.push({ path: 'state', message: 'state is required.' });
   } else {
-    details.push(...validateCubeState(payload.state, 'state'));
+    details.push(...validateCubeState(payload.state, size ?? undefined, 'state'));
   }
 
   let strategy = 'beginner';
@@ -204,8 +201,9 @@ export function validateSolveRequest(payload) {
   return {
     ok: true,
     value: {
+      size,
       state: cloneCubeState(payload.state),
-      strategy
-    }
+      strategy,
+    },
   };
 }
