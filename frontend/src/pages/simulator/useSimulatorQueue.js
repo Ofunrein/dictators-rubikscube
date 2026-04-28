@@ -20,7 +20,7 @@ import { applyMove } from '../../cube/moves';
 import { TURN_DURATION_SECONDS } from './simulatorAnimation';
 import { mergeMoveIntoSolveStack, normalizeMoveSequence } from './moveNotation';
 
-const MAX_HISTORY_LENGTH = 50;
+const MAX_HISTORY_LENGTH = 250;
 
 export function useSimulatorQueue({ cubeStateObjRef, canAnimateMoves, solveStackRef, setDisplayState }) {
   // State that drives the 3D animation layer and the queue status indicator

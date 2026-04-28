@@ -23,8 +23,9 @@ import { SUPPORTED_CUBE_SIZES, normalizeCubeSize } from '../../cube/cubeModel.js
 import { CubeState } from '../../cube/CubeState';
 import { generateScrambleRemote, solveCubeRemote } from '../../net/api';
 import { SOLVE_TURN_DURATION_SECONDS } from './simulatorAnimation';
+import { normalizeMoveSequence } from './moveNotation';
 
-const MAX_HISTORY_LENGTH = 50;
+const MAX_HISTORY_LENGTH = 250;
 
 export function useSimulatorActions({
   cubeSize,
@@ -116,7 +117,7 @@ export function useSimulatorActions({
         length: scrambleLength,
       });
 
-      setScrambleSeq(payload.scramble);
+      setScrambleSeq(normalizeMoveSequence(payload.scramble));
       clearSelectedStickerRef.current?.();
 
       resetCubeToSolved();
@@ -163,7 +164,6 @@ export function useSimulatorActions({
     try {
       const payload = await solveCubeRemote(cubeStateObjRef.current.getState(), 'beginner', cubeSize);
       clearPendingAnimation();
-      setMoveHistory([]);
 
       if (Array.isArray(payload.moves) && payload.moves.length > 0) {
         enqueueMoves(payload.moves, { durationSeconds: SOLVE_TURN_DURATION_SECONDS });
