@@ -1,5 +1,10 @@
 # Vercel Full-Stack Integration — Contribution Summary
 
+Note:
+- This contribution summary preserves the original work history.
+- The active app folder is now `frontend/`.
+- The archived prototype is now `frontend-legacy/`.
+
 ## Primary Contributions
 
 ### 1. Vercel deployment architecture
@@ -12,7 +17,7 @@ Designed and implemented the Vercel-compatible project structure that unifies th
 
 ### 2. Kyle's cube renderer integration
 
-Ported the sticker-mesh 3D rendering approach from the standalone Three.js prototype (`frontend/src/main.js`) into the React website's `SimulatorPage.jsx`. Key elements:
+Ported the sticker-mesh 3D rendering approach from the standalone Three.js prototype (`frontend-legacy/src/main.js`) into the React website's `SimulatorPage.jsx`. Key elements:
 
 - **Dark cubie bodies** — `boxGeometry` with `#111111` material, matching real Rubik's Cube aesthetics
 - **Sticker plane overlays** — separate `PlaneGeometry` meshes positioned on exposed faces with a small epsilon offset
@@ -34,7 +39,7 @@ Added corresponding UI buttons and keyboard shortcuts (`m/M`, `e/E`, `s/S`) to t
 
 ### 4. Frontend API client
 
-Created `dictators-website/src/net/api.js` — a fetch-based API client configured for same-origin relative paths (`/api/v1/...`). Functions:
+Created `frontend/src/net/api.js` — a fetch-based API client configured for same-origin relative paths (`/api/v1/...`). Functions:
 
 - `healthCheck()` — GET `/api/v1/health`
 - `getSolvedState()` — GET `/api/v1/cube/state/solved`
@@ -56,7 +61,7 @@ The catch-all serverless function (`api/v1/[...path].js`) imports backend logic 
 ```
 Browser Request → Vercel CDN
 ├── /api/v1/* → Serverless Function → backend/api/src/ logic
-└── /* → Static Build (dictators-website/dist/)
+└── /* → Static Build (frontend/dist/)
 ```
 
 The frontend and API share the same origin, eliminating CORS issues and simplifying deployment to a single Vercel project.

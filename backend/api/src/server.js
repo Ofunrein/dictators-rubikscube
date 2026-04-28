@@ -1,42 +1,36 @@
 /**
- * server.js — Local development API server
+ * server.js — Local development API server (slim dispatcher)
  *
- * This is the Node.js HTTP server that runs during local development (npm run dev).
- * It handles the exact same routes as the Vercel serverless function (api/v1/[...path].js)
- * but runs as a normal long-lived process on your machine instead of a cloud function.
+ * This is the backend that runs during local development (npm run dev).
+ * It handles HTTP infrastructure: CORS, body parsing, and routing.
  *
- * Routes (same as production):
- *   GET  /v1/health              → health check
- *   GET  /v1/cube/state/solved   → returns solved cube state
- *   POST /v1/cube/moves/apply    → apply a move to a state
- *   POST /v1/cube/scramble       → scramble through Eric's C++ WASM bridge, with JS fallback
- *   POST /v1/cube/solve          → solve the cube via WASM (Eric's C++ solver)
+ * The actual route handlers live in routes.js — each endpoint is a named
+ * function over there. This file just matches the incoming request to the
+ * right handler and passes it a context object for sending responses.
  *
- * Starts on port 5200 by default (set API_PORT env var to change).
- * The frontend dev server (Vite on port 5173) proxies /api/v1/* requests here.
+ * How it works with the frontend:
+ *   The frontend (Vite) runs on port 5400. When the browser calls /api/v1/*,
+ *   Vite proxies those requests to this server on 5200. That way the browser
+ *   only talks to one port, but the API runs separately.
+ *
+ * In production (Vercel), the same route handlers are used by api/v1/[...path].js.
  */
 
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { applyMoveToState, applyMoves, createSolvedState, FACE_ORDER, generateScramble } from './cube.js';
-import {
-  validateMoveApplyRequest,
-  validateScrambleRequest,
-  validateSolveRequest
-} from './validation.js';
-import { scrambleCubeWithWasm, solveCubeMoveListWithWasm, solveCubeStateWithWasm } from './wasmSolver.js';
+import { ROUTES } from './routes.js';
 
 const PORT = Number(process.env.API_PORT ?? 5200);
-const SERVICE_NAME = 'rubiks-api';
-const VERSION = '0.1.0';
 const MAX_BODY_BYTES = 1_000_000;
 
+// CORS headers let the frontend (on a different port) call this API.
+// Without these, the browser would block cross-origin requests.
 function withCorsHeaders(headers = {}) {
   return {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'GET,POST,OPTIONS',
     'access-control-allow-headers': 'content-type',
-    ...headers
+    ...headers,
   };
 }
 
@@ -47,8 +41,8 @@ function sendJson(res, statusCode, payload, headers = {}) {
     withCorsHeaders({
       'content-type': 'application/json; charset=utf-8',
       'content-length': Buffer.byteLength(body),
-      ...headers
-    })
+      ...headers,
+    }),
   );
   res.end(body);
 }
@@ -66,6 +60,10 @@ function sendError(res, statusCode, requestId, code, message, details) {
   sendJson(res, statusCode, { error });
 }
 
+// Reads the raw JSON body from the request stream.
+// Node's built-in http module doesn't parse bodies automatically (unlike Express),
+// so we have to collect chunks manually. Also enforces a 1MB size limit to prevent
+// someone from sending a huge payload and crashing the server.
 async function readJsonBody(req) {
   return new Promise((resolve, reject) => {
     if (req.method === 'GET' || req.method === 'HEAD') {
@@ -106,10 +104,9 @@ async function readJsonBody(req) {
   });
 }
 
-function isSolvedState(state) {
-  return FACE_ORDER.every((face) => state[face].every((sticker) => sticker === state[face][0]));
-}
-
+// The main request handler — matches the incoming request to a route and calls it.
+// The route table lives in routes.js so adding a new endpoint doesn't mean
+// touching this dispatch logic at all.
 async function handleRequest(req, res) {
   const requestId = randomUUID();
 
@@ -125,156 +122,39 @@ async function handleRequest(req, res) {
 
   const url = new URL(req.url, 'http://localhost');
   const { pathname } = url;
+
+  // Normalize the path so both /v1/* and /api/v1/* work the same way.
+  // The frontend proxy sends /api/v1/*, but direct API calls use /v1/*.
   const routePath = pathname.startsWith('/api/v1') ? pathname.replace(/^\/api/, '') : pathname;
 
-  if (req.method === 'GET' && pathname === '/') {
-    sendJson(res, 200, {
-      ok: true,
-      service: SERVICE_NAME,
-      version: VERSION,
-      message: 'Rubiks API dev server is running. Vite stays on 5400, API stays on 5200. Use /v1/* or /api/v1/* locally.'
-    });
+  // Find the matching route in the ROUTES table from routes.js.
+  const route = ROUTES.find((r) => r.method === req.method && r.path === routePath);
+  if (!route) {
+    sendError(res, 404, requestId, 'NOT_FOUND', 'Route not found.');
     return;
   }
 
-  if (req.method === 'GET' && routePath === '/v1/health') {
-    sendJson(res, 200, {
-      ok: true,
-      service: SERVICE_NAME,
-      version: VERSION,
-      timestamp: new Date().toISOString()
-    });
-    return;
-  }
-
-  if (req.method === 'GET' && routePath === '/v1/cube/state/solved') {
-    sendJson(res, 200, { state: createSolvedState() });
-    return;
-  }
-
-  if (req.method === 'POST' && routePath === '/v1/cube/moves/apply') {
-    let body;
+  // Parse the request body for POST routes.
+  let body = {};
+  if (req.method === 'POST') {
     try {
       body = await readJsonBody(req);
     } catch (error) {
       sendError(res, 400, requestId, 'BAD_REQUEST', error.message);
       return;
     }
-
-    const validation = validateMoveApplyRequest(body);
-    if (!validation.ok) {
-      sendError(res, 400, requestId, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
-      return;
-    }
-
-    const { state, move } = validation.value;
-    const nextState = applyMoveToState(state, move);
-    sendJson(res, 200, {
-      state: nextState,
-      appliedMove: move
-    });
-    return;
   }
 
-  if (req.method === 'POST' && routePath === '/v1/cube/scramble') {
-    let body;
-    try {
-      body = await readJsonBody(req);
-    } catch (error) {
-      sendError(res, 400, requestId, 'BAD_REQUEST', error.message);
-      return;
-    }
+  // Build the context object that route handlers use to send responses.
+  // This keeps handlers decoupled from the raw Node.js res object.
+  const ctx = {
+    url,
+    requestId,
+    sendJson: (code, payload) => sendJson(res, code, payload),
+    sendError: (code, errCode, msg, details) => sendError(res, code, requestId, errCode, msg, details),
+  };
 
-    const validation = validateScrambleRequest(body);
-    if (!validation.ok) {
-      sendError(res, 400, requestId, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
-      return;
-    }
-
-    const { length } = validation.value;
-
-    // Try Eric's C++ scramble via WASM first — better randomness and anti-cancel logic.
-    // Falls back to the JS scramble if WASM fails.
-    try {
-      const state = await scrambleCubeWithWasm(length);
-      sendJson(res, 200, { scramble: [], state, scrambler: 'eric-cpp-wasm' });
-      return;
-    } catch (wasmError) {
-      console.warn('[scramble] WASM scramble failed, falling back to JS:', wasmError.message);
-    }
-
-    // JS fallback — still works, just less sophisticated randomness
-    const scramble = generateScramble(length);
-    const state = applyMoves(createSolvedState(), scramble);
-    sendJson(res, 200, { scramble, state, scrambler: 'js-fallback' });
-    return;
-  }
-
-  if (req.method === 'POST' && routePath === '/v1/cube/solve') {
-    let body;
-    try {
-      body = await readJsonBody(req);
-    } catch (error) {
-      sendError(res, 400, requestId, 'BAD_REQUEST', error.message);
-      return;
-    }
-
-    const validation = validateSolveRequest(body);
-    if (!validation.ok) {
-      sendError(res, 400, requestId, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
-      return;
-    }
-
-    const { state } = validation.value;
-    const alreadySolved = isSolvedState(state);
-
-    if (alreadySolved) {
-      sendJson(res, 200, {
-        moves: [],
-        estimatedMoveCount: 0,
-        state
-      });
-      return;
-    }
-
-    try {
-      // First ask the solver for a move list so the frontend can animate the real solve.
-      const solveMoves = await solveCubeMoveListWithWasm(state);
-      if (solveMoves.length > 0) {
-        const replayedState = applyMoves(state, solveMoves);
-        if (isSolvedState(replayedState)) {
-          sendJson(res, 200, {
-            moves: solveMoves,
-            estimatedMoveCount: solveMoves.length,
-            state: replayedState,
-            solver: 'eric-cpp-wasm-moves'
-          });
-          return;
-        }
-      }
-
-      // If move replay is unavailable or does not land on a solved cube, fall back
-      // to the solved-state export so the API still returns a correct end state.
-      const solvedState = await solveCubeStateWithWasm(state);
-      sendJson(res, 200, {
-        moves: [],
-        estimatedMoveCount: 0,
-        state: solvedState,
-        solver: 'eric-cpp-wasm'
-      });
-    } catch (error) {
-      sendError(
-        res,
-        500,
-        requestId,
-        'SOLVER_FAILURE',
-        error instanceof Error ? error.message : 'WASM solver failed unexpectedly.'
-      );
-    }
-    return;
-  }
-
-  sendError(res, 404, requestId, 'NOT_FOUND', 'Route not found.');
+  await route.handler(body, ctx);
 }
 
 const server = createServer((req, res) => {
