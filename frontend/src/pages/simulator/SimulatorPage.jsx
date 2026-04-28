@@ -184,13 +184,18 @@ const SimulatorPage = () => {
     }
   }, [useCompactFaceMap]);
 
+  // Track whether the current solve has already been saved to prevent
+  // duplicate saves when the effect re-fires due to dependency changes.
+  const solveSavedRef = useRef(false);
+
   // When the cube becomes solved and nothing is animating, clear the solve stack
   // and save the solve time if the user is logged in and was doing a timed solve.
   useEffect(() => {
     if (!isSolved || queue.queueActive) return;
 
-    // Save the solve result if the user is logged in and the timer was running
-    if (currentUser && timer.timerRunning && timer.timerMs > 0) {
+    // Save the solve result only once per solve
+    if (!solveSavedRef.current && currentUser && timer.timerRunning && timer.timerMs > 0) {
+      solveSavedRef.current = true;
       const sizeLabel = cubeSize === 2 ? '2x2' : '3x3';
       saveSolveResult(currentUser.id, sizeLabel, timer.timerMs).then(() => {
         refreshUserStats();
@@ -200,6 +205,13 @@ const SimulatorPage = () => {
     solveStackRef.current = [];
     queue.setSolveDepth(0);
   }, [isSolved, queue.queueActive, queue, currentUser, timer.timerRunning, timer.timerMs, cubeSize]);
+
+  // Reset the solve-saved flag when the cube becomes unsolved (new solve starts)
+  useEffect(() => {
+    if (!isSolved) {
+      solveSavedRef.current = false;
+    }
+  }, [isSolved]);
 
   // Canvas error handling: when WebGL crashes, drain any pending moves instantly
   const handleCanvasFailure = useCallback((error, info) => {

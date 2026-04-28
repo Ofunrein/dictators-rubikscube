@@ -7,15 +7,17 @@
 import { supabase } from './supabase';
 
 /**
- * Get the leaderboard for a given cube size, ordered by average solve time.
+ * Get the leaderboard for a given cube size and stat type.
  *
  * @param {string} size - '2x2' or '3x3'
+ * @param {string} statType - 'fastest', 'avg', or 'solves'
  * @param {number} limit - number of results (10, 50, 100)
  * @returns {Promise<{data: Array, error: Error|null}>}
  */
-export async function getLeaderboard(size, limit = 10) {
-  const functionName =
-    size === '2x2' ? 'get_leaderboard_avg_2x2' : 'get_leaderboard_avg_3x3';
+export async function getLeaderboard(size, statType = 'avg', limit = 10) {
+  // Map stat type to the actual Supabase function name suffix
+  const statSuffix = statType === 'solves' ? 'num_solves' : statType;
+  const functionName = `get_leaderboard_${statSuffix}_${size.replace('x', 'x')}`;
 
   const { data, error } = await supabase.rpc(functionName, {
     p_limit: limit,
@@ -23,21 +25,61 @@ export async function getLeaderboard(size, limit = 10) {
 
   if (error) return { data: null, error };
 
-  // Map the returned rows to the shape the LeaderboardPage expects.
+  // Filter out rows where the stat value is 0 (no solves recorded)
+  // then map to the shape the LeaderboardPage expects.
   // Rank is computed from the array index (1-based).
-  const entries = data.map((row, index) => ({
+  // Handle both 'value' column (from Supabase RPC) and stat-specific column names.
+  const filtered = data.filter((row) => {
+    const val = row.value ?? row.fastest_solve ?? row.avg_solve ?? row.num_solves;
+    return val !== null && val !== undefined && Number(val) > 0;
+  });
+
+  const entries = filtered.map((row, index) => ({
     rank: index + 1,
     username: row.username,
-    value: row.avg_solve,
+    value: row.value ?? row.fastest_solve ?? row.avg_solve ?? row.num_solves,
   }));
 
   return { data: entries, error: null };
 }
 
 /**
- * Save a solve result to the user's stats.
- * Upserts the stats row for the given cube size — if the row doesn't exist,
- * it creates one; if it does, it updates num_solves, avg_solve, and fastest_solve.
+ * Get a user's ranks for a given size.
+ * Returns all three ranks (fastest, avg, solves) in one call.
+ *
+ * @param {string} userId - The user's UUID
+ * @param {string} size - '2x2' or '3x3'
+ * @returns {Promise<{ranks: {fastest: number|null, avg: number|null, solves: number|null}|null, error: Error|null}>}
+ */
+export async function getUserRanks(userId, size) {
+  const functionName =
+    size === '2x2' ? 'get_user_rank_2x2' : 'get_user_rank_3x3';
+
+  const { data, error } = await supabase.rpc(functionName, {
+    p_user_id: userId,
+  });
+
+  if (error) return { ranks: null, error };
+
+  // data is an array with one row: [{ fastest_rank, avg_rank, solves_rank }]
+  // or empty array if user has no solves
+  if (!data || data.length === 0) {
+    return { ranks: { fastest: null, avg: null, solves: null }, error: null };
+  }
+
+  return {
+    ranks: {
+      fastest: Number(data[0].fastest_rank),
+      avg: Number(data[0].avg_rank),
+      solves: Number(data[0].solves_rank),
+    },
+    error: null,
+  };
+}
+
+/**
+ * Save a solve result to the user's stats using the server-side
+ * record_solve RPC function.
  *
  * @param {string} userId - The user's UUID
  * @param {string} size - '2x2' or '3x3'
@@ -45,47 +87,16 @@ export async function getLeaderboard(size, limit = 10) {
  * @returns {Promise<{error: Error|null}>}
  */
 export async function saveSolveResult(userId, size, solveTimeMs) {
-  const tableName =
-    size === '2x2' ? 'two_by_two_user_stats' : 'three_by_three_user_stats';
+  const functionName =
+    size === '2x2' ? 'record_solve_2x2' : 'record_solve_3x3';
 
   const solveTimeSeconds = solveTimeMs / 1000;
 
-  // First, get the current stats for this user and size
-  const { data: currentStats, error: fetchError } = await supabase
-    .from(tableName)
-    .select('*')
-    .eq('id', userId)
-    .single();
+  const { error } = await supabase.rpc(functionName, {
+    p_user_id: userId,
+    p_solve_time: solveTimeSeconds,
+  });
 
-  if (fetchError && fetchError.code !== 'PGRST116') {
-    // PGRST116 = row not found, which is fine for first solve
-    return { error: fetchError };
-  }
-
-  const numSolves = currentStats ? Number(currentStats.num_solves) + 1 : 1;
-  const currentAvg = currentStats ? Number(currentStats.avg_solve) : 0;
-  const currentFastest = currentStats ? Number(currentStats.fastest_solve) : Infinity;
-
-  // Calculate new average: (old_avg * old_count + new_time) / new_count
-  const newAvg = currentStats
-    ? (currentAvg * (numSolves - 1) + solveTimeSeconds) / numSolves
-    : solveTimeSeconds;
-
-  // Fastest is the minimum of current fastest and new solve time
-  const newFastest = Math.min(currentFastest, solveTimeSeconds);
-
-  // Upsert: insert or update the stats row
-  const { error: upsertError } = await supabase.from(tableName).upsert(
-    {
-      id: userId,
-      num_solves: numSolves,
-      avg_solve: newAvg,
-      fastest_solve: newFastest,
-    },
-    { onConflict: 'id' }
-  );
-
-  if (upsertError) return { error: upsertError };
-
+  if (error) return { error };
   return { error: null };
 }

@@ -61,7 +61,6 @@ function buildCurrentUser(authUser, profile, stats) {
         '2x2': { fastest: null, average: null, solves: null },
       },
     },
-    recentSolves: [],
   };
 }
 
