@@ -9,8 +9,9 @@
  * All data currently from AuthContext mock. When database is connected,
  * AuthContext.login() fetches real data — this component just reads it.
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Clock, Hash, Zap, Trophy } from 'lucide-react';
+import { LogOut, Clock, Hash, Zap, Trophy, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import PageNavbar from '../components/PageNavbar';
@@ -36,9 +37,12 @@ function formatRank(r) {
 const CUBE_SIZES = ['3x3', '2x2'];
 
 export default function ProfilePage() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, deleteAccount } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   const bg = isDark ? 'bg-dictator-void text-white' : 'bg-dictator-smoke text-dictator-ink';
   const muted = isDark ? 'text-dictator-chrome' : 'text-dictator-ink/75';
@@ -64,8 +68,22 @@ export default function ProfilePage() {
 
   const { username, email, joinedAt, stats, recentSolves } = currentUser;
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
+    navigate('/');
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    setDeleteError(null);
+
+    const { error } = await deleteAccount();
+    if (error) {
+      setDeleteError(error.message);
+      setDeleting(false);
+      return;
+    }
+
     navigate('/');
   }
 
@@ -86,10 +104,20 @@ export default function ProfilePage() {
               <p className={`font-mono text-[10px] mt-1 ${isDark ? 'text-white/30' : 'text-dictator-ink/40'}`}>Joined {joinedAt}</p>
             </div>
           </div>
-          <button onClick={handleLogout} className={`flex items-center gap-1.5 font-mono text-xs hover:text-dictator-red transition-colors uppercase tracking-widest ${muted}`}>
-            <LogOut size={13} />
-            Log Out
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className={`flex items-center gap-1.5 font-mono text-xs hover:text-dictator-red transition-colors uppercase tracking-widest ${muted}`}
+              title="Delete account"
+            >
+              <Trash2 size={13} />
+              Delete
+            </button>
+            <button onClick={handleLogout} className={`flex items-center gap-1.5 font-mono text-xs hover:text-dictator-red transition-colors uppercase tracking-widest ${muted}`}>
+              <LogOut size={13} />
+              Log Out
+            </button>
+          </div>
         </div>
 
         {/* Per-size stat cards */}
@@ -158,11 +186,42 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
-
-        <p className={`mt-6 font-mono text-[10px] text-center uppercase tracking-widest ${isDark ? 'text-white/20' : 'text-dictator-ink/30'}`}>
-          Mock data — live stats coming soon
-        </p>
       </div>
+
+      {/* Delete account confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+          <div className="relative w-full max-w-sm bg-[#0D0D0D] border border-white/10 rounded-2xl shadow-2xl overflow-hidden p-8">
+            <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-dictator-red to-transparent absolute top-0 left-0" />
+
+            <h2 className="font-heading text-lg text-white mb-2">Delete Account</h2>
+            <p className="font-mono text-xs text-dictator-chrome mb-6">
+              This will permanently delete your account and all stats. This action cannot be undone.
+            </p>
+
+            {deleteError && (
+              <p className="font-mono text-[11px] text-dictator-red mb-4">{deleteError}</p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}
+                disabled={deleting}
+                className="flex-1 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-lg border border-white/20 text-dictator-chrome hover:text-white transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-lg bg-dictator-red text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
