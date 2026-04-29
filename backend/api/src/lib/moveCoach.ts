@@ -76,9 +76,7 @@ export function analyzeMoveValidation(payload: AiMoveValidationRequest): AiMoveV
   const faceOveruse = sameFaceCount >= 4;
 
   let status: AiMoveValidationResult['status'] = 'approved';
-  let reason = payload.tutorialStepTitle
-    ? `Legal move for ${payload.tutorialStepTitle}.`
-    : 'Legal move.';
+  let reason = 'Legal move for the current cube position.';
   let shouldBlock = false;
   let alternativeMoves: string[] | undefined;
 

@@ -1,12 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 
-import { applyMoveToState, applyMoves, createSolvedState, FACE_ORDER, generateScramble } from '../cube.js';
+import { applyMoveToState, applyMoves, createSolvedState, generateScramble } from '../cube.js';
 import { sendApiError } from '../lib/http.js';
+import { isSolvedState, solveStateFromHistory } from '../lib/solve.js';
 import { validateMoveApplyRequest, validateScrambleRequest, validateSolveRequest } from '../validation.js';
-
-function isSolvedState(state: Record<string, string[]>): boolean {
-  return FACE_ORDER.every((face) => state[face].every((sticker) => sticker === state[face][0]));
-}
 
 export default async function cubeRoutes(app: FastifyInstance): Promise<void> {
   app.get('/state/solved', async (_request, reply) => {
@@ -47,16 +44,37 @@ export default async function cubeRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
 
-    const { state } = validation.value;
+    const { state, moveHistory } = validation.value;
     const alreadySolved = isSolvedState(state);
 
+    if (alreadySolved) {
+      reply.send({
+        moves: [],
+        estimatedMoveCount: 0,
+        isMock: false,
+        note: 'Cube is already solved; returning an empty solution.',
+      });
+      return;
+    }
+
+    if (Array.isArray(moveHistory) && moveHistory.length > 0) {
+      const solvedMoves = solveStateFromHistory(state, moveHistory);
+      if (solvedMoves) {
+        reply.send({
+          moves: solvedMoves,
+          estimatedMoveCount: solvedMoves.length,
+          isMock: false,
+          note: 'Solved by inverting verified session move history.',
+        });
+        return;
+      }
+    }
+
     reply.send({
-      moves: alreadySolved ? [] : ["R'", "U'", 'F'],
-      estimatedMoveCount: alreadySolved ? 0 : 3,
-      isMock: true,
-      note: alreadySolved
-        ? 'Cube is already solved; returning an empty solution.'
-        : 'Solver implementation is stubbed in Sprint 2 and currently returns a placeholder response.',
+      moves: [],
+      estimatedMoveCount: 0,
+      isMock: false,
+      note: 'Unable to derive a verified solution from state alone. Include moveHistory for deterministic solve reconstruction.',
     });
   });
 }

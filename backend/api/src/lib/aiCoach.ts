@@ -1,5 +1,6 @@
 import { env } from '../config/env.js';
 import type { AiCoachMessage, AiHelpRequest, AiHelpResponse } from '../types/contracts.js';
+import { solveStateFromHistory } from './solve.js';
 
 const DEFAULT_AI_TIMEOUT_MS = 12000;
 const MAX_MESSAGE_LENGTH = 700;
@@ -51,23 +52,6 @@ function buildSolveSuggestion(moveHistory: string[]): string[] {
     .map(normalizeMoveToken)
     .filter((move): move is string => Boolean(move))
     .slice(0, MAX_LIST_ITEMS);
-}
-
-function getStepHint(stepTitle: string): string {
-  const normalized = stepTitle.trim().toLowerCase();
-  if (normalized.includes('cross')) {
-    return 'Match each white edge to its side-center color before locking it down.';
-  }
-  if (normalized.includes('f2l')) {
-    return 'Pair one corner-edge set in the top layer before inserting into the slot.';
-  }
-  if (normalized.includes('oll')) {
-    return 'Orient all top-face stickers first, even if side pieces are still displaced.';
-  }
-  if (normalized.includes('pll')) {
-    return 'Keep a solved bar at the back and cycle only unsolved last-layer pieces.';
-  }
-  return 'Use center colors as anchors before each insertion step.';
 }
 
 function normalizeRecentMoves(moveHistory: string[], maxItems = 18): string[] {
@@ -174,6 +158,24 @@ function buildTutorSignalHint(signals: TutorSignals): string {
   }
 
   return '';
+}
+
+function detectProgressStage(cubeState: AiHelpRequest['context']['cubeState']): string {
+  const solvedFaces = ['U', 'R', 'F', 'D', 'L', 'B']
+    .map((face) => cubeState[face as keyof typeof cubeState])
+    .filter((stickers) => Array.isArray(stickers) && stickers.every((sticker) => sticker === stickers[4]))
+    .length;
+
+  if (solvedFaces >= 5) {
+    return 'last-layer finishing';
+  }
+  if (solvedFaces >= 3) {
+    return 'mid-solve pairing';
+  }
+  if (solvedFaces >= 1) {
+    return 'early layer-building';
+  }
+  return 'full-cube recovery';
 }
 
 function truncate(value: string, max: number): string {
@@ -286,11 +288,11 @@ function parseModelJson(raw: string): unknown {
 }
 
 function buildDefaultNextActions(payload: AiHelpRequest): string[] {
-  const stepTitle = payload.context.tutorialStepTitle;
+  const stage = detectProgressStage(payload.context.cubeState);
   if (payload.mode === 'hint') {
     return [
       'Pick one target pair only.',
-      `Align it to centers for ${stepTitle}.`,
+      `Align it to centers for the current ${stage} position.`,
       'Execute one trigger slowly, then re-check alignment.',
     ];
   }
@@ -424,8 +426,8 @@ function withFallbackDisclaimer(message: AiCoachMessage, reason: string): AiCoac
 
 export function createMockCoachMessage(payload: AiHelpRequest): AiCoachMessage {
   const { mode, context, message, previousCoachResponse } = payload;
-  const stepHint = getStepHint(context.tutorialStepTitle);
-  const basePrefix = `You are on "${context.tutorialStepTitle}".`;
+  const stage = detectProgressStage(context.cubeState);
+  const stageHint = `Current detected phase: ${stage}.`;
   const tutorSignals = buildTutorSignals(context.moveHistory, context.idleMs);
   const signalHint = buildTutorSignalHint(tutorSignals);
 
@@ -439,8 +441,8 @@ export function createMockCoachMessage(payload: AiHelpRequest): AiCoachMessage {
 
   if (mode === 'hint') {
     const content = signalHint.length > 0
-      ? `${basePrefix} ${stepHint} ${signalHint}`
-      : `${basePrefix} ${stepHint}`;
+      ? `${stageHint} Focus on one pair and center alignment before turning. ${signalHint}`
+      : `${stageHint} Focus on one pair and center alignment before turning.`;
     return {
       id: 'coach_hint_v1',
       content,
@@ -464,31 +466,36 @@ export function createMockCoachMessage(payload: AiHelpRequest): AiCoachMessage {
     return {
       id: 'coach_guide_v1',
       content: signalHint.length > 0
-        ? `${basePrefix} Start by restoring one stable pair, then insert without disturbing solved pieces. ${signalHint}`
-        : `${basePrefix} Start by restoring one stable pair, then insert without disturbing solved pieces.`,
+        ? `${stageHint} Start by restoring one stable pair, then insert without disturbing solved pieces. ${signalHint}`
+        : `${stageHint} Start by restoring one stable pair, then insert without disturbing solved pieces.`,
       nextActions: guideActions,
     };
   }
 
   if (mode === 'solve') {
-    const moves = buildSolveSuggestion(context.moveHistory);
+    const verifiedMoves = solveStateFromHistory(context.cubeState, context.moveHistory);
+    const moves = verifiedMoves ?? buildSolveSuggestion(context.moveHistory);
     return {
       id: 'coach_solve_v1',
       content: moves.length > 0
-        ? 'Mock solve suggestion generated from recent move history.'
-        : 'No move history yet, so there is no mock solve sequence available.',
+        ? verifiedMoves
+          ? 'Verified solve sequence reconstructed from session move history.'
+          : 'Best-effort solve suggestion generated from recent move history.'
+        : 'No session move history is available to reconstruct a solve sequence.',
       moves,
       nextActions: [
         'Run the sequence in order without skipping setup turns.',
         'If alignment breaks, undo two turns and restart from the last checkpoint.',
       ],
-      disclaimer: signalHint.length > 0
-        ? `This is a deterministic mock solver response. ${signalHint}`
-        : 'This is a deterministic mock solver response.',
+      disclaimer: verifiedMoves
+        ? undefined
+        : signalHint.length > 0
+          ? `Using fallback solve reconstruction. ${signalHint}`
+          : 'Using fallback solve reconstruction.',
     };
   }
 
-  const explainTarget = previousCoachResponse?.content ?? stepHint;
+  const explainTarget = previousCoachResponse?.content ?? stageHint;
   const userContext = typeof message === 'string' && message.length > 0
     ? ` You asked: "${message}".`
     : '';
@@ -561,8 +568,6 @@ export function buildCoachPrompt(payload: AiHelpRequest): { system: string; user
     message: payload.message ?? '',
     previousCoachResponse: payload.previousCoachResponse ?? null,
     context: {
-      tutorialStepIndex: payload.context.tutorialStepIndex,
-      tutorialStepTitle: payload.context.tutorialStepTitle,
       timerMs: payload.context.timerMs,
       idleMs: payload.context.idleMs,
       solveDepth: payload.context.solveDepth,

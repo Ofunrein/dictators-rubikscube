@@ -51,7 +51,6 @@ export default async function aiHelpRoutes(app: FastifyInstance): Promise<void> 
       request.log.info({
         mode: payload.mode,
         moveCount: payload.context.moveHistory.length,
-        step: payload.context.tutorialStepTitle,
         idleMs: payload.context.idleMs,
         provider: generated.meta.provider,
         model: generated.meta.model,

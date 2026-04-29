@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { CubeState } from '../cube/CubeState';
 import { applyMove, MOVES } from '../cube/moves';
 import { ArrowLeft, RotateCcw, Shuffle, Timer, ChevronRight, Check, Bot, X } from 'lucide-react';
-import { requestAiHelp, requestAiMoveValidation } from '../net/api';
+import { requestAiHelp, requestAiMoveValidation, solveCubeRemote } from '../net/api';
 import {
   CUBIE_LAYOUT,
   TURN_DURATION_SECONDS,
@@ -447,12 +447,13 @@ const SimulatorPage = () => {
   const [moveValidationLoading, setMoveValidationLoading] = useState(false);
   const [moveValidation, setMoveValidation] = useState(null);
   const [pendingBlockedMove, setPendingBlockedMove] = useState(null);
+  const [solveLoading, setSolveLoading] = useState(false);
   const lastActivityAtRef = useRef(Date.now());
   const idlePromptShownRef = useRef(false);
   const coachMessagesRef = useRef(null);
 
   const queueActive = activeMove !== null || queuedMoveCount > 0;
-  const controlsLocked = queueActive || moveValidationLoading;
+  const controlsLocked = queueActive || moveValidationLoading || solveLoading;
   const manualInputLocked = controlsLocked;
   const canAnimateMoves = !canvasFailed;
   const isCubeSolved = FACE_ORDER.every((face) => {
@@ -474,16 +475,14 @@ const SimulatorPage = () => {
 
   const buildCoachContext = useCallback(() => ({
     cubeState: cloneCubeStateForRequest(displayState),
-    moveHistory: [...moveHistory],
+    moveHistory: [...solveStackRef.current],
     scramble: [...scrambleSeq],
-    tutorialStepIndex: tutorialStep,
-    tutorialStepTitle: TUTORIAL_STEPS[tutorialStep]?.title ?? 'Notation Basics',
     timerMs,
     idleMs,
     solveDepth,
     queueActive,
     isSolved: isCubeSolved,
-  }), [displayState, moveHistory, scrambleSeq, tutorialStep, timerMs, idleMs, solveDepth, queueActive, isCubeSolved]);
+  }), [displayState, scrambleSeq, timerMs, idleMs, solveDepth, queueActive, isCubeSolved]);
 
   const submitCoachRequest = useCallback(async (mode, rawMessage = '') => {
     if (coachLoading) {
@@ -663,12 +662,11 @@ const SimulatorPage = () => {
       state: cloneCubeStateForRequest(cubeStateObj.getState()),
       candidateMove,
       moveHistory: [...moveHistory],
-      tutorialStepTitle: TUTORIAL_STEPS[tutorialStep]?.title ?? 'Notation Basics',
       isTimedSolve: timerRunning,
     });
 
     return response.validation;
-  }, [cubeStateObj, moveCoachEnabled, moveHistory, tutorialStep, timerRunning]);
+  }, [cubeStateObj, moveCoachEnabled, moveHistory, timerRunning]);
 
   const dispatchManualMove = useCallback(async (move) => {
     if (!move || moveValidationLoading) return;
@@ -891,16 +889,38 @@ const SimulatorPage = () => {
   }, [enqueueMoves, invalidateMoveValidation, resetCubeToSolved]);
 
   // ── Solve ────────────────────────────────────────────────────────────────────
-  const handleSolve = useCallback(() => {
-    if (activeMoveRef.current || moveQueueRef.current.length > 0) return;
-    if (solveStackRef.current.length === 0) return;
+  const handleSolve = useCallback(async () => {
+    if (activeMoveRef.current || moveQueueRef.current.length > 0 || solveLoading) return;
 
     invalidateMoveValidation();
-    const solution = [...solveStackRef.current].reverse().map(inverseMove);
     setPendingBlockedMove(null);
-    enqueueMoves(solution);
-    stopTimer();
-  }, [enqueueMoves, invalidateMoveValidation, stopTimer]);
+    setSolveLoading(true);
+
+    try {
+      const response = await solveCubeRemote(
+        cloneCubeStateForRequest(cubeStateObj.getState()),
+        'beginner',
+        [...solveStackRef.current],
+      );
+      const serverMoves = normalizeMoveSequence(response.moves);
+
+      if (serverMoves.length > 0) {
+        enqueueMoves(serverMoves);
+      } else if (solveStackRef.current.length > 0) {
+        const fallbackMoves = [...solveStackRef.current].reverse().map(inverseMove);
+        enqueueMoves(fallbackMoves);
+      }
+
+      stopTimer();
+    } catch {
+      if (solveStackRef.current.length > 0) {
+        const fallbackMoves = [...solveStackRef.current].reverse().map(inverseMove);
+        enqueueMoves(fallbackMoves);
+      }
+    } finally {
+      setSolveLoading(false);
+    }
+  }, [cubeStateObj, enqueueMoves, invalidateMoveValidation, solveLoading, stopTimer]);
 
   // ── Reset ────────────────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
