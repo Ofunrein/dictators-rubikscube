@@ -1,5 +1,49 @@
+/**
+ * CubeOperations.cpp — Face rotations, layer rotations, and the 3×3 solve algorithm
+ *
+ * Why it exists:
+ *   PuzzleCube stores the raw tile grid but knows nothing about cube notation or
+ *   solving logic.  This translation layer converts named moves (U, R', F2, M, …)
+ *   into the axis/layer/direction calls that PuzzleCube understands, and houses
+ *   the beginner-method solve algorithm for 3×3 cubes.
+ *
+ * Coordinate system — face enum ordering in PuzzleCube.h:
+ *   Index 0 = Up    (white center, solved state)
+ *   Index 1 = Left
+ *   Index 2 = Front
+ *   Index 3 = Right
+ *   Index 4 = Back
+ *   Index 5 = Down  (yellow center, solved state)
+ *
+ *   RotationAxis::X  — vertical columns (L/R face moves)
+ *   RotationAxis::Y  — horizontal rows  (U/D face moves)
+ *   RotationAxis::Z  — front-to-back slices (F/B face moves)
+ *
+ *   Layer 0 is always the layer closest to the face whose axis points in the
+ *   positive direction (Right for X, Up for Y, Front for Z).
+ *   Layer N-1 is the far side.  Middle slice M/E/S target layer N/2 on odd cubes.
+ *
+ * WASM compilation:
+ *   This file is compiled alongside solver_bridge.cpp via Emscripten.  The bridge
+ *   exposes the high-level functions (applyMoves, solveCube, scramble, …) to
+ *   Node.js; CubeOperations provides the move-application and solving internals
+ *   that the bridge delegates to.
+ *
+ * Key responsibilities:
+ *   - applyMove / applyMoves: parse standard notation tokens and forward to
+ *     PuzzleCube::rotate, including wide moves (r, u, f) and whole-cube
+ *     rotations (x, y, z) by rotating multiple layers at once.
+ *   - isSolved / solveCube: beginner-method 3×3 solver that operates in stages
+ *     (daisy → white cross → first layer → second layer → OLL → PLL).
+ *   - generateScramble: produces a random move sequence, avoiding redundant
+ *     consecutive moves on the same face.
+ *   - MoveRecorder (gRecorder): optional recording shim that captures every
+ *     applied move token — used by the solver to build the solution move list.
+ */
+
 #include "CubeOperations.h"
 #include "PuzzleCube.h"
+#include <array>
 #include <random>
 #include <algorithm>
 // #include <iostream> //DEBUG
@@ -42,6 +86,96 @@
 //     std::cout << '\n';
 // }
 
+namespace {
+    using Face = PuzzleCube::Face;
+    using RotationAxis = PuzzleCube::RotationAxis;
+
+    struct MoveRecorder {
+        bool enabled = false;
+        std::vector<std::string> moves;
+    };
+
+    MoveRecorder gRecorder;
+
+    std::string tokenFor(char face, bool clockwise) {
+        std::string token(1, face);
+        if (!clockwise) {
+            token.push_back('\'');
+        }
+        return token;
+    }
+
+    void recordFaceTurn(Face face, bool clockwise) {
+        if (!gRecorder.enabled) {
+            return;
+        }
+
+        switch (face) {
+            case Face::Up:
+                gRecorder.moves.push_back(tokenFor('U', clockwise));
+                break;
+            case Face::Left:
+                gRecorder.moves.push_back(tokenFor('L', clockwise));
+                break;
+            case Face::Front:
+                gRecorder.moves.push_back(tokenFor('F', clockwise));
+                break;
+            case Face::Right:
+                gRecorder.moves.push_back(tokenFor('R', clockwise));
+                break;
+            case Face::Back:
+                gRecorder.moves.push_back(tokenFor('B', clockwise));
+                break;
+            case Face::Down:
+                gRecorder.moves.push_back(tokenFor('D', clockwise));
+                break;
+        }
+    }
+
+    void recordLayerTurn(RotationAxis axis, int layer, bool clockwise, int size) {
+        if (!gRecorder.enabled) {
+            return;
+        }
+
+        std::string token;
+
+        if (axis == RotationAxis::X) {
+            if (layer == 0) token = tokenFor('L', !clockwise);
+            else if (layer == size - 1) token = tokenFor('R', clockwise);
+            else token = tokenFor('M', !clockwise);
+        } else if (axis == RotationAxis::Y) {
+            if (layer == 0) token = tokenFor('U', clockwise);
+            else if (layer == size - 1) token = tokenFor('D', !clockwise);
+            else token = tokenFor('E', !clockwise);
+        } else {
+            if (layer == 0) token = tokenFor('B', !clockwise);
+            else if (layer == size - 1) token = tokenFor('F', clockwise);
+            else token = tokenFor('S', clockwise);
+        }
+
+        gRecorder.moves.push_back(token);
+    }
+
+    void recordCubeRotation(RotationAxis axis, bool clockwise) {
+        if (!gRecorder.enabled) {
+            return;
+        }
+
+        if (axis == RotationAxis::X) {
+            gRecorder.moves.push_back(tokenFor('x', clockwise));
+        } else if (axis == RotationAxis::Y) {
+            gRecorder.moves.push_back(tokenFor('y', clockwise));
+        } else {
+            gRecorder.moves.push_back(tokenFor('z', clockwise));
+        }
+    }
+
+    void rotateLayerAndRecord(PuzzleCube& cube, RotationAxis axis, int layer, bool clockwise) {
+        recordLayerTurn(axis, layer, clockwise, cube.size());
+        cube.rotate(axis, layer, clockwise);
+    }
+}
+
 namespace CubeOperations {
     void scramble(PuzzleCube& cube, int moves) {
         static std::random_device rd; //true random number from system
@@ -78,12 +212,14 @@ namespace CubeOperations {
 
     void rotateCube(PuzzleCube& cube, PuzzleCube::RotationAxis axis, bool clockwise) {
         //Applying a rotation to every layer on an axis is equivalent to rotating the cube itself
+        recordCubeRotation(axis, clockwise);
         for(int l = cube.size()-1; l >= 0; l--) {
             cube.rotate(axis, l, clockwise);
         }
     }
 
     void rotateFace(PuzzleCube& cube, PuzzleCube::Face face, bool clockwise) {
+        recordFaceTurn(face, clockwise);
         //Converts face rotation to cube rotate method()
         switch(face) {
         case PuzzleCube::Face::Up:
@@ -182,7 +318,7 @@ namespace CubeOperations {
                         if(r == 0 && c == 1) { ft = 4; } //back
 
                         while(doNotRotate[ft-1]) { //lines up white edge piece with empty spot
-                            cube.rotate(PuzzleCube::RotationAxis::Y, 0, false); //rotate top and try again
+                            rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 0, false); //rotate top and try again
                             ft = ((ft) % 4) + 1; //update which face layer the edge piece is on
                         }
                         rotateFace(cube, static_cast<PuzzleCube::Face>(ft), true); //double rotate to insert
@@ -209,7 +345,7 @@ namespace CubeOperations {
                             ft = f; //track which face layer the edge piece sits on
 
                             while(doNotRotate[ft-1]) { //moves white edge piece to face that is not locked
-                                cube.rotate(PuzzleCube::RotationAxis::Y, r, false); //rotate top and try again
+                                rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, r, false); //rotate top and try again
                                 ft = ((ft) % 4) + 1; //update which face layer the edge piece is on
                             }
                             cubeState = cube.getState(); //update map of cube
@@ -221,13 +357,13 @@ namespace CubeOperations {
                             }
 
                             if(cubeState[ft][1][0] == 0) { //white edge piece is on the left column
-                                cube.rotate(PuzzleCube::RotationAxis::Y, 1, false);
+                                rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 1, false);
                                 rotateFace(cube, static_cast<PuzzleCube::Face>(ft), true);
                                 doNotRotate[ft-1] = true; //lock out face layer from rotating
                                 cubeState = cube.getState(); //update map of cube
                             }
                             if(cubeState[ft][1][2] == 0) { //white edge piece is on the right column
-                                cube.rotate(PuzzleCube::RotationAxis::Y, 1, true);
+                                rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 1, true);
                                 rotateFace(cube, static_cast<PuzzleCube::Face>(ft), false);
                                 doNotRotate[ft-1] = true; //lock out face layer from rotating
                                 cubeState = cube.getState(); //update map of cube
@@ -257,7 +393,7 @@ namespace CubeOperations {
         for(int f = 1; f <= 4; f++) {
             //line up edge piece with corresponding center piece color (ensure the white edge piece is getting rotated)
             while((cubeState[f][1][1] != cubeState[f][2][1]) || (cubeState[5][abs(f-2)][-abs(f-3)+2] != 0)) {
-                cube.rotate(PuzzleCube::RotationAxis::Y, 2, true);
+                rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 2, true);
                 cubeState = cube.getState();
             }
             //insert into white cross
@@ -299,7 +435,7 @@ namespace CubeOperations {
 
             //match corner color to center piece
             while(cubeState[2][0][2] != cubeState[2][1][1]) { //Front face is index 2
-                cube.rotate(PuzzleCube::RotationAxis::Y, 0, true);
+                rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 0, true);
                 rotateCube(cube, PuzzleCube::RotationAxis::Y, false);
                 cubeState = cube.getState();
             }
@@ -322,7 +458,7 @@ namespace CubeOperations {
 
             //match corner color to center piece
             while(cubeState[2][0][0] != cubeState[2][1][1]) { //Front face is index 2
-                cube.rotate(PuzzleCube::RotationAxis::Y, 0, false);
+                rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 0, false);
                 rotateCube(cube, PuzzleCube::RotationAxis::Y, true);
                 cubeState = cube.getState();
             }
@@ -390,7 +526,7 @@ namespace CubeOperations {
         if(whiteTileOnTop) {
             //align white tile over empty spot in white face
             while(cubeState[(int)PuzzleCube::Face::Up][2 - rt][ct] != 0) {
-                cube.rotate(PuzzleCube::RotationAxis::Y, 0, true);
+                rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 0, true);
                 cubeState = cube.getState();
             }
             //Align cube for next set of moves
@@ -449,7 +585,7 @@ namespace CubeOperations {
             if(cubeState[(int)PuzzleCube::Face::Front][0][1] != 5 && cubeState[(int)PuzzleCube::Face::Up][2][1] != 5) {
                 //If edge piece is not aligned, keep rotating
                 while(cubeState[(int)PuzzleCube::Face::Front][0][1] != cubeState[(int)PuzzleCube::Face::Front][1][1]) {
-                    cube.rotate(PuzzleCube::RotationAxis::Y, 0, false);
+                    rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 0, false);
                     rotateCube(cube, PuzzleCube::RotationAxis::Y, true);
                     cubeState = cube.getState();
                 }
@@ -495,7 +631,7 @@ namespace CubeOperations {
             }
 
             //otherwise keep checking
-            cube.rotate(PuzzleCube::RotationAxis::Y, 0, true);
+            rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 0, true);
             cubeState = cube.getState();
 
             //if fourth iteration is cleared, all edge pieces in top layer have yellow
@@ -583,7 +719,7 @@ namespace CubeOperations {
                     while(!(cubeState[(int)PuzzleCube::Face::Up][1][0] == 5 &&
                             (cubeState[(int)PuzzleCube::Face::Up][0][1] == 5 ||
                              cubeState[(int)PuzzleCube::Face::Up][1][2] == 5) )) {
-                        cube.rotate(PuzzleCube::RotationAxis::Y, 0, true);
+                        rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 0, true);
                         cubeState = cube.getState();
                     }
                 }
@@ -622,14 +758,14 @@ namespace CubeOperations {
                 if(count == 1) { //top face looks like a fish
                     //align top face so that the fish is pointing bottom-left
                     while(cubeState[(int)PuzzleCube::Face::Up][2][0] != 5) {
-                        cube.rotate(PuzzleCube::RotationAxis::Y, 0, true);
+                        rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 0, true);
                         cubeState = cube.getState();
                     }
                 }
                 if(count == 2) { //top face looks either like a tank or a figure-eight
                     //align top face so that there is a yellow tile on the upper-left of the front face
                     while(!(cubeState[(int)PuzzleCube::Face::Front][0][0] == 5)) {
-                        cube.rotate(PuzzleCube::RotationAxis::Y, 0, true);
+                        rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 0, true);
                         cubeState = cube.getState();
                     }
                 }
@@ -663,7 +799,7 @@ namespace CubeOperations {
             //align corner pieces
             while(count < 2) {
                 //keep rotating top layer until two corners are in the correct place
-                cube.rotate(PuzzleCube::RotationAxis::Y, 0, false);
+                rotateLayerAndRecord(cube, PuzzleCube::RotationAxis::Y, 0, false);
                 cubeState = cube.getState();
                 count = 0;
 
@@ -764,6 +900,16 @@ namespace CubeOperations {
         // //DEBUG
         // std::cout << "CUBE IS SOLVED HOORAY!\n";
         // debugPrintCube(cube);
+    }
+
+    std::vector<std::string> solve3x3WithMoves(PuzzleCube& cube) {
+        gRecorder.enabled = true;
+        gRecorder.moves.clear();
+
+        solve3x3(cube);
+
+        gRecorder.enabled = false;
+        return gRecorder.moves;
     }
 
 }
