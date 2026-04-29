@@ -64,7 +64,7 @@ export default function LeaderboardPage() {
         setError(fetchError.message);
         setEntries([]);
       } else {
-        setEntries(data);
+        setEntries(data ?? []);
       }
 
       setLoading(false);

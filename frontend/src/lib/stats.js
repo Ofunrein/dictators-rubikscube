@@ -43,7 +43,7 @@ export async function getLeaderboard(size, statType = 'avg', limit = 10) {
       .order(orderColumn, { ascending: orderDirection.startsWith('ASC') })
       .limit(limit);
 
-    if (fallbackError) return { data: null, fallbackError };
+    if (fallbackError) return { data: [], error: fallbackError };
 
     // Fetch usernames for the returned user IDs
     const userIds = fallbackData.map(row => row.id);
@@ -52,7 +52,7 @@ export async function getLeaderboard(size, statType = 'avg', limit = 10) {
       .select('id, username')
       .in('id', userIds);
 
-    if (usersError) return { data: null, usersError };
+    if (usersError) return { data: [], error: usersError };
 
     const usernameMap = {};
     if (users) {
