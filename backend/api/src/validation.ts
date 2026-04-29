@@ -160,7 +160,7 @@ export function validateScrambleRequest(payload: unknown):
 }
 
 export function validateSolveRequest(payload: unknown):
-  | { ok: true; value: { state: CubeState; strategy: string } }
+  | { ok: true; value: { state: CubeState; strategy: string; moveHistory?: string[] } }
   | { ok: false; details: ApiErrorDetail[] } {
   if (!isPlainObject(payload)) {
     return {
@@ -170,7 +170,7 @@ export function validateSolveRequest(payload: unknown):
   }
 
   const details: ApiErrorDetail[] = [];
-  const unknown = findUnknownKeys(payload, ['state', 'strategy']);
+  const unknown = findUnknownKeys(payload, ['state', 'strategy', 'moveHistory']);
   for (const key of unknown) {
     details.push({ path: key, message: 'Unknown request field.' });
   }
@@ -190,6 +190,38 @@ export function validateSolveRequest(payload: unknown):
     }
   }
 
+  let moveHistory: string[] | undefined;
+  if (Object.hasOwn(payload, 'moveHistory')) {
+    const rawHistory = payload.moveHistory;
+    if (!Array.isArray(rawHistory)) {
+      details.push({ path: 'moveHistory', message: 'moveHistory must be an array of move tokens.' });
+    } else if (rawHistory.length > 10000) {
+      details.push({ path: 'moveHistory', message: 'moveHistory must contain at most 10000 items.' });
+    } else {
+      const normalized: string[] = [];
+      for (let index = 0; index < rawHistory.length; index += 1) {
+        const item = rawHistory[index];
+        if (typeof item !== 'string') {
+          details.push({ path: `moveHistory[${index}]`, message: 'Value must be a string.' });
+          continue;
+        }
+
+        const token = item.trim();
+        if (!isSupportedMove(token)) {
+          details.push({
+            path: `moveHistory[${index}]`,
+            message: `Move token must be one of ${MOVE_TOKENS.join(', ')}.`,
+          });
+          continue;
+        }
+
+        normalized.push(token);
+      }
+
+      moveHistory = normalized;
+    }
+  }
+
   if (details.length > 0) {
     return { ok: false, details };
   }
@@ -199,6 +231,7 @@ export function validateSolveRequest(payload: unknown):
     value: {
       state: cloneCubeState(payload.state as CubeState),
       strategy,
+      ...(moveHistory ? { moveHistory } : {}),
     },
   };
 }
@@ -439,21 +472,29 @@ export function validateAiHelpRequest(payload: unknown):
     const moveHistory = validateStringArrayField(details, context, 'moveHistory', 'context.moveHistory', 5000);
     const scramble = validateStringArrayField(details, context, 'scramble', 'context.scramble', 400);
 
-    const tutorialStepIndex = context.tutorialStepIndex;
-    if (!Object.hasOwn(context, 'tutorialStepIndex')) {
-      details.push({ path: 'context.tutorialStepIndex', message: 'tutorialStepIndex is required.' });
-    } else if (typeof tutorialStepIndex !== 'number' || !Number.isInteger(tutorialStepIndex) || tutorialStepIndex < 0) {
-      details.push({
-        path: 'context.tutorialStepIndex',
-        message: 'tutorialStepIndex must be a non-negative integer.',
-      });
+    let tutorialStepIndex: number | undefined;
+    if (Object.hasOwn(context, 'tutorialStepIndex')) {
+      if (typeof context.tutorialStepIndex !== 'number'
+        || !Number.isInteger(context.tutorialStepIndex)
+        || context.tutorialStepIndex < 0) {
+        details.push({
+          path: 'context.tutorialStepIndex',
+          message: 'tutorialStepIndex must be a non-negative integer.',
+        });
+      } else {
+        tutorialStepIndex = context.tutorialStepIndex;
+      }
     }
 
-    const tutorialStepTitle = context.tutorialStepTitle;
-    if (!Object.hasOwn(context, 'tutorialStepTitle')) {
-      details.push({ path: 'context.tutorialStepTitle', message: 'tutorialStepTitle is required.' });
-    } else if (typeof tutorialStepTitle !== 'string' || tutorialStepTitle.length === 0) {
-      details.push({ path: 'context.tutorialStepTitle', message: 'tutorialStepTitle must be a non-empty string.' });
+    let tutorialStepTitle: string | undefined;
+    if (Object.hasOwn(context, 'tutorialStepTitle')) {
+      if (typeof context.tutorialStepTitle !== 'string') {
+        details.push({ path: 'context.tutorialStepTitle', message: 'tutorialStepTitle must be a string.' });
+      } else if (context.tutorialStepTitle.length > 120) {
+        details.push({ path: 'context.tutorialStepTitle', message: 'tutorialStepTitle must be 120 characters or less.' });
+      } else if (context.tutorialStepTitle.trim().length > 0) {
+        tutorialStepTitle = context.tutorialStepTitle.trim();
+      }
     }
 
     const timerMs = context.timerMs;
@@ -495,11 +536,6 @@ export function validateAiHelpRequest(payload: unknown):
       cubeState
       && moveHistory
       && scramble
-      && typeof tutorialStepIndex === 'number'
-      && Number.isInteger(tutorialStepIndex)
-      && tutorialStepIndex >= 0
-      && typeof tutorialStepTitle === 'string'
-      && tutorialStepTitle.length > 0
       && typeof timerMs === 'number'
       && Number.isInteger(timerMs)
       && timerMs >= 0
@@ -516,8 +552,8 @@ export function validateAiHelpRequest(payload: unknown):
         cubeState,
         moveHistory: [...moveHistory],
         scramble: [...scramble],
-        tutorialStepIndex,
-        tutorialStepTitle,
+        ...(typeof tutorialStepIndex === 'number' ? { tutorialStepIndex } : {}),
+        ...(tutorialStepTitle ? { tutorialStepTitle } : {}),
         timerMs,
         idleMs,
         solveDepth,

@@ -1047,6 +1047,13 @@
               "cfop"
             ],
             "default": "beginner"
+          },
+          "moveHistory": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/MoveToken"
+            }
           }
         }
       },
@@ -1615,8 +1622,6 @@
           "cubeState",
           "moveHistory",
           "scramble",
-          "tutorialStepIndex",
-          "tutorialStepTitle",
           "timerMs",
           "idleMs",
           "solveDepth",
@@ -2260,11 +2265,11 @@
           "moves": [
             "R'",
             "U'",
-            "F"
+            "F'"
           ],
           "estimatedMoveCount": 3,
-          "isMock": true,
-          "note": "Solver implementation is stubbed in Sprint 2 and currently returns a placeholder response."
+          "isMock": false,
+          "note": "Solved by inverting verified session move history."
         }
       },
       "bad_request_invalid_move": {

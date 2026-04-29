@@ -1,4 +1,4 @@
-import { createSolvedState, FACE_ORDER } from '../../backend/api/src/cube.ts';
+import { createSolvedState } from '../../backend/api/src/cube.ts';
 import {
   validateMoveApplyRequest,
   validateAiHelpRequest,
@@ -9,6 +9,7 @@ import {
 import { applyMoveToState, applyMoves, generateScramble } from '../../backend/api/src/cube.ts';
 import { generateAiCoachResult } from '../../backend/api/src/lib/aiCoach.ts';
 import { analyzeMoveValidation } from '../../backend/api/src/lib/moveCoach.ts';
+import { isSolvedState, solveStateFromHistory } from '../../backend/api/src/lib/solve.ts';
 
 const SERVICE_NAME = 'rubiks-api';
 const VERSION = '0.1.0';
@@ -27,10 +28,6 @@ function sendError(res, statusCode, code, message, details) {
   const error = { code, message };
   if (details && details.length > 0) error.details = details;
   sendJson(res, statusCode, { error });
-}
-
-function isSolvedState(state) {
-  return FACE_ORDER.every((face) => state[face].every((s) => s === state[face][0]));
 }
 
 export default async function handler(req, res) {
@@ -97,15 +94,37 @@ export default async function handler(req, res) {
       sendError(res, 400, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
       return;
     }
-    const { state } = validation.value;
+    const { state, moveHistory } = validation.value;
     const alreadySolved = isSolvedState(state);
+
+    if (alreadySolved) {
+      sendJson(res, 200, {
+        moves: [],
+        estimatedMoveCount: 0,
+        isMock: false,
+        note: 'Cube is already solved; returning an empty solution.',
+      });
+      return;
+    }
+
+    if (Array.isArray(moveHistory) && moveHistory.length > 0) {
+      const solvedMoves = solveStateFromHistory(state, moveHistory);
+      if (solvedMoves) {
+        sendJson(res, 200, {
+          moves: solvedMoves,
+          estimatedMoveCount: solvedMoves.length,
+          isMock: false,
+          note: 'Solved by inverting verified session move history.',
+        });
+        return;
+      }
+    }
+
     sendJson(res, 200, {
-      moves: alreadySolved ? [] : ["R'", "U'", 'F'],
-      estimatedMoveCount: alreadySolved ? 0 : 3,
-      isMock: true,
-      note: alreadySolved
-        ? 'Cube is already solved; returning an empty solution.'
-        : 'Solver is stubbed in Sprint 2.',
+      moves: [],
+      estimatedMoveCount: 0,
+      isMock: false,
+      note: 'Unable to derive a verified solution from state alone. Include moveHistory for deterministic solve reconstruction.',
     });
     return;
   }

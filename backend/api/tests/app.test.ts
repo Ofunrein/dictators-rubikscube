@@ -97,6 +97,29 @@ describe('buildApp', () => {
     expect(solveResponse.statusCode).toBe(200);
     expect(solveResponse.json().moves).toEqual([]);
 
+    const solveFromHistoryResponse = await app.inject({
+      method: 'POST',
+      url: '/v1/cube/solve',
+      payload: {
+        state: applyResponse.json().state,
+        moveHistory: ['R'],
+      },
+    });
+    expect(solveFromHistoryResponse.statusCode).toBe(200);
+    expect(solveFromHistoryResponse.json().moves).toEqual(["R'"]);
+    expect(solveFromHistoryResponse.json().isMock).toBe(false);
+
+    const unsolvedWithoutHistoryResponse = await app.inject({
+      method: 'POST',
+      url: '/v1/cube/solve',
+      payload: {
+        state: applyResponse.json().state,
+      },
+    });
+    expect(unsolvedWithoutHistoryResponse.statusCode).toBe(200);
+    expect(unsolvedWithoutHistoryResponse.json().moves).toEqual([]);
+    expect(unsolvedWithoutHistoryResponse.json().note).toContain('Include moveHistory');
+
     await app.close();
   });
 

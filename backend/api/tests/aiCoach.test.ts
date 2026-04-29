@@ -37,7 +37,6 @@ describe('ai coach service', () => {
     expect(prompt.user).toContain('"mode":"guide"');
     expect(prompt.user).toContain('"estimatedSkillLevel":"beginner"');
     expect(prompt.user).toContain('"tutorSignals"');
-    expect(prompt.user).toContain('"tutorialStepTitle":"First Two Layers (F2L)"');
   });
 
   it('returns deterministic mock guidance when provider is mock', async () => {
