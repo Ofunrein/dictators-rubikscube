@@ -1,23 +1,36 @@
+/**
+ * server.js — Local development API server (slim dispatcher)
+ *
+ * This is the backend that runs during local development (npm run dev).
+ * It handles HTTP infrastructure: CORS, body parsing, and routing.
+ *
+ * The actual route handlers live in routes.js — each endpoint is a named
+ * function over there. This file just matches the incoming request to the
+ * right handler and passes it a context object for sending responses.
+ *
+ * How it works with the frontend:
+ *   The frontend (Vite) runs on port 5400. When the browser calls /api/v1/*,
+ *   Vite proxies those requests to this server on 5200. That way the browser
+ *   only talks to one port, but the API runs separately.
+ *
+ * In production (Vercel), the same route handlers are used by api/v1/[...path].js.
+ */
+
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { applyMoveToState, applyMoves, createSolvedState, FACE_ORDER, generateScramble } from './cube.js';
-import {
-  validateMoveApplyRequest,
-  validateScrambleRequest,
-  validateSolveRequest
-} from './validation.js';
+import { ROUTES } from './routes.js';
 
-const PORT = Number(process.env.API_PORT ?? 4011);
-const SERVICE_NAME = 'rubiks-api';
-const VERSION = '0.1.0';
+const PORT = Number(process.env.API_PORT ?? 5200);
 const MAX_BODY_BYTES = 1_000_000;
 
+// CORS headers let the frontend (on a different port) call this API.
+// Without these, the browser would block cross-origin requests.
 function withCorsHeaders(headers = {}) {
   return {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'GET,POST,OPTIONS',
     'access-control-allow-headers': 'content-type',
-    ...headers
+    ...headers,
   };
 }
 
@@ -28,8 +41,8 @@ function sendJson(res, statusCode, payload, headers = {}) {
     withCorsHeaders({
       'content-type': 'application/json; charset=utf-8',
       'content-length': Buffer.byteLength(body),
-      ...headers
-    })
+      ...headers,
+    }),
   );
   res.end(body);
 }
@@ -47,6 +60,10 @@ function sendError(res, statusCode, requestId, code, message, details) {
   sendJson(res, statusCode, { error });
 }
 
+// Reads the raw JSON body from the request stream.
+// Node's built-in http module doesn't parse bodies automatically (unlike Express),
+// so we have to collect chunks manually. Also enforces a 1MB size limit to prevent
+// someone from sending a huge payload and crashing the server.
 async function readJsonBody(req) {
   return new Promise((resolve, reject) => {
     if (req.method === 'GET' || req.method === 'HEAD') {
@@ -87,10 +104,9 @@ async function readJsonBody(req) {
   });
 }
 
-function isSolvedState(state) {
-  return FACE_ORDER.every((face) => state[face].every((sticker) => sticker === state[face][0]));
-}
-
+// The main request handler — matches the incoming request to a route and calls it.
+// The route table lives in routes.js so adding a new endpoint doesn't mean
+// touching this dispatch logic at all.
 async function handleRequest(req, res) {
   const requestId = randomUUID();
 
@@ -107,103 +123,45 @@ async function handleRequest(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const { pathname } = url;
 
-  if (req.method === 'GET' && pathname === '/v1/health') {
-    sendJson(res, 200, {
-      ok: true,
-      service: SERVICE_NAME,
-      version: VERSION,
-      timestamp: new Date().toISOString()
-    });
+  // Normalize the path so both /v1/* and /api/v1/* work the same way.
+  // The frontend proxy sends /api/v1/*, but direct API calls use /v1/*.
+  const routePath = pathname.startsWith('/api/v1') ? pathname.replace(/^\/api/, '') : pathname;
+
+  // Find the matching route in the ROUTES table from routes.js.
+  const route = ROUTES.find((r) => r.method === req.method && r.path === routePath);
+  if (!route) {
+    sendError(res, 404, requestId, 'NOT_FOUND', 'Route not found.');
     return;
   }
 
-  if (req.method === 'GET' && pathname === '/v1/cube/state/solved') {
-    sendJson(res, 200, { state: createSolvedState() });
-    return;
-  }
-
-  if (req.method === 'POST' && pathname === '/v1/cube/moves/apply') {
-    let body;
+  // Parse the request body for POST routes.
+  let body = {};
+  if (req.method === 'POST') {
     try {
       body = await readJsonBody(req);
     } catch (error) {
       sendError(res, 400, requestId, 'BAD_REQUEST', error.message);
       return;
     }
-
-    const validation = validateMoveApplyRequest(body);
-    if (!validation.ok) {
-      sendError(res, 400, requestId, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
-      return;
-    }
-
-    const { state, move } = validation.value;
-    const nextState = applyMoveToState(state, move);
-    sendJson(res, 200, {
-      state: nextState,
-      appliedMove: move
-    });
-    return;
   }
 
-  if (req.method === 'POST' && pathname === '/v1/cube/scramble') {
-    let body;
-    try {
-      body = await readJsonBody(req);
-    } catch (error) {
-      sendError(res, 400, requestId, 'BAD_REQUEST', error.message);
-      return;
-    }
+  // Build the context object that route handlers use to send responses.
+  // This keeps handlers decoupled from the raw Node.js res object.
+  const ctx = {
+    url,
+    requestId,
+    sendJson: (code, payload) => sendJson(res, code, payload),
+    sendError: (code, errCode, msg, details) => sendError(res, code, requestId, errCode, msg, details),
+  };
 
-    const validation = validateScrambleRequest(body);
-    if (!validation.ok) {
-      sendError(res, 400, requestId, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
-      return;
-    }
-
-    const { length, seed } = validation.value;
-    const scramble = generateScramble(length, seed);
-    const state = applyMoves(createSolvedState(), scramble);
-
-    sendJson(res, 200, { scramble, state });
-    return;
-  }
-
-  if (req.method === 'POST' && pathname === '/v1/cube/solve') {
-    let body;
-    try {
-      body = await readJsonBody(req);
-    } catch (error) {
-      sendError(res, 400, requestId, 'BAD_REQUEST', error.message);
-      return;
-    }
-
-    const validation = validateSolveRequest(body);
-    if (!validation.ok) {
-      sendError(res, 400, requestId, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
-      return;
-    }
-
-    const { state } = validation.value;
-    const alreadySolved = isSolvedState(state);
-
-    sendJson(res, 200, {
-      moves: alreadySolved ? [] : ["R'", "U'", 'F'],
-      estimatedMoveCount: alreadySolved ? 0 : 3,
-      isMock: true,
-      note: alreadySolved
-        ? 'Cube is already solved; returning an empty solution.'
-        : 'Solver implementation is stubbed in Sprint 2 and currently returns a placeholder response.'
-    });
-    return;
-  }
-
-  sendError(res, 404, requestId, 'NOT_FOUND', 'Route not found.');
+  await route.handler(body, ctx);
 }
 
 const server = createServer((req, res) => {
   handleRequest(req, res).catch(() => {
     const requestId = randomUUID();
+    // Keep the outer catch narrow and consistent so unexpected crashes still
+    // come back as JSON instead of dropping the connection.
     sendError(res, 500, requestId, 'INTERNAL_ERROR', 'Unexpected server error.');
   });
 });
