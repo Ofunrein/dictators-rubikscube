@@ -1,3 +1,39 @@
+/**
+ * PuzzleCube.cpp — Core NxN cube state class
+ *
+ * Why it exists:
+ *   This is the single source of truth for the physical cube state.  Every
+ *   algorithm, scramble generator, and WASM bridge ultimately reads from or
+ *   writes to the 3-D tile grid managed here.
+ *
+ * Internal data representation:
+ *   cube[face][row][col]  — a 3-D vector<vector<vector<int>>>
+ *
+ *   Face indices (matching the Face enum in PuzzleCube.h):
+ *     0 = Up   1 = Left   2 = Front   3 = Right   4 = Back   5 = Down
+ *
+ *   Each element is an integer color ID.  In the solved state the constructor
+ *   initialises every tile on face f to the value f, so Up is all 0s, Left
+ *   all 1s, and so on.  CubeOperations.cpp maps these IDs back to color names
+ *   when building the flat string that the frontend consumes.
+ *
+ * Rotation model:
+ *   rotate(axis, layer, clockwise) is the single primitive used by everything
+ *   above it.  It handles three rotation axes (X / Y / Z), correctly updates
+ *   the face matrix at the two boundary layers (layer 0 and layer N-1), and
+ *   cycles the ring of tiles that runs through the given interior or boundary
+ *   layer.  Higher-level move names (R, U', F2, M, …) in CubeOperations.cpp
+ *   are translated into one or more calls to this method.
+ *
+ * State management helpers:
+ *   getState / setState  — expose the full cube for serialisation and
+ *                          copy-on-write patterns used by the solver.
+ *   isSolved             — O(6·N²) check: every tile on a face must share the
+ *                          same color value as cube[f][0][0].
+ *   rotateFaceMatrix     — private 90-degree in-place rotation of an NxN face
+ *                          grid; called by rotate() for the two end-cap faces.
+ */
+
 #include "PuzzleCube.h"
 
 PuzzleCube::PuzzleCube(int n) : N(n) {
@@ -17,6 +53,10 @@ PuzzleCube::PuzzleCube(int n) : N(n) {
 
 const std::vector<std::vector<std::vector<int>>>& PuzzleCube::getState() const {
     return cube;
+}
+
+void PuzzleCube::setState(const std::vector<std::vector<std::vector<int>>>& newState) {
+    cube = newState;
 }
 
 bool PuzzleCube::isSolved() const {
