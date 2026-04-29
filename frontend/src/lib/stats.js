@@ -15,20 +15,61 @@ import { supabase } from './supabase';
  * @returns {Promise<{data: Array, error: Error|null}>}
  */
 export async function getLeaderboard(size, statType = 'avg', limit = 10) {
-  // Map stat type to the actual Supabase function name suffix
+  // Determine which table and column to query based on size and stat type
+  const statsTable = size === '2x2' ? 'two_by_two_user_stats' : 'three_by_three_user_stats';
+  const orderColumn = statType === 'fastest' ? 'fastest_solve'
+    : statType === 'solves' ? 'num_solves'
+    : 'avg_solve';
+  const orderDirection = statType === 'solves' ? 'DESC.NULLS LAST' : 'ASC.NULLS LAST';
+
+  // Use the Supabase RPC function to get leaderboard data.
+  // The RPC functions should be set to SECURITY DEFINER in the database
+  // so they work for both authenticated and unauthenticated users.
+  // If they are SECURITY INVOKER, they will only return data for
+  // authenticated users due to RLS policies on the underlying tables.
   const statSuffix = statType === 'solves' ? 'num_solves' : statType;
-  const functionName = `get_leaderboard_${statSuffix}_${size.replace('x', 'x')}`;
+  const functionName = `get_leaderboard_${statSuffix}_${size}`;
 
   const { data, error } = await supabase.rpc(functionName, {
     p_limit: limit,
   });
 
-  if (error) return { data: null, error };
+  if (error) {
+    // Fallback: try a direct query if the RPC fails (e.g., due to permissions)
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from(statsTable)
+      .select('id, num_solves, avg_solve, fastest_solve')
+      .gt('num_solves', 0)
+      .order(orderColumn, { ascending: orderDirection.startsWith('ASC') })
+      .limit(limit);
+
+    if (fallbackError) return { data: null, fallbackError };
+
+    // Fetch usernames for the returned user IDs
+    const userIds = fallbackData.map(row => row.id);
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, username')
+      .in('id', userIds);
+
+    if (usersError) return { data: null, usersError };
+
+    const usernameMap = {};
+    if (users) {
+      users.forEach(u => { usernameMap[u.id] = u.username; });
+    }
+
+    const entries = fallbackData.map((row, index) => ({
+      rank: index + 1,
+      username: usernameMap[row.id] || 'Unknown',
+      value: row[orderColumn],
+    }));
+
+    return { data: entries, error: null };
+  }
 
   // Filter out rows where the stat value is 0 (no solves recorded)
   // then map to the shape the LeaderboardPage expects.
-  // Rank is computed from the array index (1-based).
-  // Handle both 'value' column (from Supabase RPC) and stat-specific column names.
   const filtered = data.filter((row) => {
     const val = row.value ?? row.fastest_solve ?? row.avg_solve ?? row.num_solves;
     return val !== null && val !== undefined && Number(val) > 0;
