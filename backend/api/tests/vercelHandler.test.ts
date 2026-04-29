@@ -178,4 +178,25 @@ describe('vercel catch-all handler', () => {
       shouldBlock: true,
     });
   });
+
+  it('solves unsolved states when moveHistory is provided', async () => {
+    const moveReq = createMockRequest('/api/v1/cube/moves/apply', {
+      state: SOLVED_STATE,
+      move: 'R',
+    });
+    const moveRes = createMockResponse();
+    await handler(moveReq as never, moveRes as never);
+    expect(moveRes.statusCode).toBe(200);
+
+    const solveReq = createMockRequest('/api/v1/cube/solve', {
+      state: (moveRes.payload as any).state,
+      moveHistory: ['R'],
+    });
+    const solveRes = createMockResponse();
+    await handler(solveReq as never, solveRes as never);
+
+    expect(solveRes.statusCode).toBe(200);
+    expect((solveRes.payload as any).moves).toEqual(["R'"]);
+    expect((solveRes.payload as any).isMock).toBe(false);
+  });
 });

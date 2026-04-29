@@ -27,8 +27,8 @@ export interface AiHelpContext {
   cubeState: Record<CubeFaceName, string[]>;
   moveHistory: string[];
   scramble: string[];
-  tutorialStepIndex: number;
-  tutorialStepTitle: string;
+  tutorialStepIndex?: number;
+  tutorialStepTitle?: string;
   timerMs: number;
   idleMs: number;
   solveDepth: number;

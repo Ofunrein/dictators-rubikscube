@@ -284,12 +284,17 @@ export async function generateScrambleRemote({ length = 25, seed } = {}) {
   return payload;
 }
 
-export async function solveCubeRemote(state, strategy = 'beginner') {
+export async function solveCubeRemote(state, strategy = 'beginner', moveHistory) {
   validateCubeState(state);
+
+  const body = { state, strategy };
+  if (Array.isArray(moveHistory)) {
+    body.moveHistory = moveHistory;
+  }
 
   const payload = await request('/api/v1/cube/solve', {
     method: 'POST',
-    body: { state, strategy },
+    body,
   });
 
   if (!Array.isArray(payload.moves)) {
