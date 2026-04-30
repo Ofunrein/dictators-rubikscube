@@ -46,12 +46,14 @@ describe('simulatorAnimation helpers', () => {
 
   it('expands and normalizes move tokens', () => {
     expect(expandMoveToken('R2')).toEqual(['R', 'R']);
+    expect(expandMoveToken('M2')).toEqual(['M', 'M']);
     expect(expandMoveToken("U'")).toEqual(["U'"]);
+    expect(expandMoveToken("E'")).toEqual(["E'"]);
     expect(expandMoveToken('  F  ')).toEqual(['F']);
     expect(expandMoveToken('x')).toEqual([]);
     expect(expandMoveToken('')).toEqual([]);
 
-    expect(normalizeMoveSequence(['R2', "U'", 'x', ' B '])).toEqual(['R', 'R', "U'", 'B']);
+    expect(normalizeMoveSequence(['R2', "U'", 'x', ' B ', 'S2'])).toEqual(['R', 'R', "U'", 'B', 'S', 'S']);
   });
 
   it('builds a full 3x3x3 cubie layout', () => {
