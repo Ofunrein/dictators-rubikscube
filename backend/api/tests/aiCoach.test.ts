@@ -257,6 +257,17 @@ describe('ai coach service', () => {
     expect(message.nextActions?.some((item) => item.toLowerCase().includes('common mistake'))).toBe(true);
   });
 
+  it('uses user question text to shape mock guide content', () => {
+    const message = createMockCoachMessage({
+      ...PAYLOAD,
+      mode: 'guide',
+      message: 'What does prime notation mean?',
+    });
+
+    expect(message.content.toLowerCase()).toContain('notation refresher');
+    expect(message.nextActions?.length).toBeGreaterThanOrEqual(3);
+  });
+
   it('keeps existing mock behavior helper intact', () => {
     const message = createMockCoachMessage({
       ...PAYLOAD,

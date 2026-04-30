@@ -406,6 +406,28 @@ function cloneCubeStateForRequest(state) {
   }, {});
 }
 
+function inferCoachModeFromQuestion(rawQuestion, hasPreviousCoachResponse) {
+  const question = rawQuestion.trim().toLowerCase();
+  if (!question) {
+    return 'guide';
+  }
+
+  const asksWhy = /(why|reason|how does|how did|explain|what happened)/.test(question);
+  if (asksWhy) {
+    return hasPreviousCoachResponse ? 'explain' : 'guide';
+  }
+
+  if (/(solve|solution|full sequence|algorithm for this|finish this cube)/.test(question)) {
+    return 'solve';
+  }
+
+  if (/(hint|stuck|next move|what next|small nudge|nudge me)/.test(question)) {
+    return 'hint';
+  }
+
+  return 'guide';
+}
+
 // ─── Main Simulator Page ──────────────────────────────────────────────────────
 const SimulatorPage = () => {
   const navigate = useNavigate();
@@ -550,8 +572,16 @@ const SimulatorPage = () => {
       return;
     }
     setCoachInput('');
-    void submitCoachRequest('guide', message);
-  }, [coachInput, submitCoachRequest]);
+    const inferredMode = inferCoachModeFromQuestion(message, Boolean(lastCoachResponse));
+    void submitCoachRequest(inferredMode, message);
+  }, [coachInput, lastCoachResponse, submitCoachRequest]);
+
+  const handleClearCoachChat = useCallback(() => {
+    setCoachMessages([]);
+    setLastCoachResponse(null);
+    setCoachError('');
+    setCoachInput('');
+  }, []);
 
   const applyMovesInstantly = useCallback((moves) => {
     const normalized = normalizeMoveSequence(moves);
@@ -1421,14 +1451,24 @@ const SimulatorPage = () => {
                 {isCubeSolved ? 'Cube solved' : `Idle ${formatIdleTime(idleMs)} · Step ${tutorialStep + 1}`}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setCoachOpen(false)}
-              className="rounded-lg border border-dictator-chrome/30 p-1.5 text-white/70 hover:text-white hover:border-dictator-red/40"
-              aria-label="Close AI coach"
-            >
-              <X size={14} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleClearCoachChat}
+                disabled={coachMessages.length === 0 && coachInput.trim().length === 0 && !coachError}
+                className="rounded-lg border border-dictator-chrome/30 px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest text-white/80 hover:text-white hover:border-dictator-red/40 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => setCoachOpen(false)}
+                className="rounded-lg border border-dictator-chrome/30 p-1.5 text-white/70 hover:text-white hover:border-dictator-red/40"
+                aria-label="Close AI coach"
+              >
+                <X size={14} />
+              </button>
+            </div>
           </div>
 
           <div ref={coachMessagesRef} className="px-4 py-3 overflow-y-auto space-y-2 flex-1 min-h-32">

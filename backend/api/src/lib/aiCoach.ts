@@ -178,6 +178,58 @@ function detectProgressStage(cubeState: AiHelpRequest['context']['cubeState']): 
   return 'full-cube recovery';
 }
 
+function buildQuestionAwareReply(message: string): { content: string; nextActions: string[] } {
+  const normalized = message.trim().toLowerCase();
+  const referencedMoves = extractMovesFromText(message, 6);
+
+  if (/(notation|what does|mean|prime|counter|clockwise)/.test(normalized)) {
+    return {
+      content: 'Notation refresher: plain letters are clockwise turns, prime marks are counter-clockwise, and 2 means double turn.',
+      nextActions: ['Pick one symbol you are unsure about.', 'Apply it once slowly.', 'Verify only that face/slice changed as expected.'],
+    };
+  }
+
+  if (/(cross|white cross|first step)/.test(normalized)) {
+    return {
+      content: 'For the cross, prioritize edge-center color matching before locking each edge onto the U face.',
+      nextActions: ['Find one white edge.', 'Match its side color to the center first.', 'Insert and preserve completed cross edges.'],
+    };
+  }
+
+  if (/(f2l|first two layers|pair)/.test(normalized)) {
+    return {
+      content: 'In F2L, pair one corner-edge set in the top layer first, then insert without disturbing solved slots.',
+      nextActions: ['Choose one unsolved slot.', 'Pair corner and edge above it.', 'Insert with a single clean trigger.'],
+    };
+  }
+
+  if (/(oll|last layer orientation)/.test(normalized)) {
+    return {
+      content: 'OLL goal is orienting all top stickers first, even if side pieces are still permuted.',
+      nextActions: ['Identify current OLL shape.', 'Use one matching algorithm only once.', 'Re-check top-face orientation after execution.'],
+    };
+  }
+
+  if (/(pll|permute|last layer permutation)/.test(normalized)) {
+    return {
+      content: 'PLL is about moving pieces into correct positions while preserving top-face orientation.',
+      nextActions: ['Find a solved bar if available.', 'Hold solved bar at the back.', 'Run one PLL algorithm and re-evaluate.'],
+    };
+  }
+
+  if (referencedMoves.length > 0) {
+    return {
+      content: `About "${referencedMoves.join(' ')}": use it only when your setup is aligned to centers, then stop and verify piece targets before repeating.`,
+      nextActions: ['Set up the target pair first.', 'Execute the sequence once.', 'Check which pieces moved and whether they were intended.'],
+    };
+  }
+
+  return {
+    content: 'Focus on one target pair at a time, align to centers, and avoid chaining algorithms without a checkpoint.',
+    nextActions: ['State the exact piece you are solving.', 'Use one setup move at a time.', 'After each trigger, verify progress before continuing.'],
+  };
+}
+
 function truncate(value: string, max: number): string {
   if (value.length <= max) {
     return value;
@@ -430,6 +482,8 @@ export function createMockCoachMessage(payload: AiHelpRequest): AiCoachMessage {
   const stageHint = `Current detected phase: ${stage}.`;
   const tutorSignals = buildTutorSignals(context.moveHistory, context.idleMs);
   const signalHint = buildTutorSignalHint(tutorSignals);
+  const questionText = typeof message === 'string' ? message.trim() : '';
+  const hasQuestion = questionText.length > 0;
 
   if (context.isSolved) {
     return {
@@ -440,13 +494,14 @@ export function createMockCoachMessage(payload: AiHelpRequest): AiCoachMessage {
   }
 
   if (mode === 'hint') {
+    const questionReply = hasQuestion ? buildQuestionAwareReply(questionText) : null;
     const content = signalHint.length > 0
-      ? `${stageHint} Focus on one pair and center alignment before turning. ${signalHint}`
-      : `${stageHint} Focus on one pair and center alignment before turning.`;
+      ? `${questionReply?.content ?? 'Focus on one pair and center alignment before turning.'} ${signalHint}`
+      : `${questionReply?.content ?? `${stageHint} Focus on one pair and center alignment before turning.`}`;
     return {
       id: 'coach_hint_v1',
       content,
-      nextActions: [
+      nextActions: questionReply?.nextActions ?? [
         'Look for one target piece pair',
         'Align with matching centers',
         'Apply one insertion algorithm slowly',
@@ -455,7 +510,8 @@ export function createMockCoachMessage(payload: AiHelpRequest): AiCoachMessage {
   }
 
   if (mode === 'guide') {
-    const guideActions = [
+    const questionReply = hasQuestion ? buildQuestionAwareReply(questionText) : null;
+    const guideActions = questionReply?.nextActions ?? [
       'Inspect top layer for a usable pair',
       'Set up with U turns only',
       'Insert with right-hand or left-hand trigger',
@@ -466,8 +522,8 @@ export function createMockCoachMessage(payload: AiHelpRequest): AiCoachMessage {
     return {
       id: 'coach_guide_v1',
       content: signalHint.length > 0
-        ? `${stageHint} Start by restoring one stable pair, then insert without disturbing solved pieces. ${signalHint}`
-        : `${stageHint} Start by restoring one stable pair, then insert without disturbing solved pieces.`,
+        ? `${questionReply?.content ?? `${stageHint} Start by restoring one stable pair, then insert without disturbing solved pieces.`} ${signalHint}`
+        : `${questionReply?.content ?? `${stageHint} Start by restoring one stable pair, then insert without disturbing solved pieces.`}`,
       nextActions: guideActions,
     };
   }
@@ -496,8 +552,8 @@ export function createMockCoachMessage(payload: AiHelpRequest): AiCoachMessage {
   }
 
   const explainTarget = previousCoachResponse?.content ?? stageHint;
-  const userContext = typeof message === 'string' && message.length > 0
-    ? ` You asked: "${message}".`
+  const userContext = hasQuestion
+    ? ` You asked: "${questionText}".`
     : '';
   const explainReference = previousCoachResponse
     ? `In your previous step, "${truncate(previousCoachResponse.content, 140)}". `

@@ -198,5 +198,23 @@ describe('vercel catch-all handler', () => {
     expect(solveRes.statusCode).toBe(200);
     expect((solveRes.payload as any).moves).toEqual(["R'"]);
     expect((solveRes.payload as any).isMock).toBe(false);
+
+    const moveSliceReq = createMockRequest('/api/v1/cube/moves/apply', {
+      state: SOLVED_STATE,
+      move: 'M',
+    });
+    const moveSliceRes = createMockResponse();
+    await handler(moveSliceReq as never, moveSliceRes as never);
+    expect(moveSliceRes.statusCode).toBe(200);
+
+    const solveSliceReq = createMockRequest('/api/v1/cube/solve', {
+      state: (moveSliceRes.payload as any).state,
+      moveHistory: ['M'],
+    });
+    const solveSliceRes = createMockResponse();
+    await handler(solveSliceReq as never, solveSliceRes as never);
+
+    expect(solveSliceRes.statusCode).toBe(200);
+    expect((solveSliceRes.payload as any).moves).toEqual(["M'"]);
   });
 });
