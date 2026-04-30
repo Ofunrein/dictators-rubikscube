@@ -1,22 +1,19 @@
 /**
  * ProfilePage.jsx — /profile route — authenticated user profile and stats
  *
- * Shows user stats matching Corey's database schema:
- *   - Per-size (2x2, 3x3) stats: fastest time, avg time, # of solves
- *   - Per-size ranks for each stat (e.g. "1st in 2x2 avg solve time")
- *   - Recent solves list (placeholder until Corey adds DB support)
- *
- * All data currently from AuthContext mock. When database is connected,
- * AuthContext.login() fetches real data — this component just reads it.
+ * Shows user stats per cube size (2x2, 3x3) with real ranks fetched from
+ * Supabase rank functions. No recent solves section.
  */
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Clock, Hash, Zap, Trophy } from 'lucide-react';
+import { LogOut, Clock, Hash, Zap, Trophy, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { getUserRanks } from '../lib/stats';
 import PageNavbar from '../components/PageNavbar';
 
 function formatTime(t) {
-  if (t === null || t === undefined) return '—';
+  if (t === null || t === undefined || t === 0) return '—';
   if (t >= 60) {
     const m = Math.floor(t / 60);
     const s = (t % 60).toFixed(2).padStart(5, '0');
@@ -26,7 +23,7 @@ function formatTime(t) {
 }
 
 function formatRank(r) {
-  if (!r) return '—';
+  if (!r || r === null) return '—';
   if (r === 1) return '1st';
   if (r === 2) return '2nd';
   if (r === 3) return '3rd';
@@ -36,18 +33,44 @@ function formatRank(r) {
 const CUBE_SIZES = ['3x3', '2x2'];
 
 export default function ProfilePage() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, deleteAccount } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+  const [ranks, setRanks] = useState({});
+
+  // Fetch real ranks from Supabase on mount and when stats change
+  useEffect(() => {
+    if (!currentUser) return;
+
+    async function fetchRanks() {
+      const newRanks = {};
+      for (const size of CUBE_SIZES) {
+        const sizeKey = size === '2x2' ? '2x2' : '3x3';
+
+        const { ranks, error } = await getUserRanks(currentUser.id, sizeKey);
+        if (error) {
+          newRanks[sizeKey] = { fastest: null, average: null, solves: null };
+        } else {
+          newRanks[sizeKey] = {
+            fastest: ranks.fastest,
+            average: ranks.avg,
+            solves: ranks.solves,
+          };
+        }
+      }
+      setRanks(newRanks);
+    }
+
+    fetchRanks();
+  }, [currentUser]);
 
   const bg = isDark ? 'bg-dictator-void text-white' : 'bg-dictator-smoke text-dictator-ink';
   const muted = isDark ? 'text-dictator-chrome' : 'text-dictator-ink/75';
   const border = isDark ? 'border-white/8' : 'border-dictator-ink/20';
   const cardBg = isDark ? 'bg-white/[0.03]' : 'bg-white shadow-sm';
-  const rowBorder = isDark ? 'border-white/5' : 'border-dictator-ink/12';
-  const headerBg = isDark ? 'bg-white/[0.03]' : 'bg-dictator-ink/[0.05]';
-  const rowHover = isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-dictator-ink/[0.03]';
-  const tagBg = isDark ? 'bg-white/5 border-white/8' : 'bg-dictator-ink/[0.06] border-dictator-ink/15';
   const primary = isDark ? 'text-white' : 'text-dictator-ink';
   const rankHighlight = 'text-yellow-500';
 
@@ -62,10 +85,24 @@ export default function ProfilePage() {
     );
   }
 
-  const { username, email, joinedAt, stats, recentSolves } = currentUser;
+  const { username, email, joinedAt, stats } = currentUser;
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
+    navigate('/');
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    setDeleteError(null);
+
+    const { error } = await deleteAccount();
+    if (error) {
+      setDeleteError(error.message);
+      setDeleting(false);
+      return;
+    }
+
     navigate('/');
   }
 
@@ -86,10 +123,20 @@ export default function ProfilePage() {
               <p className={`font-mono text-[10px] mt-1 ${isDark ? 'text-white/30' : 'text-dictator-ink/40'}`}>Joined {joinedAt}</p>
             </div>
           </div>
-          <button onClick={handleLogout} className={`flex items-center gap-1.5 font-mono text-xs hover:text-dictator-red transition-colors uppercase tracking-widest ${muted}`}>
-            <LogOut size={13} />
-            Log Out
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className={`flex items-center gap-1.5 font-mono text-xs hover:text-dictator-red transition-colors uppercase tracking-widest ${muted}`}
+              title="Delete account"
+            >
+              <Trash2 size={13} />
+              Delete
+            </button>
+            <button onClick={handleLogout} className={`flex items-center gap-1.5 font-mono text-xs hover:text-dictator-red transition-colors uppercase tracking-widest ${muted}`}>
+              <LogOut size={13} />
+              Log Out
+            </button>
+          </div>
         </div>
 
         {/* Per-size stat cards */}
@@ -103,10 +150,10 @@ export default function ProfilePage() {
                 <div className={`mx-auto mb-2 flex justify-center ${muted}`}><Zap size={13} className="text-dictator-red" /></div>
                 <p className="font-drama text-2xl text-dictator-red">{formatTime(stats.best[size])}</p>
                 <p className={`font-mono text-[10px] mt-1 uppercase tracking-wider ${muted}`}>Fastest</p>
-                {stats.ranks?.[size]?.fastest && (
-                  <p className={`font-mono text-[10px] mt-1 ${stats.ranks[size].fastest <= 3 ? rankHighlight : muted}`}>
+                {ranks[size]?.fastest && (
+                  <p className={`font-mono text-[10px] mt-1 ${ranks[size].fastest <= 3 ? rankHighlight : muted}`}>
                     <Trophy size={9} className="inline mr-0.5" />
-                    {formatRank(stats.ranks[size].fastest)}
+                    {formatRank(ranks[size].fastest)}
                   </p>
                 )}
               </div>
@@ -114,10 +161,10 @@ export default function ProfilePage() {
                 <div className={`mx-auto mb-2 flex justify-center ${muted}`}><Clock size={13} /></div>
                 <p className={`font-drama text-2xl ${primary}`}>{formatTime(stats.avg[size])}</p>
                 <p className={`font-mono text-[10px] mt-1 uppercase tracking-wider ${muted}`}>Average</p>
-                {stats.ranks?.[size]?.average && (
-                  <p className={`font-mono text-[10px] mt-1 ${stats.ranks[size].average <= 3 ? rankHighlight : muted}`}>
+                {ranks[size]?.average && (
+                  <p className={`font-mono text-[10px] mt-1 ${ranks[size].average <= 3 ? rankHighlight : muted}`}>
                     <Trophy size={9} className="inline mr-0.5" />
-                    {formatRank(stats.ranks[size].average)}
+                    {formatRank(ranks[size].average)}
                   </p>
                 )}
               </div>
@@ -125,44 +172,52 @@ export default function ProfilePage() {
                 <div className={`mx-auto mb-2 flex justify-center ${muted}`}><Hash size={13} /></div>
                 <p className={`font-drama text-2xl ${primary}`}>{stats.solvesBySize?.[size] ?? stats.solves ?? '—'}</p>
                 <p className={`font-mono text-[10px] mt-1 uppercase tracking-wider ${muted}`}>Solves</p>
-                {stats.ranks?.[size]?.solves && (
-                  <p className={`font-mono text-[10px] mt-1 ${stats.ranks[size].solves <= 3 ? rankHighlight : muted}`}>
+                {ranks[size]?.solves && (
+                  <p className={`font-mono text-[10px] mt-1 ${ranks[size].solves <= 3 ? rankHighlight : muted}`}>
                     <Trophy size={9} className="inline mr-0.5" />
-                    {formatRank(stats.ranks[size].solves)}
+                    {formatRank(ranks[size].solves)}
                   </p>
                 )}
               </div>
             </div>
           </div>
         ))}
+      </div>
 
-        {/* Recent solves */}
-        <div>
-          <p className={`font-mono text-[10px] uppercase tracking-widest mb-4 ${muted}`}>Recent Solves</p>
-          <div className={`border rounded-xl overflow-hidden ${border}`}>
-            {recentSolves && recentSolves.length > 0 ? (
-              recentSolves.map((solve, i) => (
-                <div key={i} className={`flex items-center justify-between px-3 sm:px-5 py-3 sm:py-3.5 transition-colors ${rowHover} ${i !== recentSolves.length - 1 ? `border-b ${rowBorder}` : ''}`}>
-                  <div className="flex items-center gap-3">
-                    <span className={`font-mono text-xs w-8 tabular-nums ${muted}`}>#{recentSolves.length - i}</span>
-                    <span className={`font-mono text-xs border px-2 py-0.5 rounded ${muted} ${tagBg}`}>{solve.cube}</span>
-                  </div>
-                  <span className="font-mono text-sm text-dictator-red tabular-nums">{formatTime(solve.time)}</span>
-                  <span className={`font-mono text-xs ${isDark ? 'text-white/30' : 'text-dictator-ink/40'}`}>{solve.date}</span>
-                </div>
-              ))
-            ) : (
-              <div className={`px-5 py-8 text-center ${muted}`}>
-                <p className="font-mono text-xs">No recent solves yet</p>
-              </div>
+      {/* Delete account confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+          <div className="relative w-full max-w-sm bg-[#0D0D0D] border border-white/10 rounded-2xl shadow-2xl overflow-hidden p-8">
+            <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-dictator-red to-transparent absolute top-0 left-0" />
+
+            <h2 className="font-heading text-lg text-white mb-2">Delete Account</h2>
+            <p className="font-mono text-xs text-dictator-chrome mb-6">
+              This will permanently delete your account and all stats. This action cannot be undone.
+            </p>
+
+            {deleteError && (
+              <p className="font-mono text-[11px] text-dictator-red mb-4">{deleteError}</p>
             )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}
+                disabled={deleting}
+                className="flex-1 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-lg border border-white/20 text-dictator-chrome hover:text-white transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-lg bg-dictator-red text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
-
-        <p className={`mt-6 font-mono text-[10px] text-center uppercase tracking-widest ${isDark ? 'text-white/20' : 'text-dictator-ink/30'}`}>
-          Mock data — live stats coming soon
-        </p>
-      </div>
+      )}
     </div>
   );
 }

@@ -24,6 +24,7 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const overlayRef = useRef(null);
   const { login, signup } = useAuth();
 
@@ -37,17 +38,28 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
     if (e.target === overlayRef.current) onClose();
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     if (!email || !password) { setError('Please fill in all fields.'); return; }
     if (mode === 'signup' && !username) { setError('Username is required.'); return; }
 
+    setSubmitting(true);
+
+    let result;
     if (mode === 'login') {
-      login(email, password);
+      result = await login(email, password);
     } else {
-      signup(username, email, password);
+      result = await signup(username, email, password);
     }
+
+    setSubmitting(false);
+
+    if (result?.error) {
+      setError(result.error.message || 'Something went wrong. Please try again.');
+      return;
+    }
+
     onClose();
   }
 
@@ -157,9 +169,10 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
 
             <button
               type="submit"
-              className="mt-2 w-full bg-dictator-red hover:bg-dictator-deep text-white font-mono text-xs uppercase tracking-widest py-3 rounded-lg transition-colors active:scale-95"
+              disabled={submitting}
+              className="mt-2 w-full bg-dictator-red hover:bg-dictator-deep text-white font-mono text-xs uppercase tracking-widest py-3 rounded-lg transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {mode === 'login' ? 'Log In' : 'Create Account'}
+              {submitting ? 'Working...' : mode === 'login' ? 'Log In' : 'Create Account'}
             </button>
           </form>
         </div>
