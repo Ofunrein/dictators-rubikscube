@@ -26,3 +26,6 @@ build/
 backend/build*/
 .idea/
 .vercel
+
+# Large precomputed solver tables (local-only)
+backend/vendor/rubiks-cube-NxNxN-solver/lookup-tables/
