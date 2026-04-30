@@ -169,9 +169,10 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
 
             <button
               type="submit"
-              className="mt-2 w-full bg-dictator-red hover:bg-dictator-deep text-white font-mono text-xs uppercase tracking-widest py-3 rounded-lg transition-colors active:scale-95"
+              disabled={submitting}
+              className="mt-2 w-full bg-dictator-red hover:bg-dictator-deep text-white font-mono text-xs uppercase tracking-widest py-3 rounded-lg transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {mode === 'login' ? 'Log In' : 'Create Account'}
+              {submitting ? 'Working...' : mode === 'login' ? 'Log In' : 'Create Account'}
             </button>
           </form>
         </div>

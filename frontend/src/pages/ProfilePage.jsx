@@ -33,7 +33,7 @@ function formatRank(r) {
 const CUBE_SIZES = ['3x3', '2x2'];
 
 export default function ProfilePage() {
-  const { currentUser, logout, deleteAccount, refreshUserStats } = useAuth();
+  const { currentUser, logout, deleteAccount } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);

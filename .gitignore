@@ -10,9 +10,6 @@ dist
 .env.local
 *.local
 
-# Allow the frontend .env file (needed for Supabase credentials)
-!frontend/.env
-
 # Docs
 LANDING_PAGE_PROMPT.md
 

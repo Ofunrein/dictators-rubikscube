@@ -97,7 +97,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async (email, password) => {
-    const { user, session, error } = await signIn(email, password);
+    const { user, error } = await signIn(email, password);
     if (error) return { error };
 
     const { profile } = await getUserProfile(user.id);
