@@ -25,6 +25,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { ArrowLeft, ChevronRight, Sun, Moon, UserCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { saveSolveResult } from '../../lib/stats';
 import AuthModal from '../../components/AuthModal';
 import * as THREE from 'three';
 import { CubeState } from '../../cube/CubeState';
@@ -53,7 +54,7 @@ import { getThemeClasses } from './simulatorTheme';
 const SimulatorPage = () => {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
-  const { currentUser } = useAuth();
+  const { currentUser, refreshUserStats } = useAuth();
   const [authModal, setAuthModal] = useState(null);
   const t = getThemeClasses(isDark);
 
@@ -183,13 +184,34 @@ const SimulatorPage = () => {
     }
   }, [useCompactFaceMap]);
 
+  // Track whether the current solve has already been saved to prevent
+  // duplicate saves when the effect re-fires due to dependency changes.
+  const solveSavedRef = useRef(false);
+
   // When the cube becomes solved and nothing is animating, clear the solve stack
+  // and save the solve time if the user is logged in and was doing a timed solve.
   useEffect(() => {
     if (!isSolved || queue.queueActive) return;
 
+    // Save the solve result only once per solve
+    if (!solveSavedRef.current && currentUser && timer.timerRunning && timer.timerMs > 0) {
+      solveSavedRef.current = true;
+      const sizeLabel = cubeSize === 2 ? '2x2' : '3x3';
+      saveSolveResult(currentUser.id, sizeLabel, timer.timerMs).then(() => {
+        refreshUserStats();
+      });
+    }
+
     solveStackRef.current = [];
     queue.setSolveDepth(0);
-  }, [isSolved, queue.queueActive, queue]);
+  }, [isSolved, queue.queueActive, queue, currentUser, timer.timerRunning, timer.timerMs, cubeSize, refreshUserStats]);
+
+  // Reset the solve-saved flag when the cube becomes unsolved (new solve starts)
+  useEffect(() => {
+    if (!isSolved) {
+      solveSavedRef.current = false;
+    }
+  }, [isSolved]);
 
   // Canvas error handling: when WebGL crashes, drain any pending moves instantly
   const handleCanvasFailure = useCallback((error, info) => {

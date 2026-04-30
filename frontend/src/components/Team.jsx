@@ -10,11 +10,11 @@ const Team = () => {
     const containerRef = useRef(null);
 
     const teamMembers = [
-        { name: 'Kyle', initials: 'KY', role: 'Backend Dev, System Architecture, ML Integration' },
-        { name: 'Eric S.', initials: 'ES', role: 'Frontend Dev, UI/UX, Design' },
-        { name: 'Eric O.', initials: 'EO', role: 'Backend Development' },
-        { name: 'Martin', initials: 'MT', role: 'Testing, QA, Documentation, Scrum Support' },
-        { name: 'Corey', initials: 'CR', role: 'Documentation, Full Stack' },
+        { name: 'Kyle', initials: 'KB', role: 'Full Stack, System Architecture, AI Integration' },
+        { name: 'Eric S.', initials: 'ES', role: 'Frontend Development, UI/UX, Web Design' },
+        { name: 'Eric O.', initials: 'EO', role: 'Backend Development, Lead Researcher' },
+        { name: 'Martin', initials: 'MO', role: 'Frontend Development, Web Design, Documentation' },
+        { name: 'Corey', initials: 'CH', role: 'Frontend Development, Database Administrator' },
     ];
 
     useEffect(() => {
