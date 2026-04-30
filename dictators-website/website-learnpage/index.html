@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learn —  Cube Solving Guide</title>
+  <meta name="description" content="A minimal, step-by-step guide to solving a Rubik's Cube. Algorithms, notation, and visual aids." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="index.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav id="main-nav" class="navbar">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo" id="nav-logo">
+        <!-- <span class="cube-icon"><span class="mini-face top"></span><span class="mini-face right"></span><span class="mini-face front"></span></span>  -->
+        <span class="logo-text">Learn<span>
+        <!-- </span>class="logo-dot">Guide</span></span> -->
+      </a>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#" data-slide="0">Home</a></li>
+        <li><a href="#" data-slide="1">Overview</a></li>
+        <li><a href="#" data-slide="2">Notation</a></li>
+        <li><a href="#" data-slide="3">Steps</a></li>
+        <li><a href="#" data-slide="4">Algorithms</a></li>
+        <li><a href="#" data-slide="5">Resources</a></li>
+      </ul>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <!-- SLIDES WRAPPER -->
+  <div class="slides-wrapper" id="slides-wrapper">
+
+    <!-- SLIDE 0: HERO -->
+    <section class="slide slide-hero active" data-index="0">
+      <div class="slide-inner hero-centered">
+        <p class="hero-badge">Solving Guide</p>
+        <h1 class="hero-title">Learn the <span class="gradient-text">Cube</span></h1>
+        <p class="hero-subtitle">Follow our visual, beginner-friendly guide to solve the Rubik's Cube from scratch.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" id="hero-cta-start" data-goto="3">Start Learning</button>
+          <button class="btn btn-outline" id="hero-cta-notation" data-goto="2">Learn Notation</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 1: OVERVIEW -->
+    <section class="slide" data-index="1">
+      <div class="slide-inner">
+        <div class="section-header">
+          <span class="section-tag">Introduction</span>
+          <h2 class="section-title">How This Guide Works</h2>
+          <p class="section-desc">We break the solve into manageable layers. Each step builds on the last, turning chaos into order one piece at a time.</p>
+        </div>
+        <div class="overview-grid">
+          <div class="overview-card" id="overview-card-1">
+            <div class="card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+            <h3>Layer-by-Layer</h3>
+            <p>Solve the cube one horizontal layer at a time — the most intuitive method for beginners.</p>
+          </div>
+          <div class="overview-card" id="overview-card-2">
+            <div class="card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+            <h3>Visual &amp; Step-by-Step</h3>
+            <p>Each step comes with diagrams, animations, and clear algorithm notation so you never feel lost.</p>
+          </div>
+          <div class="overview-card" id="overview-card-3">
+            <div class="card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+            <h3>Practice in the Simulator</h3>
+            <p>Try each algorithm in the companion 3D simulator. Experiment, undo, and build muscle memory.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: NOTATION -->
+    <section class="slide" data-index="2">
+      <div class="slide-inner">
+        <div class="section-header">
+          <span class="section-tag">Fundamentals</span>
+          <h2 class="section-title">Cube Notation</h2>
+          <p class="section-desc">Before we start solving, learn the shorthand that describes every possible move on the cube.</p>
+        </div>
+        <div class="notation-layout">
+          <div class="notation-group" id="notation-face-moves">
+            <h3 class="notation-group-title">Face Moves</h3>
+            <p class="notation-group-desc">Each letter represents a 90° clockwise turn of that face. Add ' for counter-clockwise, or 2 for 180°.</p>
+            <div class="notation-grid">
+              <div class="notation-tile"><span class="move-letter">R</span><span class="move-label">Right</span></div>
+              <div class="notation-tile"><span class="move-letter">L</span><span class="move-label">Left</span></div>
+              <div class="notation-tile"><span class="move-letter">U</span><span class="move-label">Up</span></div>
+              <div class="notation-tile"><span class="move-letter">D</span><span class="move-label">Down</span></div>
+              <div class="notation-tile"><span class="move-letter">F</span><span class="move-label">Front</span></div>
+              <div class="notation-tile"><span class="move-letter">B</span><span class="move-label">Back</span></div>
+            </div>
+          </div>
+          <div class="notation-group" id="notation-modifiers">
+            <h3 class="notation-group-title">Modifiers</h3>
+            <p class="notation-group-desc">Combine face letters with these modifiers to describe every possible move.</p>
+            <div class="modifier-list">
+              <div class="modifier-item"><code>R</code><span>Clockwise 90° turn of the right face</span></div>
+              <div class="modifier-item"><code>R'</code><span>Counter-clockwise 90° turn ("R prime")</span></div>
+              <div class="modifier-item"><code>R2</code><span>180° turn (direction doesn't matter)</span></div>
+            </div>
+          </div>
+          <div class="notation-visual" id="notation-visual-placeholder">
+            <div class="placeholder-box"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p>// notation_diagram.png</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: STEPS (scrollable) -->
+    <section class="slide" data-index="3">
+      <div class="slide-inner dense">
+        <div class="section-header">
+          <span class="section-tag">The Method</span>
+          <h2 class="section-title">7 Steps to Solved</h2>
+          <p class="section-desc">Follow each step in order. By the end, you'll have a fully solved cube.</p>
+        </div>
+        <div class="steps-timeline">
+          <article class="step-card" id="step-1">
+            <div class="step-marker"><span class="step-number">1</span><div class="step-line"></div></div>
+            <div class="step-body">
+              <div class="step-meta"><span class="step-difficulty easy">Easy</span><span class="step-layer">First Layer</span></div>
+              <h3>White Cross</h3>
+              <p>Start by forming a plus sign (+) on the white face. Match each edge piece's second color to the center of its adjacent face.</p>
+              <div class="step-visual placeholder-box" id="step-1-visual"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p>// white_cross.gif</p></div>
+              <div class="step-tips"><h4>Tips</h4><ul><li>Always start with white — it's convention.</li><li>Hold the cube with white center on top.</li><li>Don't worry about corners yet.</li></ul></div>
+            </div>
+          </article>
+          <article class="step-card" id="step-2">
+            <div class="step-marker"><span class="step-number">2</span><div class="step-line"></div></div>
+            <div class="step-body">
+              <div class="step-meta"><span class="step-difficulty easy">Easy</span><span class="step-layer">First Layer</span></div>
+              <h3>White Corners</h3>
+              <p>Insert the four corner pieces to complete the first layer.</p>
+              <div class="step-algorithm"><h4>Key Algorithm</h4><div class="algo-display"><code>R U R' U'</code><span class="algo-name">Right Trigger</span></div></div>
+            </div>
+          </article>
+          <article class="step-card" id="step-3">
+            <div class="step-marker"><span class="step-number">3</span><div class="step-line"></div></div>
+            <div class="step-body">
+              <div class="step-meta"><span class="step-difficulty medium">Medium</span><span class="step-layer">Second Layer</span></div>
+              <h3>Second Layer Edges</h3>
+              <p>Flip the cube so white is on the bottom. Insert middle-layer edge pieces.</p>
+              <div class="step-algorithm"><h4>Key Algorithms</h4><div class="algo-display"><code>U R U' R' U' F' U F</code><span class="algo-name">Insert Right</span></div><div class="algo-display"><code>U' L' U L U F U' F'</code><span class="algo-name">Insert Left</span></div></div>
+            </div>
+          </article>
+          <article class="step-card" id="step-4">
+            <div class="step-marker"><span class="step-number">4</span><div class="step-line"></div></div>
+            <div class="step-body">
+              <div class="step-meta"><span class="step-difficulty medium">Medium</span><span class="step-layer">Last Layer</span></div>
+              <h3>Yellow Cross</h3>
+              <p>Form a yellow cross on the top face.</p>
+              <div class="step-algorithm"><h4>Key Algorithm</h4><div class="algo-display"><code>F R U R' U' F'</code><span class="algo-name">FRU</span></div></div>
+            </div>
+          </article>
+          <article class="step-card" id="step-5">
+            <div class="step-marker"><span class="step-number">5</span><div class="step-line"></div></div>
+            <div class="step-body">
+              <div class="step-meta"><span class="step-difficulty hard">Hard</span><span class="step-layer">Last Layer</span></div>
+              <h3>Yellow Face</h3>
+              <p>Orient all yellow corners so the entire top face is yellow.</p>
+              <div class="step-algorithm"><h4>Key Algorithm</h4><div class="algo-display"><code>R U R' U R U2 R'</code><span class="algo-name">Sune</span></div></div>
+            </div>
+          </article>
+          <article class="step-card" id="step-6">
+            <div class="step-marker"><span class="step-number">6</span><div class="step-line"></div></div>
+            <div class="step-body">
+              <div class="step-meta"><span class="step-difficulty hard">Hard</span><span class="step-layer">Last Layer</span></div>
+              <h3>Position Yellow Corners</h3>
+              <p>Move yellow corners to their correct positions.</p>
+              <div class="step-algorithm"><h4>Key Algorithm</h4><div class="algo-display"><code>U R U' L' U R' U' L</code><span class="algo-name">Corner Swap</span></div></div>
+            </div>
+          </article>
+          <article class="step-card" id="step-7">
+            <div class="step-marker"><span class="step-number">7</span><div class="step-line"></div></div>
+            <div class="step-body">
+              <div class="step-meta"><span class="step-difficulty hard">Hard</span><span class="step-layer">Last Layer</span></div>
+              <h3>Position Yellow Edges</h3>
+              <p>The final step! Cycle the last-layer edges into place.</p>
+              <div class="step-algorithm"><h4>Key Algorithms</h4><div class="algo-display"><code>R U' R U R U R U' R' U' R2</code><span class="algo-name">CW Cycle</span></div><div class="algo-display"><code>R2 U R U R' U' R' U' R' U R'</code><span class="algo-name">CCW Cycle</span></div></div>
+              <div class="step-complete-banner" id="step-7-banner">🎉 Congratulations — the cube is solved!</div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: ALGORITHMS -->
+    <section class="slide" data-index="4">
+      <div class="slide-inner">
+        <div class="section-header">
+          <span class="section-tag">Quick Reference</span>
+          <h2 class="section-title">Algorithm Cheat Sheet</h2>
+          <p class="section-desc">All the algorithms you need in one place. Click any algorithm to copy it.</p>
+        </div>
+        <div class="algo-table-wrap" id="algo-table">
+          <table class="algo-table">
+            <thead><tr><th>Step</th><th>Name</th><th>Algorithm</th><th>Use Case</th></tr></thead>
+            <tbody>
+              <tr><td><span class="step-badge">2</span></td><td>Right Trigger</td><td><code class="copyable" id="algo-right-trigger">R U R' U'</code></td><td>Insert white corners</td></tr>
+              <tr><td><span class="step-badge">3</span></td><td>Insert Right</td><td><code class="copyable" id="algo-insert-right">U R U' R' U' F' U F</code></td><td>Edge goes right</td></tr>
+              <tr><td><span class="step-badge">3</span></td><td>Insert Left</td><td><code class="copyable" id="algo-insert-left">U' L' U L U F U' F'</code></td><td>Edge goes left</td></tr>
+              <tr><td><span class="step-badge">4</span></td><td>FRU</td><td><code class="copyable" id="algo-fru">F R U R' U' F'</code></td><td>Yellow cross</td></tr>
+              <tr><td><span class="step-badge">5</span></td><td>Sune</td><td><code class="copyable" id="algo-sune">R U R' U R U2 R'</code></td><td>Orient yellow corners</td></tr>
+              <tr><td><span class="step-badge">6</span></td><td>Corner Swap</td><td><code class="copyable" id="algo-corner-swap">U R U' L' U R' U' L</code></td><td>Position corners</td></tr>
+              <tr><td><span class="step-badge">7</span></td><td>CW Cycle</td><td><code class="copyable" id="algo-cw-cycle">R U' R U R U R U' R' U' R2</code></td><td>Cycle edges CW</td></tr>
+              <tr><td><span class="step-badge">7</span></td><td>CCW Cycle</td><td><code class="copyable" id="algo-ccw-cycle">R2 U R U R' U' R' U' R' U R'</code></td><td>Cycle edges CCW</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: RESOURCES + FOOTER -->
+    <section class="slide" data-index="5">
+      <div class="slide-inner dense">
+        <div class="section-header">
+          <span class="section-tag">Go Further</span>
+          <h2 class="section-title">Additional Resources</h2>
+          <p class="section-desc">Guides, diagrams, and reference material to deepen your understanding.</p>
+        </div>
+        <div class="resources-grid">
+          <div class="resource-card" id="resource-1">
+            <div class="resource-thumb placeholder-box"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p>// resource_img</p></div>
+            <div class="resource-info"><span class="resource-type">Guide</span><h3>Beginner's Full Tutorial</h3><p>A comprehensive walkthrough for absolute beginners.</p></div>
+          </div>
+          <div class="resource-card" id="resource-2">
+            <div class="resource-thumb placeholder-box"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p>// resource_img</p></div>
+            <div class="resource-info"><span class="resource-type">Reference</span><h3>OLL Algorithms</h3><p>All 57 OLL cases with diagrams.</p></div>
+          </div>
+          <div class="resource-card" id="resource-3">
+            <div class="resource-thumb placeholder-box"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p>// resource_img</p></div>
+            <div class="resource-info"><span class="resource-type">Reference</span><h3>PLL Algorithms</h3><p>All 21 PLL cases for permuting the last layer.</p></div>
+          </div>
+          <div class="resource-card" id="resource-4">
+            <div class="resource-thumb placeholder-box"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p>// resource_img</p></div>
+            <div class="resource-info"><span class="resource-type">Diagram</span><h3>Color Scheme &amp; Notation Map</h3><p>Visual reference for color placement and notation.</p></div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <div class="footer-inner">
+          <div class="footer-brand"><span class="cube-icon"><span class="mini-face top"></span><span class="mini-face right"></span><span class="mini-face front"></span></span><span class="logo-text">Cube<span class="logo-dot">Guide</span></span></div>
+          <p class="footer-copy">Companion guide for the Rubik's Cube Simulator.</p>
+        </div>
+      </footer>
+    </section>
+
+  </div>
+
+  <!-- SLIDE INDICATORS -->
+  <div class="slide-indicators" id="slide-indicators"></div>
+
+  <!-- ARROW BUTTONS -->
+  <div class="slide-arrows left"><button class="arrow-btn" id="arrow-prev" aria-label="Previous slide">‹</button></div>
+  <div class="slide-arrows right"><button class="arrow-btn" id="arrow-next" aria-label="Next slide">›</button></div>
+
+  <div class="toast" id="toast" aria-live="polite">Copied to clipboard!</div>
+  <script src="index.js"></script>
+</body>
+</html>
