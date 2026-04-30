@@ -204,7 +204,7 @@ const SimulatorPage = () => {
 
     solveStackRef.current = [];
     queue.setSolveDepth(0);
-  }, [isSolved, queue.queueActive, queue, currentUser, timer.timerRunning, timer.timerMs, cubeSize]);
+  }, [isSolved, queue.queueActive, queue, currentUser, timer.timerRunning, timer.timerMs, cubeSize, refreshUserStats]);
 
   // Reset the solve-saved flag when the cube becomes unsolved (new solve starts)
   useEffect(() => {
