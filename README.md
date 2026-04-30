@@ -118,6 +118,10 @@ The project is configured for **Vercel**:
 - `api/v1/` routes map to serverless functions
 - `vercel.json` configures build output and API rewrites
 
+## Workflow Quality
+
+Sprint planning, Jira ticket quality, PR review expectations, and documentation standards are tracked in [`docs/sprint-3-workflow-quality-plan.md`](docs/sprint-3-workflow-quality-plan.md).
+
 ## Tech Stack
 
 | Layer | Technology |

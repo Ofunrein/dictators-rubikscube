@@ -66,10 +66,10 @@ export function mergeMoveIntoSolveStack(stack, move) {
 export function expandMoveToken(move) {
   const token = move?.trim();
   if (!token) return [];
-  if (/^[URFDLB]2$/.test(token)) {
+  if (/^[URFDLBMES]2$/.test(token)) {
     return [token[0], token[0]];
   }
-  if (/^[URFDLB]'?$/.test(token)) {
+  if (/^[URFDLBMES]'?$/.test(token)) {
     return [token];
   }
   return [];
