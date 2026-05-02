@@ -63,7 +63,7 @@ backend/vendor/
 ### Global app state (contexts)
 
 - `frontend/src/context/ThemeContext.jsx` — dark/light mode, shared across all pages
-- `frontend/src/context/AuthContext.jsx`  — login/logout/currentUser, mock until DB connected
+- `frontend/src/context/AuthContext.jsx`  — login/logout/currentUser, backed by Supabase Auth
 
 ### Shared cube state and move logic
 
@@ -159,12 +159,11 @@ A guided simulator that walks users through a solve method one step at a time.
 - Introduced `--dictator-red` CSS custom property mapping to a WCAG AA-compliant red value used across button and accent styles.
 - Heavy state updates in leaderboard and profile wrapped in `startTransition` to keep Interaction to Next Paint (INP) low.
 
-## Auth and Theme System
+## Auth, Theme, and Database
 
-Both contexts are mounted in `main.jsx` above the router so every route shares
-the same state. The auth functions (login, signup, logout) are stubs — they set
-local state with mock data. When the database is ready, replace only those
-function bodies in `AuthContext.jsx`; no page components need to change.
+Both contexts are mounted in `main.jsx` above the router so every route shares the same state. Auth (login, signup, logout) is backed by Supabase Auth via `frontend/src/lib/auth.js`. Leaderboard and profile data come from Supabase Postgres via `frontend/src/lib/stats.js`. The Supabase client is initialized in `frontend/src/lib/supabase.js` using `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from `frontend/.env`.
+
+The `ThemeContext` persists dark/light preference to `localStorage` under key `simulator-theme`.
 
 ## Why The Repo Is Split This Way
 

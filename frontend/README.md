@@ -36,7 +36,11 @@ frontend/src/
                         AuthModal.jsx   — login/signup modal overlay
   context/            global React contexts shared by all pages
                         ThemeContext.jsx — dark/light toggle, localStorage persistence
-                        AuthContext.jsx  — login/logout state (mock until DB ready)
+                        AuthContext.jsx  — login/logout state via Supabase Auth
+  lib/                Supabase integration
+                        supabase.js     — Supabase client
+                        auth.js         — sign up, log in, log out, session
+                        stats.js        — leaderboard and profile data queries
   cube/               shared cube model and move logic (also imported by backend)
   net/api.js          frontend API client
   pages/simulator/    simulator page, hooks, controls, and helpers
