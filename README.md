@@ -177,13 +177,13 @@ the-dictators/
                     │   http://localhost:5400           │
                     └───────────┬─────────────────────┘
                                 │
-              ┌─────────────────┴──────────────────────────────────┐
-              │                          │                          │
-       Landing Page       ┌─────────────┴──────────────┐    ┌──────┴───────────────┐
-    (components/*.jsx)    │                             │    │  LeaderboardPage /   │
-                          │                    Step-by-Step  │    ProfilePage       │
-                   Simulator Page              Guide Page    └──────┬───────────────┘
-              (pages/simulator/*.jsx)   (StepByStepPage.jsx)        │
+              ┌─────────────────┴────────────────────────────────────────────┐
+              │                          │                 │              │
+       Landing Page       ┌─────────────┴──────────────┐  LearnPage  ┌──────┴───────────────┐
+    (components/*.jsx)    │                             │ (LearnPage  │  LeaderboardPage /   │
+                          │                    Step-by-Step  .jsx)    │    ProfilePage       │
+                   Simulator Page              Guide Page             └──────┬───────────────┘
+              (pages/simulator/*.jsx)   (StepByStepPage.jsx)                 │
                           │                     │                   │
                ┌──────────┴──────────┐          │                   │
                │                     │          │                   │
