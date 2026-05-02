@@ -13,8 +13,10 @@ An interactive, browser-based 3D Rubik's Cube platform with real-time manipulati
 | **Full Move Notation** | Face turns (U/D/L/R/F/B), slices (M/E/S), inner slices (r/l/u/d/f/b for 4x4) |
 | **Tutorial System** | Step-by-step learning: cross, F2L, OLL, PLL |
 | **Step-by-Step Guide** | Interactive solving guide with GIF animations, algorithm buttons, and live 3D cube |
-| **Leaderboard** | 6 boards (2x2/3x3 × fastest/avg/solves) with result count dropdown |
-| **Profile** | Per-size stats with rank display |
+| **Leaderboard** | 6 boards (2x2/3x3 × fastest/avg/solves) with result count dropdown — live Supabase data |
+| **Profile** | Per-size stats with rank display — live Supabase data |
+| **Authentication** | Sign up, log in, log out via Supabase Auth |
+| **Database** | Supabase Postgres — users, solve stats, leaderboard rankings |
 | **Algorithm Reference** | Quick-apply sequences (Sexy Move, Sune, U-Perm, etc.) |
 | **REST API** | 5 endpoints: health, solved state, apply move, scramble, solve |
 | **C++ WASM Solver** | Eric's CFOP solver compiled to WebAssembly — handles 3x3 |
@@ -40,7 +42,14 @@ npm install
 npm run dev
 ```
 
-Opens the active frontend at `http://localhost:5400`. Navigate to `/simulator` for the cube.
+Before running, make sure `frontend/.env` exists with your Supabase credentials:
+
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
+```
+
+See `frontend/.env.example` for the required variables. Get the values from the team's Supabase project.
 
 ## Start Here
 
@@ -104,6 +113,10 @@ the-dictators/
 │       │   ├── cubeModel.js          State format, face order, validation
 │       │   ├── moves.js              Size-aware move engine (all rotations)
 │       │   └── CubeState.js          State wrapper class
+│       ├── lib/                      Supabase integration
+│       │   ├── supabase.js           Supabase client init
+│       │   ├── auth.js               Sign up, log in, log out, session
+│       │   └── stats.js              Leaderboard and profile data queries
 │       ├── net/api.js                Frontend API client (fetch calls to backend)
 │       ├── pages/simulator/          The simulator page
 │       │   ├── SimulatorPage.jsx     Main page — wires everything together
@@ -261,6 +274,7 @@ The project is configured for **Vercel**:
 | API | Node.js, OpenAPI 3.1, Vercel Serverless Functions |
 | 3x3 Solver | C++17 compiled to WebAssembly via Emscripten |
 | NxN Solver | Python 3 (vendored rubiks-cube-NxNxN-solver) |
+| Database | Supabase (Postgres + Auth) |
 | Version Control | Git, Bitbucket |
 | Project Management | Jira |
 | Documentation | Confluence |
