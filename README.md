@@ -2,6 +2,8 @@
 
 An interactive, browser-based 3D Rubik's Cube platform with real-time manipulation, guided tutorials, and a full-stack API.
 
+![Demo](docs/demo.gif)
+
 ## Features
 
 | Feature | Description |
