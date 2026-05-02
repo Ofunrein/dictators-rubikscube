@@ -113,8 +113,10 @@ the-dictators/
 │   └── src/
 │       ├── components/               Landing page sections (Hero, Features, Team, etc.)
 │       ├── cube/                     Shared cube model — used by BOTH frontend and backend
-│       │   ├── cubeModel.ts          State format, face order, validation (TypeScript)
-│       │   ├── moves.ts              Size-aware move engine (TypeScript)
+│       │   ├── cubeModel.ts          State format, face order, validation (TypeScript — frontend)
+│       │   ├── cubeModel.js          Same module in JS — used by the Node.js backend at runtime
+│       │   ├── moves.ts              Size-aware move engine (TypeScript — frontend)
+│       │   ├── moves.js              Same module in JS — used by the Node.js backend at runtime
 │       │   └── CubeState.js          State wrapper class
 │       ├── lib/                      Supabase integration
 │       │   ├── supabase.js           Supabase client init
