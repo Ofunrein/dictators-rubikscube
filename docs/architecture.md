@@ -118,7 +118,7 @@ frontend/src/pages/simulator/
 | / | App.jsx | Landing page with GSAP animations |
 | /simulator | pages/simulator/SimulatorPage.jsx | Full interactive simulator |
 | /step-by-step | pages/StepByStepPage.jsx | Guided solving with live cube |
-| /learn | pages/LearnPage.jsx | Learning modules |
+| /learn | pages/LearnPage.jsx | Eric's learning modules |
 | /leaderboard | pages/LeaderboardPage.jsx | 6 leaderboards with dropdown |
 | /profile | pages/ProfilePage.jsx | Per-size stats + ranks |
 
