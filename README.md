@@ -33,7 +33,7 @@ An interactive, browser-based 3D Rubik's Cube platform with real-time manipulati
 | Simulator | ![Simulator](docs/screenshots/simulator.png) |
 | Step-by-Step Guide | ![Guide](docs/screenshots/step-guide-solving.png) |
 | Leaderboard | ![Leaderboard](docs/screenshots/leaderboard.png) |
-| Learn | ![Learn](docs/screenshots/learn.png) |
+| Learn | ![Learn](docs/screenshots/learn-page.png) |
 | Profile | ![Profile](docs/screenshots/profile.png) |
 
 ## Quick Start
