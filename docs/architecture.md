@@ -14,7 +14,7 @@ frontend/
   -> Inner pages: /learn, /leaderboard, /profile (pages/)
   -> Simulator page (pages/simulator/)
   -> Shared cube model and move engine (src/cube/)
-  -> Frontend API client (src/net/api.js)
+  -> Frontend API client (src/net/api.ts)
   -> Global contexts (src/context/):
        ThemeContext  — dark/light toggle, persisted to localStorage
        AuthContext   — login/logout state, mock data until DB ready
