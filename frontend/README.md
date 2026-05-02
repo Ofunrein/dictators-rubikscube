@@ -42,7 +42,7 @@ frontend/src/
                         auth.js         — sign up, log in, log out, session
                         stats.js        — leaderboard and profile data queries
   cube/               shared cube model and move logic (also imported by backend)
-  net/api.js          frontend API client
+  net/api.ts          frontend API client (TypeScript)
   pages/simulator/    simulator page, hooks, controls, and helpers
   pages/              inner pages: LearnPage, LeaderboardPage, ProfilePage
   utils/              shared frontend utilities

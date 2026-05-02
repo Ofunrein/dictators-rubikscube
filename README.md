@@ -190,10 +190,10 @@ the-dictators/
             │              (useCubeControls)                              │
             └──────────┬──────────┘    │                                  │
                        │               │                                  │
-                cube/moves.js ◄────────┘                                  │
+                cube/moves.ts ◄────────┘                                  │
              (shared move engine)                                          │
                        │                                                   │
-                net/api.js                                                 │
+                net/api.ts                                                 │
             (calls the backend)                                            │
                        │                                                   │
          ┌─────────────┴──────────────────────────────────────────────────┘
