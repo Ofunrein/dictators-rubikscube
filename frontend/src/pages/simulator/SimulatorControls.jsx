@@ -94,6 +94,7 @@ export default function SimulatorControls({
               return (
                 <button
                   key={sizeOption}
+                  data-testid={`size-btn-${sizeOption}x${sizeOption}`}
                   onClick={() => onSizeChange(sizeOption)}
                   disabled={interactionLocked}
                   className={`py-1.5 rounded-lg border font-mono text-[11px] font-bold transition-all
@@ -117,6 +118,7 @@ export default function SimulatorControls({
 
         <div className="grid grid-cols-3 gap-1">
           <button
+            data-testid="scramble-btn"
             onClick={onScramble}
             disabled={interactionLocked}
             className={`flex items-center justify-center gap-1 rounded-lg px-1 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide transition-colors min-w-0
@@ -129,6 +131,7 @@ export default function SimulatorControls({
             <span className="truncate">Scramble</span>
           </button>
           <button
+            data-testid="solve-btn"
             onClick={onSolve}
             disabled={actionsDisabled}
             className={`flex items-center justify-center gap-1 rounded-lg border px-1 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide transition-all min-w-0
@@ -141,6 +144,7 @@ export default function SimulatorControls({
             <span className="truncate">Solve</span>
           </button>
           <button
+            data-testid="reset-btn"
             onClick={onReset}
             disabled={interactionLocked}
             className={`flex items-center justify-center gap-1 rounded-lg border px-1 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide transition-all min-w-0
@@ -172,6 +176,7 @@ export default function SimulatorControls({
                 First move starts timer
               </p>
               <button
+                data-testid="timer-cancel-btn"
                 onClick={onTimerReset}
                 className="flex items-center gap-1 rounded-full border border-[--sim-border] bg-[--sim-kbd] px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide sim-text/70 hover:sim-text active:scale-95 shrink-0"
               >
@@ -199,6 +204,7 @@ export default function SimulatorControls({
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
+                  data-testid="timer-reset-btn"
                   onClick={onTimerReset}
                   disabled={interactionLocked && !timerPrimed}
                   className={`flex items-center gap-1 rounded-full border px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide transition-all
@@ -211,6 +217,7 @@ export default function SimulatorControls({
                   Reset
                 </button>
                 <button
+                  data-testid="timer-action-btn"
                   onClick={onTimerAction}
                   disabled={interactionLocked || timerPrimed}
                   className={`flex items-center gap-1 rounded-full px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-wide transition-all
@@ -262,6 +269,7 @@ export default function SimulatorControls({
 
           <div className="mt-3 flex items-center justify-center gap-3">
             <button
+              data-testid="timer-reset-btn"
               onClick={onTimerReset}
               disabled={interactionLocked && !timerPrimed}
               className={`flex items-center gap-1.5 rounded-full border px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider transition-all
@@ -274,6 +282,7 @@ export default function SimulatorControls({
               {timerPrimed || timerRunning ? 'Cancel' : 'Reset'}
             </button>
             <button
+              data-testid="timer-action-btn"
               onClick={onTimerAction}
               disabled={interactionLocked || timerPrimed}
               className={`flex items-center gap-1.5 rounded-full px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-wider transition-all

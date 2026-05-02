@@ -74,6 +74,7 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
   return (
     <div
       ref={overlayRef}
+      data-testid="auth-modal"
       onClick={handleOverlayClick}
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
     >
@@ -106,6 +107,7 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
             {['login', 'signup'].map((m) => (
               <button
                 key={m}
+                data-testid={`auth-tab-${m}`}
                 onClick={() => switchMode(m)}
                 className={`flex-1 py-2 rounded-md font-mono text-xs uppercase tracking-widest transition-all ${
                   mode === m
@@ -125,6 +127,7 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
                   Username
                 </label>
                 <input
+                  data-testid="auth-username-input"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -140,6 +143,7 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
                 Email
               </label>
               <input
+                data-testid="auth-email-input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -154,6 +158,7 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
                 Password
               </label>
               <input
+                data-testid="auth-password-input"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -168,6 +173,7 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
             )}
 
             <button
+              data-testid="auth-submit-btn"
               type="submit"
               disabled={submitting}
               className="mt-2 w-full bg-dictator-red hover:bg-dictator-deep text-white font-mono text-xs uppercase tracking-widest py-3 rounded-lg transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"

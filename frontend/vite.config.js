@@ -19,6 +19,9 @@ const API_PORT = process.env.VITE_API_PORT || 5200;
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  test: {
+    exclude: ['e2e/**', 'node_modules/**'],
+  },
   server: {
     port: Number(process.env.VITE_DEV_PORT || 5400),
     strictPort: true,
