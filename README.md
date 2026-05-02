@@ -177,23 +177,23 @@ the-dictators/
                     │   http://localhost:5400           │
                     └───────────┬─────────────────────┘
                                 │
-              ┌─────────────────┴──────────────────────────────────┐
-              │                          │                          │
-       Landing Page       ┌─────────────┴──────────────┐    ┌──────┴───────────────┐
-    (components/*.jsx)    │                             │    │  LeaderboardPage /   │
-                          │                    Step-by-Step  │    ProfilePage       │
-                   Simulator Page              Guide Page    └──────┬───────────────┘
-              (pages/simulator/*.jsx)   (StepByStepPage.jsx)        │
-                          │                     │                   │
-               ┌──────────┴──────────┐          │                   │
-               │                     │          │                   │
-         3D Cube Rendering     Move Buttons /   │                   │
-         (InteractiveCube)     Keyboard Input   │                   │
-               │              (useCubeControls) │                   │
-               └──────────┬──────────┘          │                   │
-                          │                     │                   │
-                   cube/moves.js ◄──────────────┘                   │
-                (shared move engine)                                 │
+              ┌─────────────────┴──────────────────────────────────────────┐
+              │                          │                  │              │
+       Landing Page       ┌─────────────┴──────────────┐  LearnPage  ┌──────┴───────────────┐
+    (components/*.jsx)    │                             │  (LearnPage │  LeaderboardPage /   │
+                          │                    Step-by-Step  .jsx)    │    ProfilePage       │
+                   Simulator Page              Guide Page    │         └──────┬───────────────┘
+              (pages/simulator/*.jsx)   (StepByStepPage.jsx) │                │
+                          │                     │            │                │
+               ┌──────────┴──────────┐          │            │                │
+               │                     │          │            │                │
+         3D Cube Rendering     Move Buttons /   │            │                │
+         (InteractiveCube)     Keyboard Input   │            │                │
+               │              (useCubeControls) │            │                │
+               └──────────┬──────────┘          │            │                │
+                          │                     │            │                │
+                   cube/moves.js ◄──────────────┴────────────┘                │
+                (shared move engine)                                           │
                           │                                          │
                    net/api.js                                        │
                (calls the backend)                                   │
