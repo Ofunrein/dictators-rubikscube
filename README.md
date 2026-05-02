@@ -19,7 +19,7 @@ An interactive, browser-based 3D Rubik's Cube platform with real-time manipulati
 | **Database** | Supabase Postgres — users, solve stats, leaderboard rankings |
 | **Algorithm Reference** | Quick-apply sequences (Sexy Move, Sune, U-Perm, etc.) |
 | **REST API** | 5 endpoints: health, solved state, apply move, scramble, solve |
-| **C++ WASM Solver** | Eric's CFOP solver compiled to WebAssembly — handles 3x3 |
+| **C++ WASM Solver** | C++ CFOP solver compiled to WebAssembly — handles 3x3 |
 | **Python NxN Solver** | Vendored solver for 2x2 and 4x4 cubes |
 | **Branded Landing Page** | GSAP animations, React Three Fiber hero, responsive design |
 | **Timer & History** | Move counting, solve timing, full move log |
@@ -135,7 +135,7 @@ the-dictators/
 │       ├── pages/StepByStepPage.jsx      Guide + live cube side-by-side
 │       ├── pages/LeaderboardPage.jsx     6 leaderboards (2x2/3x3 × 3 stats)
 │       ├── pages/ProfilePage.jsx         Per-size stats with rank display
-│       ├── pages/LearnPage.jsx           Learning modules (Eric Solano)
+│       ├── pages/LearnPage.jsx           Learning modules
 │       └── utils/                    Shared utilities
 │
 ├── backend/
@@ -153,7 +153,7 @@ the-dictators/
 │   │       ├── pythonNotation.js     Notation translation
 │   │       ├── nxn_solver_bridge.py  Python subprocess
 │   │       └── solvePipeline.js      Replay validation
-│   ├── src/cube/                     C++ solver source (Eric)
+│   ├── src/cube/                     C++ solver source
 │   │   ├── PuzzleCube.h/.cpp        Cube state + rotation logic
 │   │   ├── CubeOperations.cpp       CFOP solving algorithm (872 lines)
 │   │   └── solver_bridge.cpp        Emscripten/WASM bridge
