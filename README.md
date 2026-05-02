@@ -172,42 +172,40 @@ the-dictators/
                     │   http://localhost:5400           │
                     └───────────┬─────────────────────┘
                                 │
-              ┌─────────────────┴──────────────────┐
-              │                                     │
-       Landing Page              ┌──────────────────┴──────────────────┐
-    (components/*.jsx)           │                                      │
-              │           Simulator Page              Step-by-Step Guide Page
-              │      (pages/simulator/*.jsx)         (pages/StepByStepPage.jsx)
-              │                  │                                      │
-              │       ┌──────────┴──────────┐                          │
-              │       │                      │                          │
-              │  3D Cube Rendering     Move Buttons /                   │
-              │  (InteractiveCube)     Keyboard Input                   │
-              │       │              (useCubeControls)                  │
-              │       │                      │                          │
-              │       └──────────┬──────────┘                          │
-              │                  │                                      │
-              │           cube/moves.js ◄────────────────────────────-─┘
-              │        (shared move engine)
-              │                  │
-              │           net/api.js
-              │       (calls the backend)
-              │                  │
-              └─────────────────┬┘
-                                │
-                    ┌───────────┼──────────────────────────────┐
-                    │           │                               │
-             ┌──────┴──────┐   │                    ┌──────────┴──────────┐
-             │   API        │   │                    │      Supabase       │
-             │  routes.js  │   │                    │  (Auth + Postgres)  │
-             └──────┬──────┘   │                    └──────────┬──────────┘
-                    │           │                               │
-        ┌───────────┼───────────┤            ┌──────────────────┴──────────────────┐
-        │           │           │            │                                      │
-  3x3 Solve   2x2/4x4    Scramble      lib/auth.js                          lib/stats.js
- (C++ WASM)   (Python)    (WASM)    (sign up/login)                   (leaderboard/profile)
-        │           │           │
-        └───────────┼───────────┘
+              ┌─────────────────┴──────────────────────────────────┐
+              │                          │                          │
+       Landing Page       ┌─────────────┴──────────────┐    ┌──────┴───────────────┐
+    (components/*.jsx)    │                             │    │  LeaderboardPage /   │
+                          │                    Step-by-Step  │    ProfilePage       │
+                   Simulator Page              Guide Page    └──────┬───────────────┘
+              (pages/simulator/*.jsx)   (StepByStepPage.jsx)        │
+                          │                     │                   │
+               ┌──────────┴──────────┐          │                   │
+               │                     │          │                   │
+         3D Cube Rendering     Move Buttons /   │                   │
+         (InteractiveCube)     Keyboard Input   │                   │
+               │              (useCubeControls) │                   │
+               └──────────┬──────────┘          │                   │
+                          │                     │                   │
+                   cube/moves.js ◄──────────────┘                   │
+                (shared move engine)                                 │
+                          │                                          │
+                   net/api.js                                        │
+               (calls the backend)                                   │
+                          │                                          │
+             ┌────────────┴────────────────────────────────────┐    │
+             │                                                  │    │
+      ┌──────┴──────┐                               ┌──────────┴────┴────────┐
+      │   API        │                               │       Supabase         │
+      │  routes.js  │                               │   (Auth + Postgres)    │
+      └──────┬──────┘                               └──────────┬─────────────┘
+             │                                                  │
+  ┌──────────┼───────────┐                    ┌────────────────┴────────────────┐
+  │          │           │                    │                                  │
+3x3 Solve  2x2/4x4  Scramble           lib/auth.js                       lib/stats.js
+(C++ WASM) (Python)  (WASM)         (sign up/login)               (leaderboard/profile)
+  │          │           │
+  └──────────┼───────────┘
                     │
              solvePipeline
           (replay validation)
