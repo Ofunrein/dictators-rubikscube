@@ -13,6 +13,7 @@ An interactive, browser-based 3D Rubik's Cube platform with real-time manipulati
 | **Step-by-Step Guide** | Interactive solving guide with GIF animations, algorithm buttons, and live 3D cube |
 | **Leaderboard** | 6 boards (2x2/3x3 × fastest/avg/solves) with result count dropdown — live Supabase data |
 | **Profile** | Per-size stats with rank display — live Supabase data |
+| **Learn** | Guided learning modules with visual beginner guide and notation reference |
 | **Authentication** | Sign up, log in, log out via Supabase Auth |
 | **Database** | Supabase Postgres — users, solve stats, leaderboard rankings |
 | **Algorithm Reference** | Quick-apply sequences (Sexy Move, Sune, U-Perm, etc.) |
@@ -32,6 +33,8 @@ An interactive, browser-based 3D Rubik's Cube platform with real-time manipulati
 | Simulator | ![Simulator](docs/screenshots/simulator.png) |
 | Step-by-Step Guide | ![Guide](docs/screenshots/step-guide-solving.png) |
 | Leaderboard | ![Leaderboard](docs/screenshots/leaderboard.png) |
+| Learn | ![Learn](docs/screenshots/learn.png) |
+| Profile | ![Profile](docs/screenshots/profile.png) |
 
 ## Quick Start
 
