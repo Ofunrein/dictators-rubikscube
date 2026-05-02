@@ -270,7 +270,7 @@ The project is configured for **Vercel**:
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 18, Vite, Tailwind CSS, React Three Fiber, Three.js |
-| TypeScript | Core engine — `cubeModel.ts`, `moves.ts`, `api.ts` |
+| Language | JavaScript + TypeScript (core engine: `cubeModel.ts`, `moves.ts`, `api.ts`) |
 | Animations | GSAP, ScrollTrigger, eased quaternion interpolation |
 | API | Node.js, OpenAPI 3.1, Vercel Serverless Functions |
 | 3x3 Solver | C++17 compiled to WebAssembly via Emscripten |
