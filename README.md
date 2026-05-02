@@ -197,21 +197,22 @@ the-dictators/
               │                  │
               └─────────────────┬┘
                                 │
-                         ┌──────┴──────┐
-                         │   API       │
-                         │  routes.js  │
-                         └──────┬──────┘
-                                │
-                    ┌───────────┼───────────┐
-                    │           │            │
-              3x3 Solve    2x2/4x4     Scramble
-             (C++ WASM)    (Python)     (WASM)
-            wasmSolver   pythonNxN    wasmSolver
-                    │           │            │
-                    └───────────┼───────────┘
-                                │
-                         solvePipeline
-                      (replay validation)
+                    ┌───────────┼──────────────────────────────┐
+                    │           │                               │
+             ┌──────┴──────┐   │                    ┌──────────┴──────────┐
+             │   API        │   │                    │      Supabase       │
+             │  routes.js  │   │                    │  (Auth + Postgres)  │
+             └──────┬──────┘   │                    └──────────┬──────────┘
+                    │           │                               │
+        ┌───────────┼───────────┤            ┌──────────────────┴──────────────────┐
+        │           │           │            │                                      │
+  3x3 Solve   2x2/4x4    Scramble      lib/auth.js                          lib/stats.js
+ (C++ WASM)   (Python)    (WASM)    (sign up/login)                   (leaderboard/profile)
+        │           │           │
+        └───────────┼───────────┘
+                    │
+             solvePipeline
+          (replay validation)
 ```
 
 ## API Endpoints
