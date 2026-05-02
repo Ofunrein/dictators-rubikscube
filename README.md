@@ -113,14 +113,14 @@ the-dictators/
 │   └── src/
 │       ├── components/               Landing page sections (Hero, Features, Team, etc.)
 │       ├── cube/                     Shared cube model — used by BOTH frontend and backend
-│       │   ├── cubeModel.js          State format, face order, validation
-│       │   ├── moves.js              Size-aware move engine (all rotations)
+│       │   ├── cubeModel.ts          State format, face order, validation (TypeScript)
+│       │   ├── moves.ts              Size-aware move engine (TypeScript)
 │       │   └── CubeState.js          State wrapper class
 │       ├── lib/                      Supabase integration
 │       │   ├── supabase.js           Supabase client init
 │       │   ├── auth.js               Sign up, log in, log out, session
 │       │   └── stats.js              Leaderboard and profile data queries
-│       ├── net/api.js                Frontend API client (fetch calls to backend)
+│       ├── net/api.ts                Frontend API client — typed request/response shapes (TypeScript)
 │       ├── pages/simulator/          The simulator page
 │       │   ├── SimulatorPage.jsx     Main page — wires everything together
 │       │   ├── InteractiveCube.jsx   3D cube (Three.js / React Three Fiber)
@@ -270,6 +270,7 @@ The project is configured for **Vercel**:
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 18, Vite, Tailwind CSS, React Three Fiber, Three.js |
+| TypeScript | Core engine — `cubeModel.ts`, `moves.ts`, `api.ts` |
 | Animations | GSAP, ScrollTrigger, eased quaternion interpolation |
 | API | Node.js, OpenAPI 3.1, Vercel Serverless Functions |
 | 3x3 Solver | C++17 compiled to WebAssembly via Emscripten |
