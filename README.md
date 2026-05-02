@@ -203,10 +203,10 @@ the-dictators/
   │  routes.js  │                          │   (Auth + Postgres)    │
   └──────┬──────┘                          └───────────┬────────────┘
          │                                              │
-  ┌──────┴──────────┐                    ┌─────────────┴─────────────┐
-  │                 │                    │                             │
-3x3 Solve      2x2/4x4              lib/auth.js                 lib/stats.js
-(C++ WASM)  Scramble/(Python)    (sign up/login)         (leaderboard/profile)
+  ┌──────┴──────────┐                         ┌──────────────┴──────────────┐
+  │                 │                         │                             │
+3x3 Solve      2x2/4x4                   lib/auth.js                 lib/stats.js
+(C++ WASM)  Scramble/(Python)          (sign up/login)         (leaderboard/profile)
   │                 │
   └────────┬────────┘
            │
