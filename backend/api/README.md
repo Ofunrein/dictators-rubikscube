@@ -1,6 +1,6 @@
-# API Scaffold (Sprint 2)
+# Rubik's API
 
-This folder contains the first API-integration scaffold so frontend can wire against a stable backend contract before full backend implementation lands.
+This folder contains the contract-first backend for cube operations, solver orchestration, AI coaching, and persistence contracts.
 
 ## What is actually live right now
 
@@ -23,7 +23,7 @@ These pieces are actively used by the current app:
 
 ## What is not the live app path
 
-- `backend/api/src/mockServer.js`
+- `backend/api/src/mockServer.ts`
   - example/mock server only
 - `frontend-legacy/`
   - older prototype, not the app started by root `npm run dev`
@@ -47,43 +47,70 @@ When the user presses **Solve** in the live simulator, the call chain is:
 
 That final C++ call is the key proof that Eric's solver code is the thing being used for the solved-state response.
 
-## What is included
+## Stack
 
-1. `openapi.yaml` (OpenAPI 3.1 contract with request/response/error schemas and examples)
-2. Example payloads for every endpoint (embedded in `components.examples` and referenced from operations)
-3. Spec-driven mock server (`src/mockServer.js`)
-4. Validation skeleton server with route handlers (`src/server.js`)
+- Node HTTP route dispatcher for active local API
+- Shared frontend cube model and move engine
+- WASM/Python solver bridges
+- Prisma/Postgres schema and auth route implementation files for persistence work
+- OpenAPI contract and request validation helpers
 
 ## Endpoints
+
+Cube routes:
 
 - `GET /v1/health`
 - `GET /v1/cube/state/solved`
 - `POST /v1/cube/moves/apply`
 - `POST /v1/cube/scramble`
-- `POST /v1/cube/solve` (mocked response shape)
+- `POST /v1/cube/solve`
 
-## Run
+AI coach routes:
+
+- `POST /v1/ai/help`
+- `POST /v1/ai/move/validate`
+
+Auth routes:
+
+- `POST /v1/auth/register`
+- `POST /v1/auth/login`
+- `POST /v1/auth/refresh`
+- `POST /v1/auth/logout`
+- `GET /v1/auth/me`
+
+Persistence routes:
+
+- `GET/POST /v1/cube-sessions`
+- `GET/PATCH /v1/cube-sessions/:id`
+- `POST /v1/cube-sessions/:id/complete`
+- `GET /v1/solve-records`
+- `GET /v1/stats/summary`
+
+## Local setup
 
 ```bash
 cd backend/api
-npm run mock   # OpenAPI example server on :4010
-npm run serve  # Validation + route skeleton server on :5200
+cp .env.example .env
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run serve  # active local API on :5200
 ```
 
-From repo root you can also run API + frontend together:
+From repo root, run frontend + backend together:
 
 ```bash
+npm run setup
 npm run dev
 ```
 
-Optional ports:
+## Contracts and schemas
 
-```bash
-MOCK_PORT=5000 npm run mock
-API_PORT=5001 npm run serve
-```
+- API contract: `openapi.yaml`
+- Prisma schema: `prisma/schema.prisma`
+- Initial migration: `prisma/migrations/20260415120000_init/migration.sql`
 
 ## Notes
 
-- `openapi.yaml` is stored in JSON-compatible YAML so it can be loaded directly by Node without extra parser dependencies.
-- Move application and scramble state generation reuse the active `frontend/` move logic for contract parity during this scaffold phase.
+- Move application and scramble state generation reuse the active `frontend/` move logic for contract parity.
+- AI coach routes are exposed through the same `/v1` and `/api/v1` adapters as cube routes.

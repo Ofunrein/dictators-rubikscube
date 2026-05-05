@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CubeSessionStatus {
+  in_progress
+  completed
+  abandoned
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  username     String         @unique
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  lastLoginAt  DateTime?      @map("last_login_at")
+  credentials  UserCredential?
+  authSessions AuthSession[]
+  cubeSessions CubeSession[]
+  solveRecords SolveRecord[]
+
+  @@map("users")
+}
+
+model UserCredential {
+  userId            String   @id @map("user_id")
+  passwordHash      String   @map("password_hash")
+  passwordUpdatedAt DateTime @default(now()) @map("password_updated_at")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_credentials")
+}
+
+model AuthSession {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  expiresAt        DateTime  @map("expires_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  lastSeenAt       DateTime? @map("last_seen_at")
+  revokedAt        DateTime? @map("revoked_at")
+  userAgent        String?   @map("user_agent")
+  ipAddress        String?   @map("ip_address")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("auth_sessions")
+}
+
+model CubeSession {
+  id          String            @id @default(cuid())
+  userId      String            @map("user_id")
+  title       String?
+  status      CubeSessionStatus @default(in_progress)
+  cubeState   Json              @map("cube_state_json")
+  moveHistory Json              @map("move_history_json")
+  scramble    Json              @map("scramble_json")
+  timerMs     Int               @default(0) @map("timer_ms")
+  startedAt   DateTime          @default(now()) @map("started_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  completedAt DateTime?         @map("completed_at")
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  solveRecord SolveRecord?
+
+  @@index([userId, status])
+  @@index([userId, updatedAt])
+  @@map("cube_sessions")
+}
+
+model SolveRecord {
+  id              String       @id @default(cuid())
+  userId          String       @map("user_id")
+  sourceSessionId String?      @unique @map("source_session_id")
+  mode            String       @default("practice")
+  durationMs      Int          @map("duration_ms")
+  moveCount       Int          @map("move_count")
+  scramble        Json         @map("scramble_json")
+  solution        Json         @map("solution_json")
+  completedAt     DateTime     @default(now()) @map("completed_at")
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceSession   CubeSession? @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, completedAt])
+  @@map("solve_records")
+}

@@ -17,11 +17,12 @@ frontend/
   -> Frontend API client (src/net/api.js)
   -> Global contexts (src/context/):
        ThemeContext  — dark/light toggle, persisted to localStorage
-       AuthContext   — login/logout state, mock data until DB ready
+       AuthContext   — login/logout/currentUser, backed by Supabase Auth
 
 backend/api/
   -> Local Node API server on :5200
   -> Shared route handlers and solver orchestration
+  -> Cube operation, solve, and AI coach API endpoints
   -> Imports the shared cube model from frontend/src/cube/
 
 api/
@@ -44,7 +45,9 @@ backend/vendor/
    - backend API on `http://localhost:5200`
 2. The browser talks to the frontend on `5400`.
 3. Frontend requests to `/api/v1/*` are proxied to the local API on `5200`.
-4. The backend validates input, applies moves, generates scrambles, or delegates solve work.
+4. The backend validates input, applies moves, generates scrambles, delegates solve work, or returns AI coaching responses.
+5. AI help calls (`POST /api/v1/ai/help`) send simulator context such as cube state, move history, timer state, idle time, and solve depth.
+6. AI move validation calls (`POST /api/v1/ai/move/validate`) check candidate moves against current state and recent history.
 
 ### Production deployment
 
@@ -76,6 +79,15 @@ This is important: the backend intentionally reuses the shared frontend cube mod
 - `backend/api/src/routes.js`
 - `backend/api/src/server.js`
 - `backend/api/src/solvers/`
+
+### AI coach and persistence work
+
+- `backend/api/src/lib/aiCoach.ts`
+- `backend/api/src/lib/moveCoach.ts`
+- `backend/api/src/routes/aiHelp.ts`
+- `backend/api/prisma/schema.prisma`
+- `backend/api/src/routes/auth.ts`
+- `backend/api/src/routes/cubeSessions.ts`
 
 ### Production API entrypoint
 
@@ -154,6 +166,7 @@ A guided simulator that walks users through a solve method one step at a time.
 - Mobile navbar gains a hamburger menu with animated open/close transition.
 - Leaderboard expanded from 3 tabs to 6 boards (3×3, 2×2, 4×4, 5×5, 6×6, 7×7) with a dropdown selector.
 - Profile page shows per-size personal bests and ranks instead of a single aggregate view.
+- AI coach API endpoints provide mode-based guidance and candidate move validation.
 
 **Accessibility:**
 - Introduced `--dictator-red` CSS custom property mapping to a WCAG AA-compliant red value used across button and accent styles.

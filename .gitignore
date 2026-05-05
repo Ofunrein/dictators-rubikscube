@@ -27,4 +27,7 @@ backend/build*/
 .idea/
 .vercel
 
-.vercel
+# Large precomputed solver tables (local-only)
+backend/vendor/rubiks-cube-NxNxN-solver/lookup-tables/
+backend/vendor/rubiks-cube-NxNxN-solver/**/__pycache__/
+backend/vendor/rubiks-cube-NxNxN-solver/ida_search_via_graph
