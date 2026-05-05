@@ -199,7 +199,7 @@ export async function solveCubeRemote(state, strategy = 'beginner', size, histor
       size: normalizedSize,
       state,
       strategy,
-      ...(history !== undefined ? { history } : {})
+      ...(history !== undefined ? { moveHistory: history } : {})
     }
   });
 

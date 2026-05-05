@@ -162,7 +162,12 @@ export function useSimulatorActions({
     setIsSolvingRemote(true);
 
     try {
-      const payload = await solveCubeRemote(cubeStateObjRef.current.getState(), 'beginner', cubeSize);
+      const payload = await solveCubeRemote(
+        cubeStateObjRef.current.getState(),
+        'beginner',
+        cubeSize,
+        solveStackRef.current,
+      );
       clearPendingAnimation();
 
       if (Array.isArray(payload.moves) && payload.moves.length > 0) {

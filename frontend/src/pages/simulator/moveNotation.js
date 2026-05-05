@@ -17,6 +17,7 @@
 
 // Flip a move to its opposite: "R" becomes "R'" (counter-clockwise), "R'" becomes "R".
 export function inverseMove(move) {
+  if (move.endsWith('2')) return move;
   return move.endsWith("'") ? move.slice(0, -1) : `${move}'`;
 }
 
