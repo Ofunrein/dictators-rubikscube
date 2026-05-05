@@ -27,6 +27,12 @@ import {
   validateScrambleRequest,
   validateSolveRequest,
 } from './validation.js';
+import {
+  analyzeMoveValidation,
+  generateAiCoachResult,
+  validateAiHelpRequest,
+  validateAiMoveValidationRequest,
+} from './lib/aiCoachRuntime.js';
 import { solveCubeStateWithPython } from './solvers/pythonNxNSolver.js';
 import {
   generateScrambleWithWasm,
@@ -211,6 +217,36 @@ async function handleSolveRoute(body, ctx) {
   }
 }
 
+async function handleAiHelpRoute(body, ctx) {
+  const validation = validateAiHelpRequest(body);
+  if (!validation.ok) {
+    ctx.sendError(400, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
+    return;
+  }
+
+  const payload = validation.value;
+  const generated = await generateAiCoachResult(payload);
+  ctx.sendJson(200, {
+    requestId: ctx.requestId,
+    mode: payload.mode,
+    coachMessage: generated.coachMessage,
+    meta: generated.meta,
+  });
+}
+
+async function handleAiMoveValidationRoute(body, ctx) {
+  const validation = validateAiMoveValidationRequest(body);
+  if (!validation.ok) {
+    ctx.sendError(400, 'VALIDATION_ERROR', 'Request body failed validation.', validation.details);
+    return;
+  }
+
+  ctx.sendJson(200, {
+    requestId: ctx.requestId,
+    validation: analyzeMoveValidation(validation.value),
+  });
+}
+
 // Route table: maps HTTP method + path to handler function.
 // The dispatcher in server.js uses this to find the right handler.
 export const ROUTES = [
@@ -220,4 +256,6 @@ export const ROUTES = [
   { method: 'POST', path: '/v1/cube/moves/apply', handler: handleMoveApplyRoute },
   { method: 'POST', path: '/v1/cube/scramble', handler: handleScrambleRoute },
   { method: 'POST', path: '/v1/cube/solve', handler: handleSolveRoute },
+  { method: 'POST', path: '/v1/ai/help', handler: handleAiHelpRoute },
+  { method: 'POST', path: '/v1/ai/move/validate', handler: handleAiMoveValidationRoute },
 ];

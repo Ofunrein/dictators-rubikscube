@@ -213,3 +213,41 @@ export async function solveCubeRemote(state, strategy = 'beginner', size, histor
 
   return payload;
 }
+
+export async function requestAiHelp(payload) {
+  if (!isPlainObject(payload)) {
+    throw new Error('AI help payload must be an object.');
+  }
+
+  const response = await request('/api/v1/ai/help', {
+    method: 'POST',
+    body: payload
+  });
+
+  if (!isPlainObject(response.coachMessage) || typeof response.coachMessage.content !== 'string') {
+    throw new ApiError('Backend returned an invalid AI help response.');
+  }
+
+  return response;
+}
+
+export async function requestAiMoveValidation(payload) {
+  if (!isPlainObject(payload)) {
+    throw new Error('AI move validation payload must be an object.');
+  }
+
+  if (!isPlainObject(payload.state)) {
+    throw new Error('AI move validation payload requires state.');
+  }
+
+  const response = await request('/api/v1/ai/move/validate', {
+    method: 'POST',
+    body: payload
+  });
+
+  if (!isPlainObject(response.validation) || typeof response.validation.reason !== 'string') {
+    throw new ApiError('Backend returned an invalid AI move validation response.');
+  }
+
+  return response;
+}
