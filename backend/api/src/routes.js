@@ -16,6 +16,7 @@
  */
 
 import {
+  applyMoves,
   applyMoveToState,
   createSolvedState,
   generateScramble,
@@ -42,6 +43,15 @@ import {
 
 export const SERVICE_NAME = 'rubiks-api';
 export const VERSION = '0.1.0';
+
+function inverseMove(move) {
+  if (move.endsWith('2')) return move;
+  return move.endsWith("'") ? move.slice(0, -1) : `${move}'`;
+}
+
+function solveMovesFromHistory(moveHistory = []) {
+  return [...moveHistory].reverse().map(inverseMove);
+}
 
 // Reads the cube size from a query string like ?size=4.
 // Defaults to 3 if not provided.
@@ -152,12 +162,27 @@ async function handleSolveRoute(body, ctx) {
     return;
   }
 
-  const { size, state } = validation.value;
+  const { size, state, moveHistory } = validation.value;
 
   // If it's already solved, just return immediately — no solver needed.
   if (isSolvedState(state)) {
     ctx.sendJson(200, { size, moves: [], estimatedMoveCount: 0, state });
     return;
+  }
+
+  if (Array.isArray(moveHistory) && moveHistory.length > 0) {
+    const moves = solveMovesFromHistory(moveHistory);
+    const replayedState = applyMoves(state, moves);
+    if (isSolvedState(replayedState)) {
+      ctx.sendJson(200, {
+        size,
+        moves,
+        estimatedMoveCount: moves.length,
+        state: replayedState,
+        solver: 'verified-history-inverse',
+      });
+      return;
+    }
   }
 
   try {

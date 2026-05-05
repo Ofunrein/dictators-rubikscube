@@ -39,6 +39,9 @@ interface TutorSignals {
 }
 
 function inverseMove(move: string): string {
+  if (move.endsWith('2')) {
+    return move;
+  }
   return move.endsWith("'") ? move.slice(0, -1) : `${move}'`;
 }
 
@@ -50,8 +53,7 @@ function buildSolveSuggestion(moveHistory: string[]): string[] {
     .reverse()
     .map(inverseMove)
     .map(normalizeMoveToken)
-    .filter((move): move is string => Boolean(move))
-    .slice(0, MAX_LIST_ITEMS);
+    .filter((move): move is string => Boolean(move));
 }
 
 function normalizeRecentMoves(moveHistory: string[], maxItems = 18): string[] {
