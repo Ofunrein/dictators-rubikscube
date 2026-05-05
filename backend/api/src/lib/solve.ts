@@ -1,6 +1,9 @@
 import { applyMoves, FACE_ORDER, isSupportedMove, type CubeState } from '../cube.js';
 
 function inverseMove(move: string): string {
+  if (move.endsWith('2')) {
+    return move;
+  }
   return move.endsWith("'") ? move.slice(0, -1) : `${move}'`;
 }
 

@@ -172,7 +172,7 @@ export function validateSolveRequest(payload) {
   }
 
   const details = [];
-  const unknown = findUnknownKeys(payload, ['size', 'state', 'strategy']);
+  const unknown = findUnknownKeys(payload, ['size', 'state', 'strategy', 'moveHistory']);
   for (const key of unknown) {
     details.push({ path: key, message: 'Unknown request field.' });
   }
@@ -194,6 +194,35 @@ export function validateSolveRequest(payload) {
     }
   }
 
+  let moveHistory;
+  if (Object.hasOwn(payload, 'moveHistory')) {
+    if (!Array.isArray(payload.moveHistory)) {
+      details.push({ path: 'moveHistory', message: 'moveHistory must be an array of move tokens.' });
+    } else if (payload.moveHistory.length > 10000) {
+      details.push({ path: 'moveHistory', message: 'moveHistory must contain at most 10000 items.' });
+    } else if (size !== null) {
+      moveHistory = [];
+      for (let index = 0; index < payload.moveHistory.length; index += 1) {
+        const item = payload.moveHistory[index];
+        if (typeof item !== 'string') {
+          details.push({ path: `moveHistory[${index}]`, message: 'Value must be a string.' });
+          continue;
+        }
+
+        const token = item.trim();
+        if (!isSupportedMove(token, size)) {
+          details.push({
+            path: `moveHistory[${index}]`,
+            message: `Move token must be one of ${getSupportedMoveTokens(size).join(', ')}.`,
+          });
+          continue;
+        }
+
+        moveHistory.push(token);
+      }
+    }
+  }
+
   if (details.length > 0) {
     return { ok: false, details };
   }
@@ -204,6 +233,7 @@ export function validateSolveRequest(payload) {
       size,
       state: cloneCubeState(payload.state),
       strategy,
+      ...(moveHistory ? { moveHistory } : {}),
     },
   };
 }

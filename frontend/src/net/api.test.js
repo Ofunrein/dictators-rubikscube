@@ -52,7 +52,7 @@ describe('solveCubeRemote', () => {
     expect(JSON.parse(options.body)).toMatchObject({
       size: 4,
       strategy: 'beginner',
-      history: ['R', "U'", 'F'],
+      moveHistory: ['R', "U'", 'F'],
     });
   });
 });
