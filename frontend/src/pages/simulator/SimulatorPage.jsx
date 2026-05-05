@@ -23,9 +23,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { ArrowLeft, ChevronRight, Sun, Moon, UserCircle } from 'lucide-react';
+import { ArrowLeft, ChevronRight, MessageCircle, Sun, Moon, UserCircle, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { saveSolveResult } from '../../lib/stats';
+import { requestAiHelp } from '../../net/api';
 import AuthModal from '../../components/AuthModal';
 import * as THREE from 'three';
 import { CubeState } from '../../cube/CubeState';
@@ -70,6 +71,12 @@ const SimulatorPage = () => {
   const [canvasErrorDetails, setCanvasErrorDetails] = useState('');
   const [canvasRetryKey, setCanvasRetryKey] = useState(0);
   const [tutorialDrawerOpen, setTutorialDrawerOpen] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachInput, setCoachInput] = useState('');
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachError, setCoachError] = useState('');
+  const [coachMessages, setCoachMessages] = useState([]);
+  const [lastCoachResponse, setLastCoachResponse] = useState(null);
   const [faceMapOpen, setFaceMapOpen] = useState(() => {
     if (typeof window === 'undefined') return true;
     return window.innerWidth >= 420;
@@ -251,6 +258,88 @@ const SimulatorPage = () => {
   const handleApplyAlgorithm = useCallback((moves) => {
     queue.enqueueMoves(moves);
   }, [queue]);
+
+  const buildCoachContext = useCallback(() => ({
+    cubeState: { ...displayState },
+    moveHistory: [...queue.moveHistory],
+    scramble: [...actions.scrambleSeq],
+    timerMs: timer.timerMs,
+    idleMs: 0,
+    solveDepth: queue.solveDepth,
+    queueActive: queue.queueActive,
+    isSolved,
+  }), [actions.scrambleSeq, displayState, isSolved, queue.moveHistory, queue.queueActive, queue.solveDepth, timer.timerMs]);
+
+  const submitCoachRequest = useCallback(async (mode, rawMessage = '') => {
+    if (coachLoading) return;
+
+    if (mode === 'explain' && !lastCoachResponse) {
+      setCoachError('Ask for a hint or guide first, then tap Explain Why.');
+      setCoachOpen(true);
+      return;
+    }
+
+    const trimmedMessage = rawMessage.trim();
+    setCoachOpen(true);
+    setCoachLoading(true);
+    setCoachError('');
+
+    if (trimmedMessage) {
+      setCoachMessages((prev) => [
+        ...prev,
+        {
+          id: `user_${Date.now()}`,
+          role: 'user',
+          content: trimmedMessage,
+        },
+      ]);
+    }
+
+    try {
+      const response = await requestAiHelp({
+        mode,
+        context: buildCoachContext(),
+        ...(trimmedMessage ? { message: trimmedMessage } : {}),
+        ...(mode === 'explain' && lastCoachResponse ? { previousCoachResponse: lastCoachResponse } : {}),
+      });
+
+      const assistantMessage = {
+        id: response.coachMessage?.id ?? `coach_${Date.now()}`,
+        role: 'assistant',
+        mode: response.mode,
+        content: response.coachMessage?.content ?? 'Coach response was empty.',
+        moves: Array.isArray(response.coachMessage?.moves) ? response.coachMessage.moves : [],
+        nextActions: Array.isArray(response.coachMessage?.nextActions) ? response.coachMessage.nextActions : [],
+        disclaimer: typeof response.coachMessage?.disclaimer === 'string' ? response.coachMessage.disclaimer : '',
+      };
+
+      setCoachMessages((prev) => [...prev, assistantMessage]);
+      setLastCoachResponse({
+        id: assistantMessage.id,
+        mode: response.mode,
+        content: assistantMessage.content,
+      });
+    } catch (error) {
+      setCoachError(error instanceof Error ? error.message : 'Unable to reach AI coach.');
+    } finally {
+      setCoachLoading(false);
+    }
+  }, [buildCoachContext, coachLoading, lastCoachResponse]);
+
+  const handleCoachSend = useCallback(() => {
+    const trimmedMessage = coachInput.trim();
+    if (!trimmedMessage) return;
+
+    setCoachInput('');
+    void submitCoachRequest(trimmedMessage.toLowerCase().includes('why') ? 'explain' : 'guide', trimmedMessage);
+  }, [coachInput, submitCoachRequest]);
+
+  const handleClearCoach = useCallback(() => {
+    setCoachMessages([]);
+    setCoachError('');
+    setCoachInput('');
+    setLastCoachResponse(null);
+  }, []);
 
   return (
     <div
@@ -518,6 +607,146 @@ const SimulatorPage = () => {
           onClose={() => setTutorialDrawerOpen(false)}
         />
       </div>
+
+      <button
+        type="button"
+        onClick={() => setCoachOpen(true)}
+        className="fixed bottom-5 right-5 z-[70] flex items-center gap-2 rounded-full border border-dictator-red/50 bg-dictator-red px-4 py-3 font-mono text-[11px] font-bold uppercase tracking-widest text-white shadow-xl transition-transform hover:-translate-y-0.5 hover:bg-[#AA1515]"
+        aria-label="Open AI Cube Coach"
+      >
+        <MessageCircle size={16} />
+        AI Coach
+      </button>
+
+      {coachOpen && (
+        <div className={`fixed bottom-20 right-5 z-[80] flex max-h-[75vh] w-[min(94vw,420px)] flex-col overflow-hidden rounded-2xl border shadow-2xl backdrop-blur ${isDark ? 'border-dictator-red/40 bg-black/90' : 'border-dictator-red/35 bg-white/95'}`}>
+          <div className={`flex items-center justify-between border-b px-4 py-3 ${t.border}`}>
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-dictator-red">AI Cube Coach</p>
+              <p className={`font-mono text-[10px] ${t.textSecondary}`}>
+                {isSolved ? 'Cube solved' : `${cubeSize}x${cubeSize} · ${queue.moveHistory.length} moves`}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleClearCoach}
+                disabled={coachMessages.length === 0 && !coachError && !coachInput.trim()}
+                className={`rounded-lg border px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${t.border} ${t.textPrimary} hover:border-dictator-red/40`}
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => setCoachOpen(false)}
+                className={`rounded-lg border p-1.5 transition-colors ${t.border} ${t.textPrimary} hover:border-dictator-red/40`}
+                aria-label="Close AI Cube Coach"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+
+          <div className="min-h-32 flex-1 space-y-2 overflow-y-auto px-4 py-3">
+            {coachMessages.length === 0 && !coachLoading && (
+              <div className={`rounded-xl border p-3 ${t.border} ${t.cardBg}`}>
+                <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-dictator-red">Ready</p>
+                <p className={`font-body text-sm ${t.textPrimary}`}>
+                  Ask for a hint, guide, solve sequence, or explanation using the current cube state.
+                </p>
+              </div>
+            )}
+
+            {coachMessages.map((message) => (
+              <div
+                key={message.id}
+                className={`rounded-xl border p-3 ${
+                  message.role === 'user'
+                    ? 'border-dictator-red/30 bg-dictator-red/10'
+                    : `${t.border} ${t.cardBg}`
+                }`}
+              >
+                <p className={`mb-1 font-mono text-[10px] uppercase tracking-widest ${message.role === 'user' ? 'text-dictator-red' : t.textSecondary}`}>
+                  {message.role === 'user' ? 'You' : `Coach${message.mode ? ` · ${message.mode}` : ''}`}
+                </p>
+                <p className={`font-body text-sm leading-relaxed ${t.textPrimary}`}>{message.content}</p>
+                {message.moves.length > 0 && (
+                  <p className="mt-2 break-all font-mono text-xs text-dictator-red">{message.moves.join(' ')}</p>
+                )}
+                {message.nextActions.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {message.nextActions.map((item, index) => (
+                      <li key={`${message.id}-next-${index}`} className={`font-body text-xs ${t.textSecondary}`}>
+                        {index + 1}. {item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {message.disclaimer && (
+                  <p className={`mt-2 font-mono text-[10px] ${t.textSecondary}`}>{message.disclaimer}</p>
+                )}
+              </div>
+            ))}
+
+            {coachLoading && (
+              <div className={`rounded-xl border p-3 ${t.border} ${t.cardBg}`}>
+                <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-dictator-red">Thinking</p>
+                <p className={`font-body text-sm ${t.textPrimary}`}>Generating context-aware coaching guidance...</p>
+              </div>
+            )}
+
+            {coachError && (
+              <div className="rounded-xl border border-dictator-red/40 bg-dictator-red/10 p-3">
+                <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-dictator-red">Coach Error</p>
+                <p className={`font-body text-sm ${t.textPrimary}`}>{coachError}</p>
+              </div>
+            )}
+          </div>
+
+          <div className={`border-t px-4 py-3 ${t.border}`}>
+            <div className="mb-2 grid grid-cols-4 gap-2">
+              {['hint', 'guide', 'solve', 'explain'].map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  disabled={coachLoading}
+                  onClick={() => void submitCoachRequest(mode)}
+                  className={`rounded-lg border px-2 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50 ${
+                    mode === 'hint'
+                      ? 'border-dictator-red/50 bg-dictator-red/20 text-white hover:bg-dictator-red/30'
+                      : `${t.border} ${t.textPrimary} hover:border-dictator-red/50`
+                  }`}
+                >
+                  {mode === 'explain' ? 'Why' : mode}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                value={coachInput}
+                onChange={(event) => setCoachInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleCoachSend();
+                  }
+                }}
+                placeholder="Ask a question..."
+                className={`min-w-0 flex-1 rounded-lg border px-3 py-2 font-body text-sm outline-none transition-colors ${t.border} ${t.cardBg} ${t.textPrimary} focus:border-dictator-red/60`}
+              />
+              <button
+                type="button"
+                disabled={coachLoading || coachInput.trim().length === 0}
+                onClick={handleCoachSend}
+                className="rounded-lg border border-dictator-red/50 bg-dictator-red/20 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-dictator-red transition-colors hover:bg-dictator-red/30 disabled:opacity-50"
+              >
+                Ask
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
