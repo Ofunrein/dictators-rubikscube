@@ -12,10 +12,10 @@
  *   The "details" array lists every problem found (not just the first one),
  *   so the frontend can show all validation errors at once.
  *
- * Why size is always required:
+ * Why size is preferred:
  *   The API supports 2x2, 3x3, and 4x4. Each size has different valid moves
- *   and different sticker counts per face. The size field tells the validator
- *   which rules to apply.
+ *   and sticker counts. Newer clients should send size explicitly; legacy 3x3
+ *   callers are still accepted by inferring size from the cube state.
  */
 
 import {
@@ -23,6 +23,7 @@ import {
   cloneCubeState,
   collectCubeStateDetails,
   getDefaultScrambleLength,
+  getFaceSize,
   getSupportedMoveTokens,
   isPlainObject,
   isSupportedMove,
@@ -50,15 +51,30 @@ function validateSize(value, path = 'size') {
   return [];
 }
 
-function readRequiredSize(payload, details) {
+function readOptionalSize(payload, details, fallbackSize = 3) {
   if (!Object.hasOwn(payload, 'size')) {
-    details.push({ path: 'size', message: 'size is required.' });
-    return null;
+    return fallbackSize;
   }
 
+  const priorDetailCount = details.length;
   const numericSize = Number(payload.size);
   details.push(...validateSize(numericSize));
-  return details.length === 0 ? normalizeCubeSize(numericSize) : null;
+  return details.length === priorDetailCount ? normalizeCubeSize(numericSize) : null;
+}
+
+function readSizeFromStateOrDefault(payload, details) {
+  if (Object.hasOwn(payload, 'size')) {
+    return readOptionalSize(payload, details);
+  }
+
+  if (Object.hasOwn(payload, 'state')) {
+    const detectedSize = getFaceSize(payload.state);
+    if (detectedSize) {
+      return detectedSize;
+    }
+  }
+
+  return 3;
 }
 
 export function validateCubeState(candidate, size, path = 'state') {
@@ -79,7 +95,7 @@ export function validateMoveApplyRequest(payload) {
     details.push({ path: key, message: 'Unknown request field.' });
   }
 
-  const size = readRequiredSize(payload, details);
+  const size = readSizeFromStateOrDefault(payload, details);
 
   if (!Object.hasOwn(payload, 'state')) {
     details.push({ path: 'state', message: 'state is required.' });
@@ -125,7 +141,7 @@ export function validateScrambleRequest(payload) {
     details.push({ path: key, message: 'Unknown request field.' });
   }
 
-  const size = readRequiredSize(body, details);
+  const size = readOptionalSize(body, details);
 
   let length = size === null ? 25 : getDefaultScrambleLength(size);
   if (Object.hasOwn(body, 'length')) {
@@ -177,7 +193,7 @@ export function validateSolveRequest(payload) {
     details.push({ path: key, message: 'Unknown request field.' });
   }
 
-  const size = readRequiredSize(payload, details);
+  const size = readSizeFromStateOrDefault(payload, details);
 
   if (!Object.hasOwn(payload, 'state')) {
     details.push({ path: 'state', message: 'state is required.' });
