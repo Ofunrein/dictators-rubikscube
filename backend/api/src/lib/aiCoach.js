@@ -285,3 +285,193 @@ export function createMockCoachMessage(payload) {
     nextActions: ['Choose one target pair', 'Set it up with U turns', 'Apply one trigger slowly'],
   };
 }
+
+function buildCoachPrompt(payload) {
+  const modeBehavior = {
+    hint: ['Give one concise tactical nudge.', 'Use 1-2 short sentences.', 'Do not provide full solution moves.'],
+    guide: ['Provide ordered steps with practical checkpoints.', 'Focus on preserving solved pieces.', 'Use 3-6 nextActions items.'],
+    solve: ['Provide an actionable sequence of legal cube move tokens.', 'Always populate moves array if any sequence is known.', 'Keep explanation short.'],
+    explain: ['Explain the underlying principle behind prior advice.', 'Include cause/effect and one common mistake to avoid.', 'Make it beginner-friendly.'],
+  };
+
+  const signals = buildTutorSignals(payload.context.moveHistory, payload.context.idleMs ?? 0);
+  const skillLevel = payload.context.moveHistory.length < 20 || payload.context.solveDepth < 12
+    ? 'beginner'
+    : payload.context.moveHistory.length < 80 ? 'intermediate' : 'advanced';
+
+  const system = [
+    "You are an expert Rubik's Cube tutor.",
+    'Output MUST be valid JSON object only. No markdown fences.',
+    'Schema: {"content":"string","moves":["string"]?,"nextActions":["string"]?,"disclaimer":"string"?}.',
+    "If mode is solve, prefer legal move tokens: U D L R F B M E S with optional ' or 2.",
+    'Progressive tutoring: hint -> guide -> solve.',
+    'Stay minimally revealing unless mode is explicitly solve.',
+    payload.mode === 'explain' ? 'For explain mode, explain the previous coach response directly when provided.' : '',
+    `Current mode: ${payload.mode}.`,
+    `Mode requirements: ${modeBehavior[payload.mode].join(' ')}`,
+    'Never include markdown fences or extra commentary outside JSON.',
+  ].filter(Boolean).join(' ');
+
+  const user = JSON.stringify({
+    mode: payload.mode,
+    message: payload.message ?? '',
+    previousCoachResponse: payload.previousCoachResponse ?? null,
+    context: {
+      timerMs: payload.context.timerMs,
+      idleMs: payload.context.idleMs ?? 0,
+      solveDepth: payload.context.solveDepth,
+      queueActive: payload.context.queueActive,
+      isSolved: payload.context.isSolved,
+      estimatedSkillLevel: skillLevel,
+      tutorSignals: signals,
+      moveHistory: payload.context.moveHistory.slice(-25),
+      scramble: payload.context.scramble.slice(-25),
+      cubeState: payload.context.cubeState,
+    },
+  });
+
+  return { system, user };
+}
+
+function parseModelJson(raw) {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('```')) {
+    return JSON.parse(trimmed.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim());
+  }
+  return JSON.parse(trimmed);
+}
+
+function normalizeModelCoachMessage(payload, raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const candidate = raw;
+  const baseContent = ensureNonEmptyString(candidate.content);
+  const movesFromField = normalizeMoveList(candidate.moves, MAX_LIST_ITEMS);
+  const movesFromContent = baseContent ? extractMovesFromText(baseContent, MAX_LIST_ITEMS) : [];
+  const mergedMoves = movesFromField.length > 0 ? movesFromField : movesFromContent;
+
+  const content = baseContent ?? (payload.mode === 'solve' && mergedMoves.length > 0
+    ? `Try this sequence: ${mergedMoves.join(' ')}`
+    : null);
+  if (!content) return null;
+
+  const message = { id: `coach_ai_${Date.now()}`, content };
+  if (mergedMoves.length > 0) message.moves = mergedMoves;
+  const nextActions = normalizeStringList(candidate.nextActions, MAX_LIST_ITEMS);
+  if (nextActions.length > 0) message.nextActions = nextActions;
+  const disclaimer = ensureNonEmptyString(candidate.disclaimer, 240);
+  if (disclaimer) message.disclaimer = disclaimer;
+
+  return enforceModeQuality(payload, message);
+}
+
+async function callGroq(payload, options) {
+  const { system, user } = buildCoachPrompt(payload);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
+
+  try {
+    const response = await fetch(`${options.baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${options.apiKey}` },
+      body: JSON.stringify({
+        model: options.model,
+        temperature: 0.2,
+        max_tokens: 450,
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      }),
+      signal: controller.signal,
+    });
+    const body = await response.text();
+    if (!response.ok) throw new Error(`provider_http_${response.status}`);
+    const parsed = JSON.parse(body);
+    const rawContent = parsed.choices?.[0]?.message?.content;
+    if (typeof rawContent !== 'string' || rawContent.trim().length === 0)
+      throw new Error('provider_empty_content');
+    return parseModelJson(rawContent);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function withFallbackDisclaimer(message, reason) {
+  const short = truncate(reason, 120);
+  return {
+    ...message,
+    disclaimer: message.disclaimer
+      ? `${message.disclaimer} Fallback reason: ${short}`
+      : `Fallback reason: ${short}`,
+  };
+}
+
+export async function generateAiCoachResult(payload, solveWithWasm, solveWithPython) {
+  const provider = (process.env.AI_PROVIDER ?? 'mock').trim().toLowerCase();
+  const apiKey = process.env.AI_PROVIDER_API_KEY;
+  const model = process.env.AI_MODEL ?? 'llama-3.3-70b-versatile';
+  const baseUrl = (process.env.AI_BASE_URL ?? 'https://api.groq.com/openai').replace(/\/+$/, '');
+  const timeoutMs = Number(process.env.AI_REQUEST_TIMEOUT_MS) || 12000;
+
+  const baseMeta = { provider, model, generatedAt: new Date().toISOString() };
+
+  const makeMockResult = (reason) => ({
+    coachMessage: withFallbackDisclaimer(createMockCoachMessage(payload), reason),
+    meta: { ...baseMeta, isMock: true },
+  });
+
+  // Solve mode: use real solver
+  if (payload.mode === 'solve') {
+    const faceStickers = Object.values(payload.context.cubeState)[0];
+    const size = Array.isArray(faceStickers) && faceStickers.length === 9 ? 3
+      : Array.isArray(faceStickers) && faceStickers.length === 4 ? 2 : 3;
+    try {
+      if (size === 3) {
+        const result = await solveWithWasm(payload.context.cubeState);
+        const moves = Array.isArray(result?.moves) ? result.moves
+          : Array.isArray(result) ? result : [];
+        return {
+          coachMessage: {
+            id: 'coach_solve_wasm',
+            content: moves.length > 0
+              ? `Solve sequence (${moves.length} moves) computed by Kociemba algorithm.`
+              : 'Could not compute a solve sequence.',
+            moves,
+            nextActions: ['Apply each move in order.', 'Pause if the cube orientation changes unexpectedly.'],
+          },
+          meta: { ...baseMeta, isMock: false, solver: 'wasm-3x3' },
+        };
+      } else {
+        const nxn = await solveWithPython(payload.context.cubeState, size);
+        return {
+          coachMessage: {
+            id: 'coach_solve_python',
+            content: `Solve sequence (${nxn.moves.length} moves) computed for ${size}x${size}.`,
+            moves: nxn.moves,
+            nextActions: ['Apply each move in order.', 'Pause if the cube orientation changes unexpectedly.'],
+          },
+          meta: { ...baseMeta, isMock: false, solver: nxn.solver },
+        };
+      }
+    } catch (err) {
+      return makeMockResult(`solver failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  // hint / guide / explain: use Groq if configured
+  if (provider === 'mock' || !apiKey) {
+    return {
+      coachMessage: createMockCoachMessage(payload),
+      meta: { ...baseMeta, isMock: true },
+    };
+  }
+
+  if (provider !== 'openai') return makeMockResult(`unsupported provider: ${provider}`);
+
+  try {
+    const rawOutput = await callGroq(payload, { apiKey, model, timeoutMs, baseUrl });
+    const normalized = normalizeModelCoachMessage(payload, rawOutput);
+    if (!normalized) return makeMockResult('provider output normalization failed');
+    return { coachMessage: normalized, meta: { ...baseMeta, isMock: false } };
+  } catch (err) {
+    return makeMockResult(err instanceof Error ? err.message : 'provider request failed');
+  }
+}
