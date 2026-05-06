@@ -253,7 +253,7 @@ export function createMockCoachMessage(payload) {
 
   if (mode === 'guide') {
     const qr = hasQuestion ? buildQuestionAwareReply(questionText) : null;
-    const actions = qr?.nextActions ?? ['Inspect top layer for a usable pair', 'Set up with U turns only', 'Insert with right-hand or left-hand trigger'];
+    const actions = [...(qr?.nextActions ?? ['Inspect top layer for a usable pair', 'Set up with U turns only', 'Insert with right-hand or left-hand trigger'])];
     if (signalHint.length > 0) actions.push('Run one checkpoint: if pieces drift, reset setup before retrying.');
     return {
       id: 'coach_guide_v1',
