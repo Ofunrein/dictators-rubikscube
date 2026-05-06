@@ -200,7 +200,7 @@
         },
         "responses": {
           "200": {
-            "description": "Mock solution payload",
+            "description": "Verified solution payload",
             "content": {
               "application/json": {
                 "schema": {
@@ -1063,10 +1063,17 @@
         "required": [
           "moves",
           "estimatedMoveCount",
-          "isMock",
-          "note"
+          "isMock"
         ],
         "properties": {
+          "size": {
+            "type": "integer",
+            "enum": [
+              2,
+              3,
+              4
+            ]
+          },
           "moves": {
             "type": "array",
             "items": {
@@ -1079,6 +1086,12 @@
           },
           "isMock": {
             "type": "boolean"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CubeState"
+          },
+          "solver": {
+            "type": "string"
           },
           "note": {
             "type": "string"

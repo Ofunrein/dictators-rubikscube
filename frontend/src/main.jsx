@@ -9,8 +9,8 @@
  *   /                  → App.jsx (landing page)
  *   /simulator         → SimulatorPage.jsx (interactive 3D cube)
  *   /page/simulator    → same, kept for legacy URL compatibility
- *   /learn             → LearnPage.jsx (coming-soon placeholder)
- *   /leaderboard       → LeaderboardPage.jsx (mock global rankings)
+ *   /learn             → LearnPage.jsx (learning modules and notation guide)
+ *   /leaderboard       → LeaderboardPage.jsx (Supabase-backed global rankings)
  *   /profile           → ProfilePage.jsx (authenticated user stats)
  *   *                  → redirect to /
  */

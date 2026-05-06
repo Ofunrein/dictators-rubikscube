@@ -66,6 +66,8 @@ Important:
 - this root README is the canonical onboarding document
 - `frontend/README.md` only adds local frontend context
 - `frontend-legacy/` is a legacy prototype and not the current app
+- the shipped API path is `backend/api/src/routes.js`, used by both local dev and the Vercel adapter
+- the Fastify/Prisma files under `backend/api/src/app.ts` and `backend/api/prisma/` are an experimental Postgres persistence path, not the default runtime
 
 ## Run Frontend + API Together
 
@@ -226,6 +228,16 @@ the-dictators/
 
 Both the local dev server (port 5200) and the Vercel production handler use the same route table in `routes.js` — one source of truth.
 
+## Backend Runtime Source of Truth
+
+The active runtime is intentionally small:
+
+- Local development starts `backend/api/src/server.js`.
+- Production requests enter through `api/v1/[...path].js`.
+- Both adapters delegate endpoint behavior to `backend/api/src/routes.js`.
+
+That route table is the source of truth for cube operations, scramble generation, solve routing, and AI coach endpoints. A separate Fastify/Prisma implementation also exists in `backend/api/src/app.ts`, `backend/api/src/index.ts`, and `backend/api/prisma/`; treat it as an experimental Postgres auth/session/persistence backend until it is explicitly wired into the default scripts or deployment path.
+
 ## Cube State Contract
 
 Faces: `U`, `R`, `F`, `D`, `L`, `B` — each an array of `size * size` sticker tokens.
@@ -273,9 +285,9 @@ Sprint planning, Jira ticket quality, PR review expectations, and documentation 
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18, Vite, Tailwind CSS, React Three Fiber, Three.js |
+| Frontend | React 19, Vite, Tailwind CSS, React Three Fiber, Three.js |
 | Animations | GSAP, ScrollTrigger, eased quaternion interpolation |
-| API | Node.js, OpenAPI 3.1, Vercel Serverless Functions |
+| API | Node.js route table, OpenAPI 3.1, Vercel Serverless Functions |
 | 3x3 Solver | C++17 compiled to WebAssembly via Emscripten |
 | NxN Solver | Python 3 (vendored rubiks-cube-NxNxN-solver) |
 | Database | Supabase (Postgres + Auth) |
