@@ -24,6 +24,8 @@ backend/api/
   -> Shared route handlers and solver orchestration
   -> Cube operation, solve, and AI coach API endpoints
   -> Imports the shared cube model from frontend/src/cube/
+  -> Experimental Fastify/Prisma persistence app is kept separate from the
+     active dev/prod API runtime
 
 api/
   -> Vercel production handlers
@@ -80,6 +82,10 @@ This is important: the backend intentionally reuses the shared frontend cube mod
 - `backend/api/src/server.js`
 - `backend/api/src/solvers/`
 
+This is the active local API path used by root `npm run dev`. Vercel production
+uses `api/v1/[...path].js`, which delegates to the same `ROUTES` table in
+`backend/api/src/routes.js`.
+
 ### AI coach and persistence work
 
 - `backend/api/src/lib/aiCoach.ts`
@@ -88,6 +94,11 @@ This is important: the backend intentionally reuses the shared frontend cube mod
 - `backend/api/prisma/schema.prisma`
 - `backend/api/src/routes/auth.ts`
 - `backend/api/src/routes/cubeSessions.ts`
+
+The Fastify/Prisma files above are an experimental Postgres auth/session
+persistence backend. They are useful reference work and have tests, but they are
+not the default runtime launched by root `npm run dev` and they are not the
+Vercel catch-all solver path.
 
 ### Production API entrypoint
 
@@ -177,6 +188,20 @@ A guided simulator that walks users through a solve method one step at a time.
 Both contexts are mounted in `main.jsx` above the router so every route shares the same state. Auth (login, signup, logout) is backed by Supabase Auth via `frontend/src/lib/auth.js`. Leaderboard and profile data come from Supabase Postgres via `frontend/src/lib/stats.js`. The Supabase client is initialized in `frontend/src/lib/supabase.js` using `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from `frontend/.env`.
 
 The `ThemeContext` persists dark/light preference to `localStorage` under key `simulator-theme`.
+
+## Backend Runtime Boundary
+
+There are two backend implementations in the repo:
+
+| Path | Status | Purpose |
+|------|--------|---------|
+| `backend/api/src/server.js` + `backend/api/src/routes.js` | Active local API | Raw Node dispatcher for cube, solver, and AI coach routes. |
+| `api/v1/[...path].js` | Active production adapter | Vercel serverless wrapper around the same `ROUTES` table. |
+| `backend/api/src/app.ts` + `backend/api/src/routes/*.ts` + `backend/api/prisma/` | Experimental persistence API | Fastify/Prisma MVP for Postgres auth, cube sessions, solve records, and stats. |
+
+For resume/demo purposes, describe the shipped path as:
+`React/Vite frontend -> Vercel/raw Node API -> shared cube engine -> WASM/Python solvers`,
+with Supabase powering the visible auth, leaderboard, and profile features.
 
 ## Why The Repo Is Split This Way
 
