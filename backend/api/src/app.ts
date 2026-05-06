@@ -49,7 +49,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
 
   app.setErrorHandler((error, request, reply) => {
-    request.log.error(error);
+    request.log?.error?.(error);
     if (reply.sent) {
       return;
     }
