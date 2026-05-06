@@ -30,10 +30,10 @@ import {
 } from './validation.js';
 import {
   analyzeMoveValidation,
-  generateAiCoachResult,
   validateAiHelpRequest,
   validateAiMoveValidationRequest,
 } from './lib/aiCoachRuntime.js';
+import { generateAiCoachResult } from './lib/aiCoach.js';
 import { solveCubeStateWithPython } from './solvers/pythonNxNSolver.js';
 import {
   generateScrambleWithWasm,
@@ -250,7 +250,11 @@ async function handleAiHelpRoute(body, ctx) {
   }
 
   const payload = validation.value;
-  const generated = await generateAiCoachResult(payload);
+  const generated = await generateAiCoachResult(
+    payload,
+    solveCubeMoveListWithWasm,
+    solveCubeStateWithPython,
+  );
   ctx.sendJson(200, {
     requestId: ctx.requestId,
     mode: payload.mode,
