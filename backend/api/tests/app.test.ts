@@ -298,3 +298,63 @@ describe('buildApp', () => {
     await app.close();
   });
 });
+
+describe('AI endpoint rate limiting', () => {
+  it('returns 429 after 10 requests to /v1/ai/help from same IP', async () => {
+    const app = buildApp({ logger: false });
+    await app.ready();
+
+    const body = {
+      mode: 'hint',
+      context: {
+        cubeState: SOLVED_STATE,
+        moveHistory: [],
+        scramble: [],
+        tutorialStepIndex: null,
+        timerMs: 0,
+        idleMs: 0,
+        solveDepth: 0,
+        queueActive: false,
+        isSolved: true,
+      },
+    };
+
+    for (let i = 0; i < 10; i++) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/ai/help',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': '99.99.99.99' },
+        payload: JSON.stringify(body),
+      });
+      expect(res.statusCode).not.toBe(429);
+    }
+
+    const limited = await app.inject({
+      method: 'POST',
+      url: '/v1/ai/help',
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': '99.99.99.99' },
+      payload: JSON.stringify(body),
+    });
+    expect(limited.statusCode).toBe(429);
+    const parsed = JSON.parse(limited.body);
+    expect(parsed.error.code).toBe('RATE_LIMITED');
+
+    await app.close();
+  }, 30000);
+
+  it('does not rate limit GET /v1/health', async () => {
+    const app = buildApp({ logger: false });
+    await app.ready();
+
+    for (let i = 0; i < 20; i++) {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/health',
+        headers: { 'x-forwarded-for': '99.99.99.99' },
+      });
+      expect(res.statusCode).toBe(200);
+    }
+
+    await app.close();
+  });
+});
