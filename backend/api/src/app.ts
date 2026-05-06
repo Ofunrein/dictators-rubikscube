@@ -1,11 +1,14 @@
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import type { PrismaClient } from '@prisma/client';
-import Fastify from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
+import { randomUUID } from 'node:crypto';
 
 import { env, getAllowedOrigins } from './config/env.js';
 import { sendApiError } from './lib/http.js';
 import { prisma as defaultPrisma } from './lib/prisma.js';
+import aiHelpRoutes from './routes/aiHelp.js';
 import registerRoutes from './routes/index.js';
 
 interface BuildAppOptions {
@@ -43,6 +46,28 @@ export function buildApp(options: BuildAppOptions = {}) {
 
   app.register(registerRoutes, { prefix: '/v1' });
   app.register(registerRoutes, { prefix: '/api/v1' });
+
+  // Rate-limited AI routes — scoped so only /ai endpoints are throttled
+  const registerRateLimitedAi = async (instance: FastifyInstance): Promise<void> => {
+    await instance.register(rateLimit, {
+      max: 10,
+      timeWindow: '1 minute',
+      keyGenerator: (request) =>
+        (request.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ?? request.ip,
+      errorResponseBuilder: (_request, context) => ({
+        error: {
+          code: 'RATE_LIMITED',
+          message: `Rate limit exceeded. Retry in ${Math.ceil(context.ttl / 1000)} seconds.`,
+          requestId: randomUUID(),
+        },
+      }),
+    });
+
+    instance.register(aiHelpRoutes, { prefix: '/ai' });
+  };
+
+  app.register(registerRateLimitedAi, { prefix: '/v1' });
+  app.register(registerRateLimitedAi, { prefix: '/api/v1' });
 
   app.setNotFoundHandler((request, reply) => {
     sendApiError(reply, 404, 'NOT_FOUND', 'Route not found.');
