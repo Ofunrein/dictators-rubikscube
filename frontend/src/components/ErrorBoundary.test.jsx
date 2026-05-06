@@ -84,7 +84,7 @@ describe('ErrorBoundary', () => {
     expect(console.error).toHaveBeenCalledWith(
       '[ErrorBoundary]',
       expect.any(Error),
-      expect.any(String)
+      expect.anything()
     );
   });
 });

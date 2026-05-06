@@ -11,7 +11,7 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('[ErrorBoundary]', error, info.componentStack);
+    console.error('[ErrorBoundary]', error, info?.componentStack ?? '');
   }
 
   render() {
