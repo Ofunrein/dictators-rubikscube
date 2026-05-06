@@ -166,7 +166,7 @@ async function handleSolveRoute(body, ctx) {
 
   // If it's already solved, just return immediately — no solver needed.
   if (isSolvedState(state)) {
-    ctx.sendJson(200, { size, moves: [], estimatedMoveCount: 0, state });
+    ctx.sendJson(200, { size, moves: [], estimatedMoveCount: 0, state, isMock: false });
     return;
   }
 
@@ -180,6 +180,7 @@ async function handleSolveRoute(body, ctx) {
         estimatedMoveCount: moves.length,
         state: replayedState,
         solver: 'verified-history-inverse',
+        isMock: false,
       });
       return;
     }
@@ -204,6 +205,7 @@ async function handleSolveRoute(body, ctx) {
           estimatedMoveCount: solveMoves.length,
           state: replayedState,
           solver: 'eric-cpp-wasm-moves',
+          isMock: false,
         });
         return;
       }
@@ -216,6 +218,7 @@ async function handleSolveRoute(body, ctx) {
         estimatedMoveCount: 0,
         state: solvedState,
         solver: 'eric-cpp-wasm',
+        isMock: false,
       });
       return;
     }
@@ -232,7 +235,7 @@ async function handleSolveRoute(body, ctx) {
       });
     }
 
-    ctx.sendJson(200, { size, ...nxnPayload });
+    ctx.sendJson(200, { size, ...nxnPayload, isMock: false });
   } catch (error) {
     ctx.sendError(
       500,

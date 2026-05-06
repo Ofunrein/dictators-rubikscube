@@ -82,7 +82,7 @@ npm --prefix dictators-website run build
    ```
 5. Run local stack:
    ```bash
-   npm run setup
+   npm install
    npm run dev
    ```
 6. Run API test pass again:

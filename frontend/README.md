@@ -51,10 +51,11 @@ frontend/src/
 ## Source Of Truth
 
 - Active frontend: this folder
-- Local API/backend: `../backend/`
+- Active local API/backend: `../backend/api/src/server.js` and `../backend/api/src/routes.js`
 - Production serverless handlers: `../api/`
 - Legacy prototype: `../frontend-legacy/`
 
 If you are deciding where to work:
 - UI, page layout, simulator controls, and React hooks go here
-- backend routes and solver orchestration go in `../backend/` or `../api/`
+- active backend routes and solver orchestration go in `../backend/api/src/routes.js`
+- production adapter changes go in `../api/`
