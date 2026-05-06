@@ -77,6 +77,7 @@ const SimulatorPage = () => {
   const [coachError, setCoachError] = useState('');
   const [coachMessages, setCoachMessages] = useState([]);
   const [lastCoachResponse, setLastCoachResponse] = useState(null);
+  const coachMessagesEndRef = useRef(null);
   const [faceMapOpen, setFaceMapOpen] = useState(() => {
     if (typeof window === 'undefined') return true;
     return window.innerWidth >= 420;
@@ -343,6 +344,10 @@ const SimulatorPage = () => {
     setCoachInput('');
     setLastCoachResponse(null);
   }, []);
+
+  useEffect(() => {
+    coachMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [coachMessages, coachLoading, coachError]);
 
   return (
     <div
@@ -704,6 +709,7 @@ const SimulatorPage = () => {
                 <p className={`font-body text-sm ${t.textPrimary}`}>{coachError}</p>
               </div>
             )}
+            <div ref={coachMessagesEndRef} />
           </div>
 
           <div className={`border-t px-4 py-3 ${t.border}`}>
