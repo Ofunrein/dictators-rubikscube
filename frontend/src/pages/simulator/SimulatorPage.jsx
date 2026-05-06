@@ -291,6 +291,9 @@ const SimulatorPage = () => {
           id: `user_${Date.now()}`,
           role: 'user',
           content: trimmedMessage,
+          moves: [],
+          nextActions: [],
+          disclaimer: '',
         },
       ]);
     }
