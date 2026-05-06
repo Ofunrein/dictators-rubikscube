@@ -8,7 +8,7 @@
  * Features: step-by-step solving guide, notation reference, algorithm cheat sheet,
  * and hands-on practice with the interactive cube simulator.
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import PageNavbar from '../components/PageNavbar';
@@ -17,13 +17,15 @@ import { useTheme } from '../context/ThemeContext';
 const CUBE_SIZE = 3;
 
 export default function LearnPage() {
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
 
   // Learning Guide state (slideshow)
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [toastMessage, setToastMessage] = useState('');
+  // eslint-disable-next-line no-unused-vars
   const [showToast, setShowToast] = useState(false);
   const wrapperRef = useRef(null);
   const slidesRef = useRef([]);
@@ -46,7 +48,7 @@ export default function LearnPage() {
   };
 
   // Learning Guide functions
-  const goToSlide = (index) => {
+  const goToSlide = useCallback((index) => {
     if (index < 0 || index >= totalSlides || index === currentSlide || isTransitioning) return;
 
     setIsTransitioning(true);
@@ -57,10 +59,10 @@ export default function LearnPage() {
     }
 
     setTimeout(() => setIsTransitioning(false), 750);
-  };
+  }, [totalSlides, currentSlide, isTransitioning]);
 
-  const nextSlide = () => goToSlide(currentSlide + 1);
-  const prevSlide = () => goToSlide(currentSlide - 1);
+  const nextSlide = useCallback(() => goToSlide(currentSlide + 1), [currentSlide, goToSlide]);
+  const prevSlide = useCallback(() => goToSlide(currentSlide - 1), [currentSlide, goToSlide]);
 
   // Handle wheel navigation for learning guide
   useEffect(() => {
@@ -88,7 +90,7 @@ export default function LearnPage() {
 
     document.addEventListener('wheel', handleWheel, { passive: true });
     return () => document.removeEventListener('wheel', handleWheel);
-  }, [currentSlide, isTransitioning]);
+  }, [currentSlide, isTransitioning, nextSlide, prevSlide]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -106,7 +108,7 @@ export default function LearnPage() {
 
     document.addEventListener('keydown', handleKeydown);
     return () => document.removeEventListener('keydown', handleKeydown);
-  }, [currentSlide, isTransitioning]);
+  }, [currentSlide, isTransitioning, nextSlide, prevSlide]);
 
   // Handle touch swipe for learning guide
   const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
@@ -131,27 +133,27 @@ export default function LearnPage() {
   };
 
   // Copy to clipboard function
-  const copyToClipboard = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      showToastMessage(`Copied: ${text}`);
-    } catch (err) {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      showToastMessage(`Copied: ${text}`);
-    }
-  };
+  // const copyToClipboard = async (text) => {
+  //   try {
+  //     await navigator.clipboard.writeText(text);
+  //     showToastMessage(`Copied: ${text}`);
+  //   } catch {
+  //     // Fallback for older browsers
+  //     const textArea = document.createElement('textarea');
+  //     textArea.value = text;
+  //     document.body.appendChild(textArea);
+  //     textArea.select();
+  //     document.execCommand('copy');
+  //     document.body.removeChild(textArea);
+  //     showToastMessage(`Copied: ${text}`);
+  //   }
+  // };
 
-  const showToastMessage = (message) => {
-    setToastMessage(message);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000);
-  };
+  // const showToastMessage = (message) => {
+  //   setToastMessage(message);
+  //   setShowToast(true);
+  //   setTimeout(() => setShowToast(false), 2000);
+  // };
 
   const slides = [
     // Slide 0: Hero

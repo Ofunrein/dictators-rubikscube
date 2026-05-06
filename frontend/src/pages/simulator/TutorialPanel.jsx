@@ -33,6 +33,7 @@ export default function TutorialPanel({
   const algorithms = cubeSize === 2 ? QUICK_ALGORITHMS_2X2 : cubeSize === 4 ? QUICK_ALGORITHMS_4X4 : QUICK_ALGORITHMS;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTutorialStep(0);
     setControlSection(0);
   }, [cubeSize]);

@@ -14,6 +14,7 @@ function Bomb({ shouldThrow }) {
 
 // Controllable child — lets us flip throwing on/off via ref
 function ControlledChild({ throwRef }) {
+  // eslint-disable-next-line react-hooks/refs
   if (throwRef.current) throw new Error('controlled explosion');
   return <p>Recovered content</p>;
 }

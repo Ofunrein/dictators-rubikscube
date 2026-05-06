@@ -62,6 +62,7 @@ const SimulatorPage = () => {
   // Core cube state — owned here, passed to hooks via refs
   const [cubeSize, setCubeSize] = useState(3);
   const cubeStateObjRef = useRef(new CubeState(3));
+  // eslint-disable-next-line react-hooks/refs
   const [displayState, setDisplayState] = useState(() => cubeStateObjRef.current.getState());
   const solveStackRef = useRef([]);
 
@@ -149,6 +150,7 @@ const SimulatorPage = () => {
   });
 
   // Now that controls is initialized, wire up the ref so actions can clear sticker selection
+  // eslint-disable-next-line react-hooks/refs
   clearSelectedStickerRef.current = controls.clearSelectedSticker;
 
   // Viewport breakpoints
@@ -182,12 +184,14 @@ const SimulatorPage = () => {
 
   useEffect(() => {
     if (!useTutorialDrawer) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTutorialDrawerOpen(false);
     }
   }, [useTutorialDrawer]);
 
   useEffect(() => {
     if (!useCompactFaceMap) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFaceMapOpen(true);
     }
   }, [useCompactFaceMap]);
