@@ -301,7 +301,7 @@ describe('buildApp', () => {
 
 describe('AI endpoint rate limiting', () => {
   it('returns 429 after 10 requests to /v1/ai/help from same IP', async () => {
-    const app = buildApp({ logger: false });
+    const app = buildApp({ prisma: createPrismaStub() as never, logger: false });
     await app.ready();
 
     const body = {
@@ -343,7 +343,7 @@ describe('AI endpoint rate limiting', () => {
   }, 30000);
 
   it('does not rate limit GET /v1/health', async () => {
-    const app = buildApp({ logger: false });
+    const app = buildApp({ prisma: createPrismaStub() as never, logger: false });
     await app.ready();
 
     for (let i = 0; i < 20; i++) {
