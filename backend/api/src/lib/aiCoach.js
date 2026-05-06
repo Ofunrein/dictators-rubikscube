@@ -383,7 +383,7 @@ async function callGroq(payload, options) {
       signal: controller.signal,
     });
     const body = await response.text();
-    if (!response.ok) throw new Error(`provider_http_${response.status}`);
+    if (!response.ok) throw new Error(`provider_http_${response.status}: ${body.slice(0, 200)}`);
     const parsed = JSON.parse(body);
     const rawContent = parsed.choices?.[0]?.message?.content;
     if (typeof rawContent !== 'string' || rawContent.trim().length === 0)
