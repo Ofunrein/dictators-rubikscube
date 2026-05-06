@@ -41,6 +41,7 @@ function createMockRequest(url: string, body: unknown, method = 'POST') {
     url,
     headers: {
       host: 'localhost:3000',
+      'x-vercel-id': 'iad1::test-request',
     },
     body,
   };
@@ -134,6 +135,7 @@ describe('vercel catch-all handler', () => {
 
     expect(badRes.statusCode).toBe(400);
     expect((badRes.payload as any).error?.code).toBe('VALIDATION_ERROR');
+    expect((badRes.payload as any).error?.requestId).toBe('iad1::test-request');
     expect(Array.isArray((badRes.payload as any).error?.details)).toBe(true);
   });
 
