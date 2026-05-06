@@ -44,17 +44,25 @@ export default async function handler(req, res) {
     (r) => r.method === req.method && r.path === routePath,
   );
 
+  const requestId = req.headers['x-vercel-id'] || 'unknown';
+
   if (!route) {
-    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found.' } });
+    res.status(404).json({
+      error: {
+        code: 'NOT_FOUND',
+        message: 'Route not found.',
+        requestId,
+      },
+    });
     return;
   }
 
   const ctx = {
     url,
-    requestId: req.headers['x-vercel-id'] || 'unknown',
+    requestId,
     sendJson: (code, payload) => res.status(code).json(payload),
     sendError: (code, errCode, message, details) => {
-      const error = { code: errCode, message };
+      const error = { code: errCode, message, requestId };
       if (details && details.length > 0) error.details = details;
       res.status(code).json({ error });
     },
