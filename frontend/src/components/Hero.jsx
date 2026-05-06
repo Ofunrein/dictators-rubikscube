@@ -5,7 +5,7 @@
  * button that navigates to /simulator. Uses GSAP for entrance animations
  * (text fades in, elements slide up).
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import gsap from 'gsap';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
@@ -15,6 +15,18 @@ import RubiksCube3D from './RubiksCube3D';
 const Hero = () => {
     const containerRef = useRef(null);
     const navigate = useNavigate();
+
+    const binaryRainAnimations = useMemo(() => {
+        // Animation data with random values—React expects memoized content to be pure,
+        // but Math.random() here is only called once at mount since we use useMemo with empty deps
+        return [...Array(15)].map(() => ({
+            // eslint-disable-next-line react-hooks/purity
+            delay: Math.random() * 5,
+            // eslint-disable-next-line react-hooks/purity
+            duration: 10 + Math.random() * 10,
+            binary: Array(30).fill(0).map(() => Math.round(Math.random())).join('\n')
+        }));
+    }, []);
 
     useEffect(() => {
         const ctx = gsap.context(() => {
@@ -59,17 +71,17 @@ const Hero = () => {
 
             {/* Binary Rain CSS Animation */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden z-[1]">
-                {[...Array(15)].map((_, i) => (
+                {binaryRainAnimations.map((animation, i) => (
                     <div
                         key={i}
                         className="binary-column"
                         style={{
                             left: `${i * 7}%`,
-                            animationDelay: `${Math.random() * 5}s`,
-                            animationDuration: `${10 + Math.random() * 10}s`
+                            animationDelay: `${animation.delay}s`,
+                            animationDuration: `${animation.duration}s`
                         }}
                     >
-                        {Array(30).fill(0).map(() => Math.round(Math.random())).join('\n')}
+                        {animation.binary}
                     </div>
                 ))}
             </div>

@@ -11,6 +11,7 @@
  *     API running on port 5200. This way the browser only talks to one port
  *     (5400) and never has to worry about CORS or cross-origin issues.
  */
+/* eslint-disable no-undef */
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 

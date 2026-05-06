@@ -6,7 +6,7 @@
  * the Hero section and Features section backgrounds.
  */
 import React, { useRef, useState, useMemo } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 // ─── Kyle's sticker-mesh constants ──────────────────────────────────────────

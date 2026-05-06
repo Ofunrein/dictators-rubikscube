@@ -57,6 +57,7 @@ export function useSimulatorActions({
   const waitingForFirstMoveRef = useRef(false);
 
   const moveHistoryRef = useRef(moveHistory);
+  // eslint-disable-next-line react-hooks/refs
   moveHistoryRef.current = moveHistory;
 
   const solveStatusLabel = useMemo(() => (
