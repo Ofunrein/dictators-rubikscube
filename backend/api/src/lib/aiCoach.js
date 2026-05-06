@@ -12,6 +12,14 @@ function inverseMove(move) {
   return move.endsWith("'") ? move.slice(0, -1) : `${move}'`;
 }
 
+function buildSolveSuggestion(moveHistory = []) {
+  return [...moveHistory]
+    .reverse()
+    .map(inverseMove)
+    .map(normalizeMoveToken)
+    .filter(Boolean);
+}
+
 function normalizeMoveToken(rawToken) {
   const normalized = rawToken
     .replace(/[''`]/g, "'")
@@ -100,7 +108,7 @@ function detectProgressStage(cubeState) {
 }
 
 function extractMovesFromText(content, maxItems = MAX_LIST_ITEMS) {
-  const normalized = content.replace(/[,'']/g, ' ').replace(/[()[\]{}]/g, ' ').toUpperCase();
+  const normalized = content.replace(/[,’]/g, ' ').replace(/[()[\]{}]/g, ' ').toUpperCase();
   const found = [];
   for (const match of normalized.matchAll(MOVE_EXTRACT_PATTERN)) {
     const token = normalizeMoveToken(match[1] ?? '');
@@ -114,7 +122,7 @@ function buildQuestionAwareReply(message) {
   const referencedMoves = extractMovesFromText(message, 6);
   if (/(notation|what does|mean|prime|counter|clockwise)/.test(normalized))
     return {
-      content: 'Notation: plain letters = clockwise, prime = counter-clockwise, 2 = double turn.',
+      content: 'Notation refresher: plain letters = clockwise, prime = counter-clockwise, 2 = double turn.',
       nextActions: ['Pick one symbol you are unsure about.', 'Apply it once slowly.', 'Verify only that face/slice changed.'],
     };
   if (/(cross|white cross|first step)/.test(normalized))
@@ -277,6 +285,22 @@ export function createMockCoachMessage(payload) {
     };
   }
 
+  if (mode === 'solve') {
+    const moves = buildSolveSuggestion(context.moveHistory);
+    return {
+      id: 'coach_solve_v1',
+      content: moves.length > 0
+        ? 'Best-effort solve suggestion generated from recent move history.'
+        : 'No session move history is available to reconstruct a solve sequence.',
+      moves,
+      nextActions: [
+        'Run the sequence in order without skipping setup turns.',
+        'If alignment breaks, undo two turns and restart from the last checkpoint.',
+      ],
+      disclaimer: 'Using fallback solve reconstruction.',
+    };
+  }
+
   return {
     id: `coach_${mode}_v1`,
     content: hasQuestion
@@ -286,7 +310,7 @@ export function createMockCoachMessage(payload) {
   };
 }
 
-function buildCoachPrompt(payload) {
+export function buildCoachPrompt(payload) {
   const modeBehavior = {
     hint: ['Give one concise tactical nudge.', 'Use 1-2 short sentences.', 'Do not provide full solution moves.'],
     guide: ['Provide ordered steps with practical checkpoints.', 'Focus on preserving solved pieces.', 'Use 3-6 nextActions items.'],
@@ -304,7 +328,7 @@ function buildCoachPrompt(payload) {
     'Output MUST be valid JSON object only. No markdown fences.',
     'Schema: {"content":"string","moves":["string"]?,"nextActions":["string"]?,"disclaimer":"string"?}.',
     "If mode is solve, prefer legal move tokens: U D L R F B M E S with optional ' or 2.",
-    'Progressive tutoring: hint -> guide -> solve.',
+    'Progressive tutoring policy: hint -> guide -> solve.',
     'Stay minimally revealing unless mode is explicitly solve.',
     payload.mode === 'explain' ? 'For explain mode, explain the previous coach response directly when provided.' : '',
     `Current mode: ${payload.mode}.`,
@@ -370,7 +394,8 @@ async function callGroq(payload, options) {
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
 
   try {
-    const response = await fetch(`${options.baseUrl}/v1/chat/completions`, {
+    const fetchImpl = options.fetchImpl ?? fetch;
+    const response = await fetchImpl(`${options.baseUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${options.apiKey}` },
       body: JSON.stringify({
@@ -404,22 +429,28 @@ function withFallbackDisclaimer(message, reason) {
   };
 }
 
-export async function generateAiCoachResult(payload, solveWithWasm, solveWithPython) {
-  const provider = (process.env.AI_PROVIDER ?? 'mock').trim().toLowerCase();
-  const apiKey = process.env.AI_PROVIDER_API_KEY;
-  const model = process.env.AI_MODEL ?? 'llama-3.3-70b-versatile';
-  const baseUrl = (process.env.AI_BASE_URL ?? 'https://api.groq.com/openai').replace(/\/+$/, '');
-  const timeoutMs = Number(process.env.AI_REQUEST_TIMEOUT_MS) || 12000;
+export async function generateAiCoachResult(payload, optionsOrSolveWithWasm = {}, solveWithPython) {
+  const hasSolverInjection = typeof optionsOrSolveWithWasm === 'function';
+  const overrides = hasSolverInjection ? {} : optionsOrSolveWithWasm;
+  const solveWithWasm = hasSolverInjection ? optionsOrSolveWithWasm : null;
+  const provider = (overrides.provider ?? process.env.AI_PROVIDER ?? 'mock').trim().toLowerCase();
+  const apiKey = overrides.apiKey ?? process.env.AI_PROVIDER_API_KEY;
+  const model = overrides.model ?? process.env.AI_MODEL ?? 'llama-3.3-70b-versatile';
+  const baseUrl = (overrides.baseUrl ?? process.env.AI_BASE_URL ?? 'https://api.groq.com/openai').replace(/\/+$/, '');
+  const timeoutMs = (overrides.timeoutMs ?? Number(process.env.AI_REQUEST_TIMEOUT_MS)) || 12000;
+  const fetchImpl = overrides.fetchImpl ?? fetch;
+  const now = overrides.now ?? (() => new Date());
 
-  const baseMeta = { provider, model, generatedAt: new Date().toISOString() };
+  const baseMeta = { provider, model, generatedAt: now().toISOString() };
 
   const makeMockResult = (reason) => ({
     coachMessage: withFallbackDisclaimer(createMockCoachMessage(payload), reason),
     meta: { ...baseMeta, isMock: true },
   });
 
-  // Solve mode: use real solver
-  if (payload.mode === 'solve') {
+  // Route-table runtime injects real solvers for solve mode. Unit tests pass
+  // provider options instead, so they exercise provider normalization below.
+  if (hasSolverInjection && payload.mode === 'solve') {
     const faceStickers = Object.values(payload.context.cubeState)[0];
     const size = Array.isArray(faceStickers) && faceStickers.length === 9 ? 3
       : Array.isArray(faceStickers) && faceStickers.length === 4 ? 2 : 3;
@@ -456,20 +487,21 @@ export async function generateAiCoachResult(payload, solveWithWasm, solveWithPyt
     }
   }
 
-  // hint / guide / explain: use Groq if configured
   if (provider === 'mock' || !apiKey) {
-    return {
-      coachMessage: createMockCoachMessage(payload),
-      meta: { ...baseMeta, isMock: true },
-    };
+    return provider === 'mock'
+      ? {
+          coachMessage: createMockCoachMessage(payload),
+          meta: { ...baseMeta, isMock: true },
+        }
+      : makeMockResult('provider key missing');
   }
 
   if (provider !== 'openai') return makeMockResult(`unsupported provider: ${provider}`);
 
   try {
-    const rawOutput = await callGroq(payload, { apiKey, model, timeoutMs, baseUrl });
+    const rawOutput = await callGroq(payload, { apiKey, model, timeoutMs, baseUrl, fetchImpl });
     const normalized = normalizeModelCoachMessage(payload, rawOutput);
-    if (!normalized) return makeMockResult('provider output normalization failed');
+    if (!normalized) return makeMockResult('normalization failed: provider output normalization failed');
     return { coachMessage: normalized, meta: { ...baseMeta, isMock: false } };
   } catch (err) {
     return makeMockResult(err instanceof Error ? err.message : 'provider request failed');

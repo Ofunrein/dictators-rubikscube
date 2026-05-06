@@ -12,8 +12,9 @@ Use this checklist when updating docs, moving files, or reviewing whether the re
 ## Folder Clarity
 
 - [ ] `frontend/` is the current frontend source of truth.
-- [ ] `backend/` is the current local API and solver orchestration source of truth.
+- [ ] `backend/api/src/routes.js` and `backend/api/src/server.js` are the current local API and solver orchestration source of truth.
 - [ ] `api/` is only the production/serverless adapter layer.
+- [ ] `backend/api/src/app.ts` and `backend/api/prisma/` are labeled as the experimental Fastify/Prisma persistence path.
 - [ ] `docs/` contains project-level explanation that should not be hidden inside app folders.
 - [ ] Backup or archival material is labeled clearly so it is not mistaken for active runtime code.
 
