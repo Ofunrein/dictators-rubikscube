@@ -6,7 +6,7 @@ describe('useTimer', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     let rafId = 0;
-    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+    vi.stubGlobal('requestAnimationFrame', (cb: (timestamp: number) => void) => {
       rafId += 1;
       setTimeout(() => cb(Date.now()), 16);
       return rafId;

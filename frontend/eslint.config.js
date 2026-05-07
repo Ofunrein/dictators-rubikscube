@@ -12,7 +12,7 @@ export default [
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: { ...globals.browser, ...globals.node },
       parser: tsparser,
       parserOptions: {
         ecmaFeatures: { jsx: true },
@@ -51,6 +51,7 @@ export default [
       ...js.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      'no-unused-vars': 'off',
     },
   },
 ];
