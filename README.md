@@ -6,7 +6,7 @@
 
 An interactive, browser-based 3D Rubik's Cube platform with real-time manipulation, guided tutorials, and a full-stack API.
 
-## [[Live Demo](https://dictators-rubikscube.vercel.app](https://dictators-rubikscube.vercel.app/simulator)]
+## [Live Demo](https://dictators-rubikscube.vercel.app](https://dictators-rubikscube.vercel.app/simulator)
 
 ![Demo](docs/demo.gif)
 
