@@ -1,5 +1,12 @@
 # The Dictators — 3D Rubik's Cube Platform
 
+**🎮 [Live Demo → dictators-rubikscube.vercel.app](https://dictators-rubikscube.vercel.app)**
+
+![CI](https://github.com/Ofunrein/dictators-rubikscube/actions/workflows/ci.yml/badge.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)
+![React](https://img.shields.io/badge/React-19-61dafb.svg)
+
 An interactive, browser-based 3D Rubik's Cube platform with real-time manipulation, guided tutorials, and a full-stack API.
 
 ![Demo](docs/demo.gif)
@@ -53,6 +60,21 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 ```
 
 See `frontend/.env.example` for the required variables. Get the values from the team's Supabase project.
+
+## Deployment
+
+The app is deployed on Vercel. Frontend is a static Vite build; backend runs as Vercel Serverless Functions.
+
+| Environment | URL |
+|---|---|
+| Production | [dictators-rubikscube.vercel.app](https://dictators-rubikscube.vercel.app) |
+| API (production) | `https://dictators-rubikscube.vercel.app/api/v1` |
+
+**Deploy your own fork:**
+1. Import the repo into Vercel
+2. Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` as frontend env vars
+3. Set `DATABASE_URL`, `AI_PROVIDER_API_KEY`, `JWT_ACCESS_SECRET` as backend env vars
+4. Deploy — Vercel auto-detects `vercel.json` build config
 
 ## Start Here
 
@@ -228,6 +250,8 @@ the-dictators/
 
 Both the local dev server (port 5200) and the Vercel production handler use the same route table in `routes.js` — one source of truth.
 
+> Full OpenAPI 3.0 spec: [`backend/api/openapi.yaml`](./backend/api/openapi.yaml)
+
 ## Backend Runtime Source of Truth
 
 The active runtime is intentionally small:
@@ -286,6 +310,7 @@ Sprint planning, Jira ticket quality, PR review expectations, and documentation 
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 19, Vite, Tailwind CSS, React Three Fiber, Three.js |
+| TypeScript | 5.x | Strict mode across all frontend and backend source files |
 | Animations | GSAP, ScrollTrigger, eased quaternion interpolation |
 | API | Node.js route table, OpenAPI 3.1, Vercel Serverless Functions |
 | 3x3 Solver | C++17 compiled to WebAssembly via Emscripten |

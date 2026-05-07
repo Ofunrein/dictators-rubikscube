@@ -31,16 +31,21 @@ const repoRoot = resolve(apiSrcDir, '../../..');
 // The second entry in each list is a typo fallback from earlier development.
 const frontendCubeModelCandidates = [
   resolve(repoRoot, 'frontend/src/cube/cubeModel.js'),
+  resolve(repoRoot, 'frontend/src/cube/cubeModel.ts'),
   resolve(repoRoot, 'dicators-website/src/cube/cubeModel.js'),
+  resolve(repoRoot, 'dicators-website/src/cube/cubeModel.ts'),
 ];
 
 const frontendMovesCandidates = [
   resolve(repoRoot, 'frontend/src/cube/moves.js'),
+  resolve(repoRoot, 'frontend/src/cube/moves.ts'),
   resolve(repoRoot, 'dicators-website/src/cube/moves.js'),
+  resolve(repoRoot, 'dicators-website/src/cube/moves.ts'),
 ];
 
 const frontendUtilsCandidates = [
   resolve(repoRoot, 'frontend/src/utils/isPlainObject.js'),
+  resolve(repoRoot, 'frontend/src/utils/isPlainObject.ts'),
 ];
 
 // Dynamic import: try each candidate path until one exists.
