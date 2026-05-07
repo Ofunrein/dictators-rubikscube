@@ -54,6 +54,7 @@ export default function GuidePanel({
   const imgRef = useRef(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setImgLoaded(false);
     // Handle cached images: if the browser already has the image, onLoad
     // may fire before React attaches the handler. Check after a tick.
@@ -65,7 +66,7 @@ export default function GuidePanel({
     return () => clearTimeout(timer);
   }, [currentStep.gif]);
 
-  const cardBg = isDark ? 'bg-[#111] border-white/8' : 'bg-white border-dictator-ink/10';
+  // const cardBg = isDark ? 'bg-[#111] border-white/8' : 'bg-white border-dictator-ink/10';
   const muted = isDark ? 'text-white/50' : 'text-dictator-ink/50';
   const textBody = isDark ? 'text-white/80' : 'text-dictator-ink/80';
   const navBtn = isDark

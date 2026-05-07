@@ -5,7 +5,7 @@
  * names and a rotating 3D cube preview. Uses GSAP for scroll-triggered entrance
  * animations.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import gsap from 'gsap';
 import { Canvas } from '@react-three/fiber';
 import RubiksCube3D from './RubiksCube3D';
@@ -16,11 +16,11 @@ const Features = () => {
     const [typedText, setTypedText] = useState('');
     const [algoIndex, setAlgoIndex] = useState(0);
 
-    const algorithms = [
+    const algorithms = useMemo(() => [
         "> R U R' U' (T-Perm)",
         "> F2 L' U' L U F2 (Cross)",
         "> x' R U' R' D R U R' D' (A-Perm)"
-    ];
+    ], []);
 
     // GSAP scroll reveal
     useEffect(() => {
@@ -74,7 +74,7 @@ const Features = () => {
         }, 50);
 
         return () => clearInterval(typingInterval);
-    }, [algoIndex]);
+    }, [algoIndex, algorithms]);
 
     // Card 3: Cursor Protocol Scheduler Animation
     const schedulerRef = useRef(null);

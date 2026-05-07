@@ -36,7 +36,7 @@ const CUBE_SIZE = 3;
 
 export default function StepByStepPage() {
   const navigate = useNavigate();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const t = getThemeClasses(isDark);
 
   // Step navigation
@@ -66,9 +66,10 @@ export default function StepByStepPage() {
 
   // Core cube state — same pattern as SimulatorPage
   const cubeStateObjRef = useRef(new CubeState(CUBE_SIZE));
+  // eslint-disable-next-line react-hooks/refs
   const [displayState, setDisplayState] = useState(() => cubeStateObjRef.current.getState());
   const solveStackRef = useRef([]);
-  const [layoutResetKey, setLayoutResetKey] = useState(0);
+  const [layoutResetKey] = useState(0);
 
   const keyMap = useMemo(() => getKeyMap(CUBE_SIZE), []);
 
