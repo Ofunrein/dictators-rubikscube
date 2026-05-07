@@ -9,7 +9,10 @@
 
 An interactive, browser-based 3D Rubik's Cube platform with real-time manipulation, guided tutorials, and a full-stack API.
 
-![Demo](docs/demo.gif)
+## Live Demo
+
+- [Production app](https://dictators-rubikscube.vercel.app)
+- [Production API base](https://dictators-rubikscube.vercel.app/api/v1)
 
 ## Features
 
@@ -34,16 +37,15 @@ An interactive, browser-based 3D Rubik's Cube platform with real-time manipulati
 | **2D Face Map** | Real-time unfolded cube visualization |
 | **Keyboard Shortcuts** | Full notation mapped to keyboard (u/d/l/r/f/b/m/e/s) |
 
-## Screenshots
+## Engineering Highlights
 
-| Page | Preview |
-|------|---------|
-| Landing | ![Landing](docs/screenshots/landing.png) |
-| Simulator | ![Simulator](docs/screenshots/simulator.png) |
-| Step-by-Step Guide | ![Guide](docs/screenshots/step-guide-solving.png) |
-| Leaderboard | ![Leaderboard](docs/screenshots/leaderboard.png) |
-| Learn | ![Learn](docs/screenshots/learn-page.png) |
-| Profile | ![Profile](docs/screenshots/profile.png) |
+- **Shared cube engine:** the browser and API use the same cube model and move logic, keeping sticker state, scrambles, and notation behavior aligned across client and server.
+- **Hybrid solver stack:** 3x3 solving routes through a C++17 solver compiled to WebAssembly, while 2x2 and 4x4 support uses a vendored Python NxN solver.
+- **Verified solve pipeline:** returned solver moves are replayed against the cube engine before responses are sent, reducing notation and state-format mismatch risk.
+- **Single active API contract:** local development and Vercel production both delegate cube and coach behavior to the same route table, with OpenAPI documenting the HTTP surface.
+- **Interactive 3D UI:** React Three Fiber, queued move animation, keyboard controls, and a live 2D face map keep visual and logical cube state in sync.
+- **Product persistence:** Supabase Auth and Postgres-backed stats power account, leaderboard, and profile workflows.
+- **Automated checks:** GitHub Actions runs frontend lint/tests/build, Playwright smoke tests, and backend type-check/tests.
 
 ## Quick Start
 
@@ -78,11 +80,15 @@ The app is deployed on Vercel. Frontend is a static Vite build; backend runs as 
 
 ## Start Here
 
-If you are new to the repo, read in this order:
+If you are reviewing the product and architecture, read in this order:
 
 1. This root `README.md`
 2. [docs/architecture.md](docs/architecture.md)
-3. [docs/repo-organization-checklist.md](docs/repo-organization-checklist.md)
+3. [docs/README.md](docs/README.md)
+4. [backend/api/openapi.yaml](backend/api/openapi.yaml)
+
+If you are maintaining the repo, use the contributor and archive links in
+[docs/README.md](docs/README.md).
 
 Important:
 - this root README is the canonical onboarding document
@@ -197,7 +203,7 @@ the-dictators/
 │   └── vendor/                       Vendored Python NxN solver
 │
 ├── frontend-legacy/                  Legacy prototype — NOT used, kept for reference
-├── docs/                             Architecture & contribution docs
+├── docs/                             Architecture, API contracts, and documentation index
 ├── scripts/                          Dev tooling (setup, dev runner)
 ├── vercel.json                       Vercel build config + API rewrites
 └── package.json                      Workspace root
@@ -311,10 +317,6 @@ The project is configured for **Vercel**:
 - `api/v1/` routes map to serverless functions
 - `vercel.json` configures build output and API rewrites
 
-## Workflow Quality
-
-Sprint planning, Jira ticket quality, PR review expectations, and documentation standards are tracked in [`docs/sprint-3-workflow-quality-plan.md`](docs/sprint-3-workflow-quality-plan.md).
-
 ## Tech Stack
 
 | Layer | Technology |
@@ -322,8 +324,8 @@ Sprint planning, Jira ticket quality, PR review expectations, and documentation 
 | Language | TypeScript 5.x (strict mode — all frontend and backend source) |
 | Frontend | React 19, Vite 8, Tailwind CSS, React Three Fiber, Three.js |
 | Animations | GSAP, ScrollTrigger, eased quaternion interpolation |
-| API | Node.js, Fastify 4, OpenAPI 3.1, Vercel Serverless Functions |
+| API | Node.js route table, OpenAPI 3.1, Vercel Serverless Functions |
 | 3x3 Solver | C++17 compiled to WebAssembly via Emscripten |
 | NxN Solver | Python 3 (vendored rubiks-cube-NxNxN-solver) |
 | Database | Supabase (Postgres + Auth) |
-| Version Control | Git, GitHub |
+| Testing/CI | Vitest, Playwright smoke tests, GitHub Actions |

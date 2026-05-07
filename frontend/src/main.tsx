@@ -1,17 +1,17 @@
 /*
- * main.jsx — App entry point
+ * main.tsx — App entry point
  *
  * Sets up the two global contexts that every page in the app shares:
  *   ThemeProvider — dark/light mode state, persisted to localStorage
  *   AuthProvider  — login/logout state and current user data
  *
  * Route map:
- *   /                  → App.jsx (landing page)
- *   /simulator         → SimulatorPage.jsx (interactive 3D cube)
+ *   /                  → App.tsx (landing page)
+ *   /simulator         → SimulatorPage.tsx (interactive 3D cube)
  *   /page/simulator    → same, kept for legacy URL compatibility
- *   /learn             → LearnPage.jsx (learning modules and notation guide)
- *   /leaderboard       → LeaderboardPage.jsx (Supabase-backed global rankings)
- *   /profile           → ProfilePage.jsx (authenticated user stats)
+ *   /learn             → LearnPage.tsx (learning modules and notation guide)
+ *   /leaderboard       → LeaderboardPage.tsx (Supabase-backed global rankings)
+ *   /profile           → ProfilePage.tsx (authenticated user stats)
  *   *                  → redirect to /
  */
 import { StrictMode, lazy, Suspense } from 'react'
@@ -23,11 +23,11 @@ import { ThemeProvider } from './context/ThemeContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import App from './App'
 
-const SimulatorPage = lazy(() => import('./pages/simulator/SimulatorPage.jsx'))
-const LearnPage = lazy(() => import('./pages/LearnPage.jsx'))
-const StepByStepPage = lazy(() => import('./pages/StepByStepPage.jsx'))
-const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage.jsx'))
-const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'))
+const SimulatorPage = lazy(() => import('./pages/simulator/SimulatorPage'))
+const LearnPage = lazy(() => import('./pages/LearnPage'))
+const StepByStepPage = lazy(() => import('./pages/StepByStepPage'))
+const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 
 export function PageLoader() {
   return (

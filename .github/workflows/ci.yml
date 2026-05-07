@@ -38,6 +38,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke tests
+        run: npm run test:e2e
+
   backend:
     name: Backend API
     runs-on: ubuntu-latest
