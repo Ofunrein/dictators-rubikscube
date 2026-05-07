@@ -5,13 +5,11 @@
 import { useEffect, useRef } from 'react';
 import { Check, Play, RotateCcw, Shuffle, Square } from 'lucide-react';
 import { CUBE_SIZE_OPTIONS } from './simulatorConstants';
-import { getThemeClasses } from './simulatorTheme';
 
 export default function SimulatorControls({
   activeMove,
   cubeSize,
   interactionLocked,
-  isDark = true,
   isTimedSolveSession = false,
   keyMap,
   manualInputLocked,
@@ -33,7 +31,7 @@ export default function SimulatorControls({
 }) {
   const isTimedSolve = isTimedSolveSession || timerPrimed || timerRunning;
   const actionsDisabled = interactionLocked || solveDepth === 0 || isTimedSolve;
-  const t = getThemeClasses(isDark);
+  // const t = getThemeClasses(isDark);
   const hiddenMoves = /^[xyXY]'?$/;
 
   // In free-solve mode, the scramble portion is driven by moveHistory itself
