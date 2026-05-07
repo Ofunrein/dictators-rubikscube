@@ -20,8 +20,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './index.css'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
-import ErrorBoundary from './components/ErrorBoundary.jsx'
-import App from './App.jsx'
+import ErrorBoundary from './components/ErrorBoundary'
+import App from './App'
 
 const SimulatorPage = lazy(() => import('./pages/simulator/SimulatorPage.jsx'))
 const LearnPage = lazy(() => import('./pages/LearnPage.jsx'))
@@ -37,7 +37,7 @@ export function PageLoader() {
   )
 }
 
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <BrowserRouter>

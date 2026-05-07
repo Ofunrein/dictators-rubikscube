@@ -47,7 +47,7 @@ import Footer from './components/Footer';
 gsap.registerPlugin(ScrollTrigger);
 
 function App() {
-  const [authModal, setAuthModal] = useState(null);
+  const [authModal, setAuthModal] = useState<string | null>(null);
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
