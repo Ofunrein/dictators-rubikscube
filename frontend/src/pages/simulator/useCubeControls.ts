@@ -110,8 +110,6 @@ function screenAlignedDragDirectionToArrow(deltaX: number, deltaY: number): stri
   return deltaY > 0 ? 'ArrowDown' : 'ArrowUp';
 }
 
-interface FaceScreenBasis { right?: Vec2; up?: Vec2 }
-
 function getPreferredDragAxis(deltaX: number, deltaY: number, faceScreenBasis: FaceScreenBasis | null = null): 'horizontal' | 'vertical' {
   const normalizedRight = normalizeScreenVector(faceScreenBasis?.right);
   const normalizedUp = normalizeScreenVector(faceScreenBasis?.up);
