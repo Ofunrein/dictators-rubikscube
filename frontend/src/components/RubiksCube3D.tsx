@@ -15,7 +15,10 @@ const STICKER_SIZE = 0.85;
 const GAP = 1.0;
 const EPSILON = 0.02;
 
-const TOKEN_HEX = {
+type FaceKey = 'U' | 'D' | 'F' | 'B' | 'R' | 'L';
+type StickerToken = 'W' | 'R' | 'G' | 'Y' | 'O' | 'B';
+
+const TOKEN_HEX: Record<StickerToken, string> = {
   W: '#FFFFFF',
   R: '#CC1A1A',
   G: '#2E8B57',
@@ -24,7 +27,14 @@ const TOKEN_HEX = {
   B: '#1E90FF',
 };
 
-const CUBIE_FACES_DEF = [
+interface CubieFacesDef {
+  axis: 'x' | 'y' | 'z';
+  sign: number;
+  face: FaceKey;
+  rotation: [number, number, number];
+}
+
+const CUBIE_FACES_DEF: CubieFacesDef[] = [
   { axis: 'x', sign: 1, face: 'R', rotation: [0, Math.PI / 2, 0] },
   { axis: 'x', sign: -1, face: 'L', rotation: [0, -Math.PI / 2, 0] },
   { axis: 'y', sign: 1, face: 'U', rotation: [-Math.PI / 2, 0, 0] },
@@ -33,7 +43,7 @@ const CUBIE_FACES_DEF = [
   { axis: 'z', sign: -1, face: 'B', rotation: [0, Math.PI, 0] },
 ];
 
-const SOLVED_STATE = {
+const SOLVED_STATE: Record<FaceKey, StickerToken[]> = {
   U: Array(9).fill('W'),
   R: Array(9).fill('R'),
   F: Array(9).fill('G'),
@@ -42,7 +52,7 @@ const SOLVED_STATE = {
   B: Array(9).fill('B'),
 };
 
-function getStickerIndex(face, gx, gy, gz) {
+function getStickerIndex(face: FaceKey, gx: number, gy: number, gz: number): number {
   switch (face) {
     case 'U': return (1 - gz) * 3 + (gx + 1);
     case 'D': return (gz + 1) * 3 + (gx + 1);
@@ -54,8 +64,14 @@ function getStickerIndex(face, gx, gy, gz) {
   }
 }
 
+interface HeroCubieProps {
+  gx: number;
+  gy: number;
+  gz: number;
+}
+
 // ─── Single cubie with dark body + sticker overlays ──────────────────────────
-const HeroCubie = ({ gx, gy, gz }) => {
+const HeroCubie = ({ gx, gy, gz }: HeroCubieProps) => {
   const stickers = [];
 
   for (const def of CUBIE_FACES_DEF) {
@@ -66,10 +82,10 @@ const HeroCubie = ({ gx, gy, gz }) => {
     if (!isExposed) continue;
 
     const stickerIndex = getStickerIndex(def.face, gx, gy, gz);
-    const token = SOLVED_STATE[def.face]?.[stickerIndex];
-    const color = TOKEN_HEX[token] || '#808080';
+    const token = SOLVED_STATE[def.face]?.[stickerIndex] as StickerToken | undefined;
+    const color = token ? TOKEN_HEX[token] : '#808080';
 
-    const pos = [
+    const pos: [number, number, number] = [
       def.axis === 'x' ? def.sign * (CUBIE_SIZE / 2 + EPSILON) : 0,
       def.axis === 'y' ? def.sign * (CUBIE_SIZE / 2 + EPSILON) : 0,
       def.axis === 'z' ? def.sign * (CUBIE_SIZE / 2 + EPSILON) : 0,
@@ -98,7 +114,7 @@ const HeroCubie = ({ gx, gy, gz }) => {
 
 // ─── Interactive hero cube with auto-rotation and drag ───────────────────────
 const RubiksCube3D = () => {
-  const groupRef = useRef();
+  const groupRef = useRef<THREE.Group>(null);
   const [isDragging, setIsDragging] = useState(false);
   const baseRotation = useRef({ x: 0.2, y: 0.3 });
 

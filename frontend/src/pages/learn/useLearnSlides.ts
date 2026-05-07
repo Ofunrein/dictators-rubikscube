@@ -1,26 +1,29 @@
 import { useState, useRef, useEffect } from 'react';
 
-export function useLearnSlides(totalSlides) {
+export function useLearnSlides(totalSlides: number) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const slidesRef = useRef([]);
-  const timeoutRef = useRef(null);
+  const slidesRef = useRef<(HTMLElement | null)[]>([]);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    return () => clearTimeout(timeoutRef.current);
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, []);
 
-  const goToSlide = (index) => {
+  const goToSlide = (index: number) => {
     if (index < 0 || index >= totalSlides || index === currentSlide || isTransitioning) return;
 
     setIsTransitioning(true);
     setCurrentSlide(index);
 
-    if (slidesRef.current[index]) {
-      slidesRef.current[index].scrollTop = 0;
+    const el = slidesRef.current[index];
+    if (el) {
+      el.scrollTop = 0;
     }
 
-    clearTimeout(timeoutRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => setIsTransitioning(false), 750);
   };
 

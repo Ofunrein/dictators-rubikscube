@@ -1,6 +1,10 @@
 import { ALGORITHMS } from './learnConstants.js';
 
-export default function SlideAlgorithms({ onCopy }) {
+interface SlideAlgorithmsProps {
+  onCopy: (alg: string) => void;
+}
+
+export default function SlideAlgorithms({ onCopy }: SlideAlgorithmsProps) {
   return (
     <div className="slide-inner">
       <div className="section-header">

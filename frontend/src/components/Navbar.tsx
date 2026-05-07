@@ -27,7 +27,7 @@ import AuthModal from './AuthModal';
 const Navbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [authModal, setAuthModal] = useState(null);
+    const [authModal, setAuthModal] = useState<string | null>(null);
     const navRef = useRef(null);
     const navigate = useNavigate();
     const { currentUser } = useAuth();
