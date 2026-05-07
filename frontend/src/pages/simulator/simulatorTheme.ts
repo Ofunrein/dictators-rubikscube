@@ -12,7 +12,7 @@
  * without hunting through 6 different JSX files.
  */
 
-export function getThemeClasses(isDark) {
+export function getThemeClasses(isDark: boolean) {
   return {
     // Page-level backgrounds
     pageBg: isDark ? 'bg-dictator-void text-white' : 'bg-dictator-cream text-dictator-ink',

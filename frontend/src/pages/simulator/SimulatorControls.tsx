@@ -6,6 +6,36 @@ import { useEffect, useRef } from 'react';
 import { Check, Play, RotateCcw, Shuffle, Square } from 'lucide-react';
 import { CUBE_SIZE_OPTIONS } from './simulatorConstants';
 
+interface MoveGroup {
+  label: string;
+  moves: string[];
+}
+
+interface SimulatorControlsProps {
+  activeMove: string | null;
+  cubeSize: number;
+  interactionLocked: boolean;
+  isDark?: boolean;
+  isTimedSolveSession?: boolean;
+  keyMap: Record<string, string>;
+  manualInputLocked: boolean;
+  moveHistory: string[];
+  moveGroups: MoveGroup[];
+  onMoveSelect: (move: string) => void;
+  onReset: () => void;
+  onScramble: () => void;
+  onSolve: () => void;
+  onSizeChange: (size: number) => void;
+  onTimerAction: () => void;
+  onTimerReset: () => void;
+  scrambleMoveCount?: number;
+  scrambleSeq: string[];
+  solveDepth: number;
+  timerMs?: number;
+  timerPrimed?: boolean;
+  timerRunning?: boolean;
+}
+
 export default function SimulatorControls({
   activeMove,
   cubeSize,
@@ -28,7 +58,7 @@ export default function SimulatorControls({
   timerMs = 0,
   timerPrimed = false,
   timerRunning = false,
-}) {
+}: SimulatorControlsProps) {
   const isTimedSolve = isTimedSolveSession || timerPrimed || timerRunning;
   const actionsDisabled = interactionLocked || solveDepth === 0 || isTimedSolve;
   // const t = getThemeClasses(isDark);
@@ -41,13 +71,13 @@ export default function SimulatorControls({
   // In timed-solve, scramble moves are never recorded to history, so we just
   // slice past scrambleMoveCount as before.
   const visibleScrambleMoves = !isTimedSolve && scrambleSeq.length > 0
-    ? moveHistory.slice(0, scrambleSeq.length).filter((m) => !hiddenMoves.test(m))
+    ? moveHistory.slice(0, scrambleSeq.length).filter((m: string) => !hiddenMoves.test(m))
     : [];
 
   const visibleUserMoves = (isTimedSolve
     ? moveHistory.slice(scrambleMoveCount)
     : moveHistory.slice(scrambleSeq.length)
-  ).filter((m) => !hiddenMoves.test(m));
+  ).filter((m: string) => !hiddenMoves.test(m));
 
   // Dim the scramble row only after the user engages — either by making
   // their first move, or by pressing Solve (which appends solve moves to
@@ -58,7 +88,7 @@ export default function SimulatorControls({
   // user can follow the solve in real time). Respects manual scrolling — if
   // the user scrolls up to read earlier moves, we stop following until they
   // scroll back near the bottom.
-  const historyScrollRef = useRef(null);
+  const historyScrollRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
   const totalVisibleMoves = visibleScrambleMoves.length + visibleUserMoves.length;
 

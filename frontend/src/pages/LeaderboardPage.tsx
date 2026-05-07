@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { Crown, Medal } from 'lucide-react';
 import PageNavbar from '../components/PageNavbar';
 import { useTheme } from '../context/ThemeContext';
-import { getLeaderboard } from '../lib/stats';
+import { getLeaderboard, type LeaderboardEntry } from '../lib/stats';
 
 const CUBE_TABS = ['3x3', '2x2'];
 const STAT_TABS = [
@@ -19,7 +19,7 @@ const STAT_TABS = [
 ];
 const RESULT_COUNTS = [10, 50, 100];
 
-function formatValue(value, statKey) {
+function formatValue(value: number | null | undefined, statKey: string) {
   if (value === null || value === undefined) return '—';
   if (statKey === 'solves') return value.toLocaleString();
   if (value >= 60) {
@@ -30,13 +30,17 @@ function formatValue(value, statKey) {
   return `${value.toFixed(2)}s`;
 }
 
-function valueLabel(statKey) {
+function valueLabel(statKey: string) {
   if (statKey === 'solves') return 'Solves';
   if (statKey === 'fastest') return 'Best Time';
   return 'Avg Time';
 }
 
-function RankIcon({ rank }) {
+interface RankIconProps {
+  rank: number;
+}
+
+function RankIcon({ rank }: RankIconProps) {
   if (rank === 1) return <Crown size={14} className="text-yellow-400" />;
   if (rank === 2) return <Medal size={14} className="text-dictator-chrome" />;
   if (rank === 3) return <Medal size={14} className="text-amber-600" />;
@@ -47,9 +51,9 @@ export default function LeaderboardPage() {
   const [activeSize, setActiveSize] = useState('3x3');
   const [activeStat, setActiveStat] = useState('fastest');
   const [resultCount, setResultCount] = useState(10);
-  const [entries, setEntries] = useState([]);
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const { isDark } = useTheme();
 
   // Fetch leaderboard data whenever size, stat, or count changes

@@ -31,8 +31,34 @@ import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react';
 import { TOTAL_STEPS } from './stepsData';
 
-function parseAlgorithmMoves(movesStr) {
+function parseAlgorithmMoves(movesStr: string): string[] {
   return movesStr.split(/\s+/).filter(Boolean);
+}
+
+interface StepData {
+  step?: number;
+  title?: string;
+  subtitle?: string;
+  text?: string;
+  gif?: string;
+  algorithms?: { label: string; moves: string }[];
+  [key: string]: unknown;
+}
+
+interface GuidePanelProps {
+  currentStep: StepData;
+  currentIndex: number;
+  totalSlides: number;
+  canPrev: boolean;
+  canNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+  onApplyAlgorithm: (moves: string[]) => void;
+  onScramble: () => void;
+  isScrambled: boolean;
+  queueActive: boolean;
+  isDark: boolean;
+  onNavigateSimulator: () => void;
 }
 
 export default function GuidePanel({
@@ -49,9 +75,9 @@ export default function GuidePanel({
   queueActive,
   isDark,
   onNavigateSimulator,
-}) {
+}: GuidePanelProps) {
   const [imgLoaded, setImgLoaded] = useState(false);
-  const imgRef = useRef(null);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -138,7 +164,7 @@ export default function GuidePanel({
 
         {/* Text */}
         <div>
-          {currentStep.text.split('\n\n').map((para, i) => (
+          {(currentStep.text ?? '').split('\n\n').map((para, i) => (
             <p key={i} className={`font-body text-base leading-relaxed mb-3 last:mb-0 ${textBody}`}>
               {para.split('\n').map((line, j) => (
                 <span key={j}>
@@ -176,13 +202,13 @@ export default function GuidePanel({
         )}
 
         {/* Algorithm buttons */}
-        {currentStep.algorithms.length > 0 && (
+        {(currentStep.algorithms?.length ?? 0) > 0 && (
           <div className="space-y-2">
             <p className={`font-mono text-[10px] uppercase tracking-widest ${muted}`}>
               Try it on the cube
             </p>
             <div className="flex flex-wrap gap-2">
-              {currentStep.algorithms.map((alg, i) => (
+              {currentStep.algorithms!.map((alg, i) => (
                 <button
                   key={i}
                   onClick={() => onApplyAlgorithm(parseAlgorithmMoves(alg.moves))}

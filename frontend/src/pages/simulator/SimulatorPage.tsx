@@ -19,6 +19,7 @@
  *   Header | Left panel (SimulatorControls) | Center (3D Canvas) | Right panel (TutorialPanel)
  */
 
+import { ErrorInfo } from 'react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
@@ -52,11 +53,27 @@ import CanvasFallbackPanel from './CanvasFallbackPanel';
 import { useTheme } from '../../context/ThemeContext';
 import { getThemeClasses } from './simulatorTheme';
 
+interface CoachMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  mode?: string;
+  content: string;
+  moves: string[];
+  nextActions: string[];
+  disclaimer: string;
+}
+
+interface LastCoachResponse {
+  id: string;
+  mode: string;
+  content: string;
+}
+
 const SimulatorPage = () => {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
   const { currentUser, refreshUserStats } = useAuth();
-  const [authModal, setAuthModal] = useState(null);
+  const [authModal, setAuthModal] = useState<string | null>(null);
   const t = getThemeClasses(isDark);
 
   // Core cube state — owned here, passed to hooks via refs
@@ -76,9 +93,9 @@ const SimulatorPage = () => {
   const [coachInput, setCoachInput] = useState('');
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState('');
-  const [coachMessages, setCoachMessages] = useState([]);
-  const [lastCoachResponse, setLastCoachResponse] = useState(null);
-  const coachMessagesEndRef = useRef(null);
+  const [coachMessages, setCoachMessages] = useState<CoachMessage[]>([]);
+  const [lastCoachResponse, setLastCoachResponse] = useState<LastCoachResponse | null>(null);
+  const coachMessagesEndRef = useRef<HTMLDivElement>(null);
   const [faceMapOpen, setFaceMapOpen] = useState(() => {
     if (typeof window === 'undefined') return true;
     return window.innerWidth >= 420;
@@ -162,7 +179,7 @@ const SimulatorPage = () => {
   const tutorialLabel = `${cubeSize}x${cubeSize} Guide`;
 
   // Keep the camera config stable so OrbitControls is not fighting fresh object instances
-  const cameraProfile = useMemo(() => (
+  const cameraProfile = useMemo<{ position: [number,number,number]; fov: number; minDistance: number; maxDistance: number }>(() => (
     isMobileViewport
       ? { position: [5.8, 4.8, 7.1], fov: 54, minDistance: 5.5, maxDistance: 22 }
       : isTabletViewport
@@ -226,7 +243,7 @@ const SimulatorPage = () => {
   }, [isSolved]);
 
   // Canvas error handling: when WebGL crashes, drain any pending moves instantly
-  const handleCanvasFailure = useCallback((error, info) => {
+  const handleCanvasFailure = useCallback((error: Error, info: ErrorInfo) => {
     console.error('Simulator 3D canvas failed; switching to fallback mode.', error);
     setCanvasErrorMessage(error?.message || String(error) || 'Unknown renderer error');
     setCanvasErrorDetails(
@@ -260,7 +277,7 @@ const SimulatorPage = () => {
     setCanvasRetryKey((prev) => prev + 1);
   }, []);
 
-  const handleApplyAlgorithm = useCallback((moves) => {
+  const handleApplyAlgorithm = useCallback((moves: string[]) => {
     queue.enqueueMoves(moves);
   }, [queue]);
 
@@ -275,7 +292,7 @@ const SimulatorPage = () => {
     isSolved,
   }), [actions.scrambleSeq, displayState, isSolved, queue.moveHistory, queue.queueActive, queue.solveDepth, timer.timerMs]);
 
-  const submitCoachRequest = useCallback(async (mode, rawMessage = '') => {
+  const submitCoachRequest = useCallback(async (mode: string, rawMessage: string = '') => {
     if (coachLoading) return;
 
     if (mode === 'explain' && !lastCoachResponse) {
@@ -311,20 +328,21 @@ const SimulatorPage = () => {
         ...(mode === 'explain' && lastCoachResponse ? { previousCoachResponse: lastCoachResponse } : {}),
       });
 
-      const assistantMessage = {
-        id: response.coachMessage?.id ?? `coach_${Date.now()}`,
+      const coachMessage = response['coachMessage'] as Record<string, unknown> | undefined;
+      const assistantMessage: CoachMessage = {
+        id: (coachMessage?.['id'] as string | undefined) ?? `coach_${Date.now()}`,
         role: 'assistant',
-        mode: response.mode,
-        content: response.coachMessage?.content ?? 'Coach response was empty.',
-        moves: Array.isArray(response.coachMessage?.moves) ? response.coachMessage.moves : [],
-        nextActions: Array.isArray(response.coachMessage?.nextActions) ? response.coachMessage.nextActions : [],
-        disclaimer: typeof response.coachMessage?.disclaimer === 'string' ? response.coachMessage.disclaimer : '',
+        mode: response['mode'] as string | undefined,
+        content: (coachMessage?.['content'] as string | undefined) ?? 'Coach response was empty.',
+        moves: Array.isArray(coachMessage?.['moves']) ? (coachMessage['moves'] as string[]) : [],
+        nextActions: Array.isArray(coachMessage?.['nextActions']) ? (coachMessage['nextActions'] as string[]) : [],
+        disclaimer: typeof coachMessage?.['disclaimer'] === 'string' ? coachMessage['disclaimer'] : '',
       };
 
       setCoachMessages((prev) => [...prev, assistantMessage]);
       setLastCoachResponse({
         id: assistantMessage.id,
-        mode: response.mode,
+        mode: (response['mode'] as string | undefined) ?? '',
         content: assistantMessage.content,
       });
     } catch (error) {
@@ -369,7 +387,7 @@ const SimulatorPage = () => {
         '--sim-kbd': isDark ? '#1A1A1A' : '#F5F1EC',
         '--sim-btn-border': isDark ? 'rgba(176,176,176,0.12)' : 'rgba(44,42,38,0.15)',
         '--sim-face-border': isDark ? 'rgba(176,176,176,0.08)' : 'rgba(168,159,148,0.45)',
-      }}
+      } as React.CSSProperties}
     >
       <header className={`flex items-center justify-between px-6 py-4 border-b ${t.headerBorder} ${t.headerBg} sticky top-0 z-50`}>
         <button
