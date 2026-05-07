@@ -1,6 +1,4 @@
-# The Dictators — 3D Rubik's Cube Platform
-
-**🎮 [Live Demo → dictators-rubikscube.vercel.app](https://dictators-rubikscube.vercel.app)**
+# The Dictators — 3D Rubik's Cube Platfor
 
 ![CI](https://github.com/Ofunrein/dictators-rubikscube/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)
@@ -11,7 +9,8 @@ An interactive, browser-based 3D Rubik's Cube platform with real-time manipulati
 
 ## Live Demo
 
-![Demo](docs/demo.gif)(https://dictators-rubikscube.vercel.app)
+![Demo](docs/demo.gif)
+**[Live Demo → dictators-rubikscube.vercel.app](https://dictators-rubikscube.vercel.app)**
 
 ## Features
 
