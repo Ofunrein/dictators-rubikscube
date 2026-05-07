@@ -1,9 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export function useLearnSlides(totalSlides) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const slidesRef = useRef([]);
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => clearTimeout(timeoutRef.current);
+  }, []);
 
   const goToSlide = (index) => {
     if (index < 0 || index >= totalSlides || index === currentSlide || isTransitioning) return;
@@ -15,7 +20,8 @@ export function useLearnSlides(totalSlides) {
       slidesRef.current[index].scrollTop = 0;
     }
 
-    setTimeout(() => setIsTransitioning(false), 750);
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setIsTransitioning(false), 750);
   };
 
   const nextSlide = () => goToSlide(currentSlide + 1);
