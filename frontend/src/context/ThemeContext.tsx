@@ -1,30 +1,22 @@
 /* eslint-disable react-refresh/only-export-components */
-/**
- * ThemeContext.jsx — Global dark/light mode toggle with localStorage persistence
- *
- * Wraps the entire app (see main.jsx) so any component can read isDark or call
- * toggleTheme without prop drilling. The preference is written to localStorage
- * under the key 'simulator-theme' so it survives page reloads.
- *
- * This replaces the old per-component useTheme.js hook that lived in the simulator
- * folder. That hook only shared state within the simulator page; this context shares
- * it across all pages (simulator, learn, leaderboard, profile).
- *
- * Usage anywhere in the app:
- *   const { isDark, toggleTheme } = useTheme();
- */
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
-const ThemeContext = createContext(null);
+interface ThemeContextValue {
+  theme: string;
+  isDark: boolean;
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
 const STORAGE_KEY = 'simulator-theme';
 
-function getInitialTheme() {
+function getInitialTheme(): string {
   if (typeof window === 'undefined') return 'dark';
   const stored = localStorage.getItem(STORAGE_KEY);
   return stored === 'light' ? 'light' : 'dark';
 }
 
-export function ThemeProvider({ children }) {
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState(getInitialTheme);
 
   useEffect(() => {
@@ -42,6 +34,8 @@ export function ThemeProvider({ children }) {
   );
 }
 
-export function useTheme() {
-  return useContext(ThemeContext);
+export function useTheme(): ThemeContextValue {
+  const v = useContext(ThemeContext);
+  if (!v) throw new Error('useTheme must be inside ThemeProvider');
+  return v;
 }
