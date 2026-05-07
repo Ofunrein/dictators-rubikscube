@@ -137,32 +137,42 @@ the-dictators/
 │   └── src/
 │       ├── components/               Landing page sections (Hero, Features, Team, etc.)
 │       ├── cube/                     Shared cube model — used by BOTH frontend and backend
-│       │   ├── cubeModel.js          State format, face order, validation
-│       │   ├── moves.js              Size-aware move engine (all rotations)
-│       │   └── CubeState.js          State wrapper class
+│       │   ├── cubeModel.ts          State format, face order, validation
+│       │   ├── moves.ts              Size-aware move engine (all rotations)
+│       │   └── CubeState.ts          State wrapper class
 │       ├── lib/                      Supabase integration
-│       │   ├── supabase.js           Supabase client init
-│       │   ├── auth.js               Sign up, log in, log out, session
-│       │   └── stats.js              Leaderboard and profile data queries
-│       ├── net/api.js                Frontend API client (fetch calls to backend)
+│       │   ├── supabase.ts           Supabase client init
+│       │   ├── auth.ts               Sign up, log in, log out, session
+│       │   └── stats.ts              Leaderboard and profile data queries
+│       ├── net/api.ts                Frontend API client (fetch calls to backend)
 │       ├── pages/simulator/          The simulator page
-│       │   ├── SimulatorPage.jsx     Main page — wires everything together
-│       │   ├── InteractiveCube.jsx   3D cube (Three.js / React Three Fiber)
-│       │   ├── SimulatorControls.jsx Left panel: buttons, move history
-│       │   ├── TutorialPanel.jsx     Right panel: learning guide
-│       │   ├── useTimer.js           Timer hook
-│       │   ├── useCubeControls.js    Keyboard + mouse input
-│       │   ├── useSimulatorQueue.js  Move queue + animation lifecycle
-│       │   ├── useSimulatorActions.js Scramble, solve, reset actions
-│       │   ├── simulatorAnimation.js GSAP animation config
-│       │   └── simulatorConstants.js Key mappings, move groups
+│       │   ├── SimulatorPage.tsx     Main page — wires everything together
+│       │   ├── InteractiveCube.tsx   3D cube (Three.js / React Three Fiber)
+│       │   ├── SimulatorControls.tsx Left panel: buttons, move history
+│       │   ├── TutorialPanel.tsx     Right panel: learning guide
+│       │   ├── useTimer.ts           Timer hook
+│       │   ├── useCubeControls.ts    Keyboard + mouse input
+│       │   ├── useSimulatorQueue.ts  Move queue + animation lifecycle
+│       │   ├── useSimulatorActions.ts Scramble, solve, reset actions
+│       │   ├── simulatorAnimation.ts GSAP animation config
+│       │   └── simulatorConstants.ts Key mappings, move groups
 │       ├── pages/step-by-step/           Step-by-step solving guide
-│       │   ├── GuidePanel.jsx            Left panel: text, GIFs, algorithm buttons
-│       │   └── stepsData.js              25-slide guide data with algorithms
-│       ├── pages/StepByStepPage.jsx      Guide + live cube side-by-side
-│       ├── pages/LeaderboardPage.jsx     6 leaderboards (2x2/3x3 × 3 stats)
-│       ├── pages/ProfilePage.jsx         Per-size stats with rank display
-│       ├── pages/LearnPage.jsx           Learning modules (Eric Solano)
+│       │   ├── GuidePanel.tsx            Left panel: text, GIFs, algorithm buttons
+│       │   └── stepsData.ts              25-slide guide data with algorithms
+│       ├── pages/StepByStepPage.tsx      Guide + live cube side-by-side
+│       ├── pages/LeaderboardPage.tsx     6 leaderboards (2x2/3x3 × 3 stats)
+│       ├── pages/ProfilePage.tsx         Per-size stats with rank display
+│       ├── pages/LearnPage.tsx           6-slide learn page orchestrator
+│       │   └── learn/                    Slide components + CSS
+│       │       ├── SlideHero.tsx
+│       │       ├── SlideOverview.tsx
+│       │       ├── SlideNotation.tsx
+│       │       ├── SlideStepByStep.tsx
+│       │       ├── SlideAlgorithms.tsx
+│       │       ├── SlideResources.tsx
+│       │       ├── useLearnSlides.ts
+│       │       ├── learnConstants.ts
+│       │       └── LearnPage.css
 │       └── utils/                    Shared utilities
 │
 ├── backend/
@@ -204,9 +214,9 @@ the-dictators/
          ┌──────────────┬───────────────┼───────────────┬──────────────────┐
          │              │               │               │                  │
   Landing Page   Simulator Page  Step-by-Step     LearnPage        LeaderboardPage /
-(components/   (simulator/*.jsx)  Guide Page    (LearnPage.jsx)      ProfilePage
+(components/   (simulator/*.tsx)  Guide Page    (LearnPage.tsx)      ProfilePage
    *.jsx)              │        (StepByStepPage                           │
-                       │             .jsx)                                │
+                       │             .tsx)                                │
             ┌──────────┴──────────┐    │                                  │
             │                     │    │                                  │
       3D Cube Rendering    Move Buttons/│                                  │
@@ -309,13 +319,11 @@ Sprint planning, Jira ticket quality, PR review expectations, and documentation 
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 19, Vite, Tailwind CSS, React Three Fiber, Three.js |
-| TypeScript | 5.x | Strict mode across all frontend and backend source files |
+| Language | TypeScript 5.x (strict mode — all frontend and backend source) |
+| Frontend | React 19, Vite 8, Tailwind CSS, React Three Fiber, Three.js |
 | Animations | GSAP, ScrollTrigger, eased quaternion interpolation |
-| API | Node.js route table, OpenAPI 3.1, Vercel Serverless Functions |
+| API | Node.js, Fastify 4, OpenAPI 3.1, Vercel Serverless Functions |
 | 3x3 Solver | C++17 compiled to WebAssembly via Emscripten |
 | NxN Solver | Python 3 (vendored rubiks-cube-NxNxN-solver) |
 | Database | Supabase (Postgres + Auth) |
-| Version Control | Git, Bitbucket |
-| Project Management | Jira |
-| Documentation | Confluence |
+| Version Control | Git, GitHub |
