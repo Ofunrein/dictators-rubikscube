@@ -1,34 +1,28 @@
 /**
- * api.js — Frontend HTTP client for the Rubik's Cube API
- *
- * This is the networking layer. Every time the simulator needs to talk to the
- * backend (scramble, solve, apply a move), it goes through a function in this file.
- *
- * Endpoints this client talks to:
- *   GET  /api/v1/health              → is the server alive?
- *   GET  /api/v1/cube/state/solved   → what does a solved cube look like?
- *   POST /api/v1/cube/moves/apply    → apply one move to a state, return the new state
- *   POST /api/v1/cube/scramble       → generate a random scramble and return the scrambled state
- *   POST /api/v1/cube/solve          → send a cube state, get back the solution (moves or solved state)
- *
- * In production (Vercel), these routes are handled by api/v1/[...path].js.
- * In local dev, Vite proxies them to the Node.js dev server on port 5200.
- *
- * Error handling: if a request fails, an ApiError is thrown with the status code,
- * error code, and any validation details from the backend.
+ * api.ts — Frontend HTTP client for the Rubik's Cube API
  */
 
-import { getFaceSize, normalizeCubeSize } from '../cube/cubeModel.js';
+import { getFaceSize, normalizeCubeSize, type CubeStateObj } from '../cube/cubeModel.js';
 import { isPlainObject } from '../utils/isPlainObject.js';
 
-// Production uses the repo-root Vercel route at /api/v1/*.
-// Local dev keeps the frontend on :5400 and the Node API on :5200,
-// with Vite proxying /api/v1/* -> http://localhost:5200/v1/*.
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
+const API_BASE_URL = ((import.meta.env['VITE_API_BASE_URL'] as string | undefined) ?? '').replace(/\/+$/, '');
 const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
 
 class ApiError extends Error {
-  constructor(message, { status, code, requestId, details } = {}) {
+  status?: number;
+  code?: string;
+  requestId?: string;
+  details?: unknown;
+
+  constructor(
+    message: string,
+    { status, code, requestId, details }: {
+      status?: number;
+      code?: string;
+      requestId?: string;
+      details?: unknown;
+    } = {},
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -38,7 +32,7 @@ class ApiError extends Error {
   }
 }
 
-function validateCubeState(state, name = 'state', expectedSize) {
+function validateCubeState(state: unknown, name: string = 'state', expectedSize?: number): void {
   if (!isPlainObject(state)) {
     throw new Error(`${name} must be an object with U, R, F, D, L, B faces.`);
   }
@@ -56,22 +50,24 @@ function validateCubeState(state, name = 'state', expectedSize) {
   }
 
   const stickerCount = normalizedExpectedSize * normalizedExpectedSize;
+  const stateRecord = state as Record<string, unknown>;
   for (const face of FACE_ORDER) {
-    if (!Array.isArray(state[face]) || state[face].length !== stickerCount) {
+    if (!Array.isArray(stateRecord[face]) || (stateRecord[face] as unknown[]).length !== stickerCount) {
       throw new Error(`${name}.${face} must contain exactly ${stickerCount} stickers.`);
     }
   }
 }
 
-function buildApiError(payload, statusCode) {
-  const error = isPlainObject(payload) ? payload.error : undefined;
+function buildApiError(payload: unknown, statusCode: number): ApiError {
+  const error = isPlainObject(payload) ? (payload as Record<string, unknown>)['error'] : undefined;
   if (!isPlainObject(error)) {
     return new ApiError(`Request failed with status ${statusCode}.`, { status: statusCode });
   }
 
-  let message = error.message || `Request failed with status ${statusCode}.`;
-  if (Array.isArray(error.details) && error.details.length > 0) {
-    const detailSummary = error.details
+  const errorRecord = error as Record<string, unknown>;
+  let message = (errorRecord['message'] as string | undefined) || `Request failed with status ${statusCode}.`;
+  if (Array.isArray(errorRecord['details']) && errorRecord['details'].length > 0) {
+    const detailSummary = (errorRecord['details'] as Array<{ path: string; message: string }>)
       .map((detail) => `${detail.path}: ${detail.message}`)
       .join('; ');
     message = `${message} ${detailSummary}`;
@@ -79,32 +75,35 @@ function buildApiError(payload, statusCode) {
 
   return new ApiError(message, {
     status: statusCode,
-    code: error.code,
-    requestId: error.requestId,
-    details: error.details
+    code: errorRecord['code'] as string | undefined,
+    requestId: errorRecord['requestId'] as string | undefined,
+    details: errorRecord['details'],
   });
 }
 
-async function parseJsonBody(response) {
+async function parseJsonBody(response: Response): Promise<Record<string, unknown>> {
   const text = await response.text();
   if (!text) {
     return {};
   }
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(text) as Record<string, unknown>;
   } catch {
     throw new ApiError('Backend returned invalid JSON.', { status: response.status });
   }
 }
 
-async function request(path, { method = 'GET', body } = {}) {
+async function request(
+  path: string,
+  { method = 'GET', body }: { method?: string; body?: unknown } = {},
+): Promise<Record<string, unknown>> {
   const url = `${API_BASE_URL}${path}`;
-  const options = {
+  const options: RequestInit & { headers: Record<string, string> } = {
     method,
     headers: {
-      accept: 'application/json'
-    }
+      accept: 'application/json',
+    },
   };
 
   if (body !== undefined) {
@@ -112,7 +111,7 @@ async function request(path, { method = 'GET', body } = {}) {
     options.body = JSON.stringify(body);
   }
 
-  let response;
+  let response: Response;
   try {
     response = await fetch(url, options);
   } catch {
@@ -127,18 +126,22 @@ async function request(path, { method = 'GET', body } = {}) {
   return payload;
 }
 
-export async function pingBackend() {
+export async function pingBackend(): Promise<Record<string, unknown>> {
   return request('/api/v1/health');
 }
 
-export async function fetchSolvedState(size = 3) {
+export async function fetchSolvedState(size: number = 3): Promise<Record<string, unknown>> {
   const normalizedSize = normalizeCubeSize(size);
   const payload = await request(`/api/v1/cube/state/solved?size=${normalizedSize}`);
-  validateCubeState(payload.state, 'response.state', normalizedSize);
+  validateCubeState(payload['state'], 'response.state', normalizedSize);
   return payload;
 }
 
-export async function applyMoveRemote(state, move, size) {
+export async function applyMoveRemote(
+  state: CubeStateObj,
+  move: string,
+  size?: number,
+): Promise<Record<string, unknown>> {
   validateCubeState(state);
   const normalizedSize = normalizeCubeSize(size ?? getFaceSize(state));
   validateCubeState(state, 'state', normalizedSize);
@@ -148,47 +151,49 @@ export async function applyMoveRemote(state, move, size) {
 
   const payload = await request('/api/v1/cube/moves/apply', {
     method: 'POST',
-    body: { size: normalizedSize, state, move }
+    body: { size: normalizedSize, state, move },
   });
 
-  validateCubeState(payload.state, 'response.state', normalizedSize);
+  validateCubeState(payload['state'], 'response.state', normalizedSize);
   return payload;
 }
 
-export async function generateScrambleRemote({ size = 3, length, seed } = {}) {
+export async function generateScrambleRemote(
+  { size = 3, length, seed }: { size?: number; length?: number; seed?: number } = {},
+): Promise<Record<string, unknown>> {
   const normalizedSize = normalizeCubeSize(size);
-  const body = { size: normalizedSize };
+  const body: Record<string, unknown> = { size: normalizedSize };
   if (length !== undefined) {
-    body.length = length;
+    body['length'] = length;
   }
   if (seed !== undefined) {
-    body.seed = seed;
+    body['seed'] = seed;
   }
 
   const payload = await request('/api/v1/cube/scramble', {
     method: 'POST',
-    body
+    body,
   });
 
-  if (!Array.isArray(payload.scramble)) {
+  if (!Array.isArray(payload['scramble'])) {
     throw new ApiError('Backend returned an invalid scramble sequence.');
   }
 
-  validateCubeState(payload.state, 'response.state', normalizedSize);
+  validateCubeState(payload['state'], 'response.state', normalizedSize);
   return payload;
 }
 
-export async function solveCubeRemote(state, strategy = 'beginner', size, history) {
+export async function solveCubeRemote(
+  state: CubeStateObj,
+  strategy: string = 'beginner',
+  size?: number,
+  history?: string[],
+): Promise<Record<string, unknown>> {
   validateCubeState(state);
   const normalizedSize = normalizeCubeSize(size ?? getFaceSize(state));
   validateCubeState(state, 'state', normalizedSize);
 
-  // Routing by size and environment:
-  //   Local dev: all sizes → /api/v1/cube/solve (Node.js backend handles 2x2/3x3/4x4)
-  //   Vercel prod: 2x2 → /api/nxn-solve (Python serverless), 3x3 → /api/v1/cube/solve (WASM)
-  // The Node.js backend has pythonNxNSolver.js which bridges to the vendored Python solver
-  // for 2x2/4x4, so local dev works through the unified /v1/cube/solve route.
-  const isLocalDev = !!import.meta.env.DEV;
+  const isLocalDev = !!import.meta.env['DEV'];
   const endpoint = (!isLocalDev && normalizedSize === 2)
     ? '/api/nxn-solve'
     : '/api/v1/cube/solve';
@@ -199,53 +204,55 @@ export async function solveCubeRemote(state, strategy = 'beginner', size, histor
       size: normalizedSize,
       state,
       strategy,
-      ...(history !== undefined ? { moveHistory: history } : {})
-    }
+      ...(history !== undefined ? { moveHistory: history } : {}),
+    },
   });
 
-  if (!Array.isArray(payload.moves)) {
+  if (!Array.isArray(payload['moves'])) {
     throw new ApiError('Backend returned an invalid solve response.');
   }
 
-  if (payload.state !== undefined) {
-    validateCubeState(payload.state, 'response.state', normalizedSize);
+  if (payload['state'] !== undefined) {
+    validateCubeState(payload['state'], 'response.state', normalizedSize);
   }
 
   return payload;
 }
 
-export async function requestAiHelp(payload) {
+export async function requestAiHelp(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
   if (!isPlainObject(payload)) {
     throw new Error('AI help payload must be an object.');
   }
 
   const response = await request('/api/v1/ai/help', {
     method: 'POST',
-    body: payload
+    body: payload,
   });
 
-  if (!isPlainObject(response.coachMessage) || typeof response.coachMessage.content !== 'string') {
+  const coachMessage = response['coachMessage'];
+  if (!isPlainObject(coachMessage) || typeof (coachMessage as Record<string, unknown>)['content'] !== 'string') {
     throw new ApiError('Backend returned an invalid AI help response.');
   }
 
   return response;
 }
 
-export async function requestAiMoveValidation(payload) {
+export async function requestAiMoveValidation(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
   if (!isPlainObject(payload)) {
     throw new Error('AI move validation payload must be an object.');
   }
 
-  if (!isPlainObject(payload.state)) {
+  if (!isPlainObject(payload['state'])) {
     throw new Error('AI move validation payload requires state.');
   }
 
   const response = await request('/api/v1/ai/move/validate', {
     method: 'POST',
-    body: payload
+    body: payload,
   });
 
-  if (!isPlainObject(response.validation) || typeof response.validation.reason !== 'string') {
+  const validation = response['validation'];
+  if (!isPlainObject(validation) || typeof (validation as Record<string, unknown>)['reason'] !== 'string') {
     throw new ApiError('Backend returned an invalid AI move validation response.');
   }
 

@@ -1,9 +1,5 @@
 /**
- * CubeState.js — Small wrapper around the shared cube model helpers
- *
- * The simulator still likes having a little class with getState()/setState(),
- * but the real validation and solved-state generation now live in cubeModel.js
- * so the frontend and backend can both reuse the exact same size-aware rules.
+ * CubeState.ts — Small wrapper around the shared cube model helpers
  */
 
 import {
@@ -11,27 +7,31 @@ import {
   createSolvedState,
   normalizeCubeSize,
   validateCubeState,
+  type CubeStateObj,
 } from './cubeModel.js';
 
 export class CubeState {
-  constructor(size = 3) {
+  size: number;
+  state: CubeStateObj;
+
+  constructor(size: number = 3) {
     this.size = normalizeCubeSize(size);
     this.state = CubeState.createSolvedState(this.size);
   }
 
-  static createSolvedState(size = 3) {
+  static createSolvedState(size: number = 3): CubeStateObj {
     return createSolvedState(size);
   }
 
-  setState(nextState) {
+  setState(nextState: unknown): void {
     this.state = CubeState.validate(nextState, this.size);
   }
 
-  getState() {
+  getState(): CubeStateObj {
     return cloneCubeState(this.state);
   }
 
-  static validate(candidate, expectedSize) {
+  static validate(candidate: unknown, expectedSize?: number): CubeStateObj {
     return validateCubeState(candidate, expectedSize);
   }
 }

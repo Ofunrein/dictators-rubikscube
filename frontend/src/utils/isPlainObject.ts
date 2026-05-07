@@ -5,6 +5,6 @@
  * Used in validation code across the project. Defined once here instead of
  * copy-pasting into every file that needs it.
  */
-export function isPlainObject(value) {
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
