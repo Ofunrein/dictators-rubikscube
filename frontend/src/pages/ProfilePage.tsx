@@ -12,7 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { getUserRanks } from '../lib/stats';
 import PageNavbar from '../components/PageNavbar';
 
-function formatTime(t) {
+function formatTime(t: number | null | undefined): string {
   if (t === null || t === undefined || t === 0) return '—';
   if (t >= 60) {
     const m = Math.floor(t / 60);
@@ -22,7 +22,7 @@ function formatTime(t) {
   return `${t.toFixed(2)}s`;
 }
 
-function formatRank(r) {
+function formatRank(r: number | null | undefined): string {
   if (!r || r === null) return '—';
   if (r === 1) return '1st';
   if (r === 2) return '2nd';
@@ -38,20 +38,20 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState(null);
-  const [ranks, setRanks] = useState({});
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [ranks, setRanks] = useState<Record<string, { fastest: number | null; average: number | null; solves: number | null }>>({});
 
   // Fetch real ranks from Supabase on mount and when stats change
   useEffect(() => {
     if (!currentUser) return;
 
     async function fetchRanks() {
-      const newRanks = {};
+      const newRanks: Record<string, { fastest: number | null; average: number | null; solves: number | null }> = {};
       for (const size of CUBE_SIZES) {
         const sizeKey = size === '2x2' ? '2x2' : '3x3';
 
-        const { ranks, error } = await getUserRanks(currentUser.id, sizeKey);
-        if (error) {
+        const { ranks, error } = await getUserRanks(currentUser!.id, sizeKey);
+        if (error || !ranks) {
           newRanks[sizeKey] = { fastest: null, average: null, solves: null };
         } else {
           newRanks[sizeKey] = {
@@ -148,7 +148,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className={`rounded-xl px-4 py-4 text-center border ${cardBg} ${border}`}>
                 <div className={`mx-auto mb-2 flex justify-center ${muted}`}><Zap size={13} className="text-dictator-red" /></div>
-                <p className="font-drama text-2xl text-dictator-red">{formatTime(stats.best[size])}</p>
+                <p className="font-drama text-2xl text-dictator-red">{formatTime(stats.best[size] as number | null)}</p>
                 <p className={`font-mono text-[10px] mt-1 uppercase tracking-wider ${muted}`}>Fastest</p>
                 {ranks[size]?.fastest && (
                   <p className={`font-mono text-[10px] mt-1 ${ranks[size].fastest <= 3 ? rankHighlight : muted}`}>
@@ -159,7 +159,7 @@ export default function ProfilePage() {
               </div>
               <div className={`rounded-xl px-4 py-4 text-center border ${cardBg} ${border}`}>
                 <div className={`mx-auto mb-2 flex justify-center ${muted}`}><Clock size={13} /></div>
-                <p className={`font-drama text-2xl ${primary}`}>{formatTime(stats.avg[size])}</p>
+                <p className={`font-drama text-2xl ${primary}`}>{formatTime(stats.avg[size] as number | null)}</p>
                 <p className={`font-mono text-[10px] mt-1 uppercase tracking-wider ${muted}`}>Average</p>
                 {ranks[size]?.average && (
                   <p className={`font-mono text-[10px] mt-1 ${ranks[size].average <= 3 ? rankHighlight : muted}`}>

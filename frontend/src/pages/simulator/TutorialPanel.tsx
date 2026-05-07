@@ -18,6 +18,16 @@ import {
   TUTORIAL_STEPS_4X4,
 } from './simulatorConstants';
 
+interface TutorialPanelProps {
+  cubeSize: number;
+  isDark?: boolean;
+  onApplyAlgorithm: (moves: string[]) => void;
+  queueActive: boolean;
+  isDrawer?: boolean;
+  drawerOpen?: boolean;
+  onClose?: () => void;
+}
+
 export default function TutorialPanel({
   cubeSize,
   onApplyAlgorithm,
@@ -25,7 +35,7 @@ export default function TutorialPanel({
   isDrawer = false,
   drawerOpen = false,
   onClose,
-}) {
+}: TutorialPanelProps) {
   const [tutorialStep, setTutorialStep] = useState(0);
   const [controlSection, setControlSection] = useState(0);
 
@@ -41,7 +51,7 @@ export default function TutorialPanel({
   useEffect(() => {
     if (!isDrawer || !drawerOpen) return undefined;
 
-    const handleEscape = (event) => {
+    const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose?.();
       }
@@ -51,7 +61,7 @@ export default function TutorialPanel({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [drawerOpen, isDrawer, onClose]);
 
-  const handleApplyQuickAlgorithm = (moves) => {
+  const handleApplyQuickAlgorithm = (moves: string[]) => {
     onApplyAlgorithm(moves);
     onClose?.();
   };

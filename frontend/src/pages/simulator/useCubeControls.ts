@@ -1,40 +1,23 @@
 /**
- * useCubeControls.js — React hook for keyboard and mouse cube interaction
- *
- * This hook gives the user two ways to make moves:
- *
- *   1. KEYBOARD SHORTCUT MOVES (e.g. press 'r' for R, 'R' for R')
- *      The KEY_MAP in simulatorConstants.js maps lowercase/uppercase letters to moves.
- *      When a mapped key is pressed, the move fires immediately.
- *
- *   2. MOUSE + ARROW KEY MOVES (click a sticker, then press an arrow key)
- *      The user clicks a sticker on the 3D cube to select it (it highlights pink).
- *      Then they press an arrow key to choose the direction of the turn.
- *      getStickerMove() figures out which move corresponds to that face + direction.
- *      For example: click the front-center sticker → press ArrowUp → triggers L' move
- *      (because pushing the front face "up" means rotating the left column upward).
- *      On 4x4 cubes, clicking an inner sticker can trigger lowercase inner-slice
- *      moves like r or u instead of only the outer face turns.
- *
- * The hook returns:
- *   - handleStickerPointerDown(info) → call this when a sticker pointer-down starts on the 3D cube
- *   - selectedSticker             → which sticker is currently highlighted (or null)
- *   - clearSelectedSticker()      → deselect (used when scramble/solve starts)
- *
- * When manualInputLocked is true (an animation is playing), all input is ignored
- * so the user can't queue moves while the cube is mid-turn.
+ * useCubeControls.ts — React hook for keyboard and mouse cube interaction
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getKeyMap } from './simulatorConstants';
+import type { FaceName } from '../../cube/cubeModel';
 
 export const DRAG_THRESHOLD_PX = 15;
 const MIN_PROJECTED_AXIS_LENGTH = 0.0001;
 
-function buildMoveTrack(
-  size,
-  { outerMin, middle = null, innerMin = null, innerMax = null, outerMax },
-) {
-  const track = Array.from({ length: size }, () => null);
+interface TrackOptions {
+  outerMin: string | null;
+  middle?: string | null;
+  innerMin?: string | null;
+  innerMax?: string | null;
+  outerMax: string | null;
+}
+
+function buildMoveTrack(size: number, { outerMin, middle = null, innerMin = null, innerMax = null, outerMax }: TrackOptions): (string | null)[] {
+  const track: (string | null)[] = Array.from({ length: size }, () => null);
   track[0] = outerMin;
   track[size - 1] = outerMax;
 
@@ -51,11 +34,11 @@ function buildMoveTrack(
   return track;
 }
 
-export function getStickerMove(face, arrowKey, row, col, size) {
-  const columnTrack = (track) => buildMoveTrack(size, track)[col] ?? null;
-  const rowTrack = (track) => buildMoveTrack(size, track)[row] ?? null;
+export function getStickerMove(face: string, arrowKey: string, row: number, col: number, size: number): string | null {
+  const columnTrack = (track: TrackOptions) => buildMoveTrack(size, track)[col] ?? null;
+  const rowTrack = (track: TrackOptions) => buildMoveTrack(size, track)[row] ?? null;
 
-  const moveMap = {
+  const moveMap: Record<string, Record<string, string | null>> = {
     F: {
       ArrowUp: columnTrack({ outerMin: "L'", innerMin: "l'", middle: "M'", innerMax: 'r', outerMax: 'R' }),
       ArrowDown: columnTrack({ outerMin: 'L', innerMin: 'l', middle: 'M', innerMax: "r'", outerMax: "R'" }),
@@ -97,34 +80,39 @@ export function getStickerMove(face, arrowKey, row, col, size) {
   return moveMap[face]?.[arrowKey] ?? null;
 }
 
-function normalizeScreenVector(vector) {
-  const length = Math.hypot(vector?.x ?? 0, vector?.y ?? 0);
-  if (length <= MIN_PROJECTED_AXIS_LENGTH) {
-    return null;
-  }
+interface Vec2 { x: number; y: number }
 
-  return {
-    x: vector.x / length,
-    y: vector.y / length,
-  };
+export interface DragMoveCandidate {
+  dragAxis: 'horizontal' | 'vertical';
+  move: string;
+  screenDelta: Vec2;
 }
 
-function screenAlignedDragDirectionToArrow(deltaX, deltaY) {
+export interface ScreenBasis {
+  right: Vec2;
+  up: Vec2;
+}
+
+interface FaceScreenBasis { right?: Vec2; up?: Vec2 }
+
+function normalizeScreenVector(vector: Vec2 | null | undefined): Vec2 | null {
+  const length = Math.hypot(vector?.x ?? 0, vector?.y ?? 0);
+  if (length <= MIN_PROJECTED_AXIS_LENGTH) return null;
+  return { x: vector!.x / length, y: vector!.y / length };
+}
+
+function screenAlignedDragDirectionToArrow(deltaX: number, deltaY: number): string | null {
   if (Math.abs(deltaX) >= Math.abs(deltaY)) {
-    if (deltaX === 0) {
-      return deltaY > 0 ? 'ArrowDown' : deltaY < 0 ? 'ArrowUp' : null;
-    }
+    if (deltaX === 0) return deltaY > 0 ? 'ArrowDown' : deltaY < 0 ? 'ArrowUp' : null;
     return deltaX > 0 ? 'ArrowRight' : 'ArrowLeft';
   }
-
-  if (deltaY === 0) {
-    return null;
-  }
-
+  if (deltaY === 0) return null;
   return deltaY > 0 ? 'ArrowDown' : 'ArrowUp';
 }
 
-function getPreferredDragAxis(deltaX, deltaY, faceScreenBasis = null) {
+interface FaceScreenBasis { right?: Vec2; up?: Vec2 }
+
+function getPreferredDragAxis(deltaX: number, deltaY: number, faceScreenBasis: FaceScreenBasis | null = null): 'horizontal' | 'vertical' {
   const normalizedRight = normalizeScreenVector(faceScreenBasis?.right);
   const normalizedUp = normalizeScreenVector(faceScreenBasis?.up);
 
@@ -135,68 +123,56 @@ function getPreferredDragAxis(deltaX, deltaY, faceScreenBasis = null) {
   const horizontalProjection = (deltaX * normalizedRight.x) + (deltaY * normalizedRight.y);
   const verticalProjection = (deltaX * normalizedUp.x) + (deltaY * normalizedUp.y);
 
-  return Math.abs(horizontalProjection) >= Math.abs(verticalProjection)
-    ? 'horizontal'
-    : 'vertical';
+  return Math.abs(horizontalProjection) >= Math.abs(verticalProjection) ? 'horizontal' : 'vertical';
 }
 
-export function dragDirectionToArrow(deltaX, deltaY, faceScreenBasis = null) {
+export function dragDirectionToArrow(deltaX: number, deltaY: number, faceScreenBasis: FaceScreenBasis | null = null): string | null {
   const normalizedRight = normalizeScreenVector(faceScreenBasis?.right);
   const normalizedUp = normalizeScreenVector(faceScreenBasis?.up);
 
-  if (!normalizedRight || !normalizedUp) {
-    return screenAlignedDragDirectionToArrow(deltaX, deltaY);
-  }
+  if (!normalizedRight || !normalizedUp) return screenAlignedDragDirectionToArrow(deltaX, deltaY);
 
   const horizontalProjection = (deltaX * normalizedRight.x) + (deltaY * normalizedRight.y);
   const verticalProjection = (deltaX * normalizedUp.x) + (deltaY * normalizedUp.y);
 
   if (Math.abs(horizontalProjection) >= Math.abs(verticalProjection)) {
-    if (horizontalProjection === 0) {
-      return verticalProjection > 0 ? 'ArrowUp' : verticalProjection < 0 ? 'ArrowDown' : null;
-    }
-
+    if (horizontalProjection === 0) return verticalProjection > 0 ? 'ArrowUp' : verticalProjection < 0 ? 'ArrowDown' : null;
     return horizontalProjection > 0 ? 'ArrowRight' : 'ArrowLeft';
   }
 
-  if (verticalProjection === 0) {
-    return null;
-  }
-
+  if (verticalProjection === 0) return null;
   return verticalProjection > 0 ? 'ArrowUp' : 'ArrowDown';
 }
 
-export function hasExceededDragThreshold(deltaX, deltaY, threshold = DRAG_THRESHOLD_PX) {
+export function hasExceededDragThreshold(deltaX: number, deltaY: number, threshold: number = DRAG_THRESHOLD_PX): boolean {
   return Math.hypot(deltaX, deltaY) > threshold;
 }
 
-export function resolveDragMoveFromCandidates(deltaX, deltaY, candidates = [], faceScreenBasis = null) {
+interface Candidate {
+  dragAxis?: string;
+  move?: string;
+  screenDelta?: Vec2;
+}
+
+export function resolveDragMoveFromCandidates(deltaX: number, deltaY: number, candidates: Candidate[] = [], faceScreenBasis: FaceScreenBasis | null = null): string | null {
   const dragLength = Math.hypot(deltaX, deltaY);
-  if (dragLength <= MIN_PROJECTED_AXIS_LENGTH) {
-    return null;
-  }
+  if (dragLength <= MIN_PROJECTED_AXIS_LENGTH) return null;
 
-  const normalizedDrag = {
-    x: deltaX / dragLength,
-    y: deltaY / dragLength,
-  };
-
+  const normalizedDrag = { x: deltaX / dragLength, y: deltaY / dragLength };
   const preferredDragAxis = getPreferredDragAxis(deltaX, deltaY, faceScreenBasis);
   const scopedCandidates = candidates.filter((candidate) => candidate?.dragAxis === preferredDragAxis);
   const candidatesToScore = scopedCandidates.length > 0 ? scopedCandidates : candidates;
 
-  let bestMove = null;
+  let bestMove: string | null = null;
   let bestScore = 0;
 
   for (const candidate of candidatesToScore) {
     const candidateLength = Math.hypot(candidate?.screenDelta?.x ?? 0, candidate?.screenDelta?.y ?? 0);
-    if (!candidate?.move || candidateLength <= MIN_PROJECTED_AXIS_LENGTH) {
-      continue;
-    }
+    if (!candidate?.move || candidateLength <= MIN_PROJECTED_AXIS_LENGTH) continue;
 
     const normalizedCandidate = {
-      x: candidate.screenDelta.x / candidateLength,
-      y: candidate.screenDelta.y / candidateLength,
+      x: candidate.screenDelta!.x / candidateLength,
+      y: candidate.screenDelta!.y / candidateLength,
     };
 
     const score = (normalizedDrag.x * normalizedCandidate.x) + (normalizedDrag.y * normalizedCandidate.y);
@@ -209,15 +185,44 @@ export function resolveDragMoveFromCandidates(deltaX, deltaY, candidates = [], f
   return bestMove;
 }
 
-function isTypingTarget(target) {
-  const tagName = target?.tagName;
+function isTypingTarget(target: EventTarget | null): boolean {
+  const tagName = (target as HTMLElement | null)?.tagName;
   return tagName === 'INPUT' || tagName === 'TEXTAREA';
 }
 
-export function useCubeControls({ cubeSize, dispatchManualMove, manualInputLocked }) {
-  const [selectedSticker, setSelectedSticker] = useState(null);
-  const dragStateRef = useRef(null);
-  const removeDragListenersRef = useRef(() => { });
+interface StickerState {
+  col: number;
+  dragMoveCandidates: DragMoveCandidate[];
+  face: FaceName;
+  faceScreenBasis: FaceScreenBasis | null;
+  index: number;
+  row: number;
+}
+
+export interface StickerPointerDownInfo extends StickerState {
+  clientX: number;
+  clientY: number;
+  pointerId: number;
+}
+
+interface DragState {
+  clientX: number;
+  clientY: number;
+  didDrag: boolean;
+  pointerId: number;
+  sticker: StickerState;
+}
+
+interface UseCubeControlsProps {
+  cubeSize: number;
+  dispatchManualMove: (move: string) => void;
+  manualInputLocked: boolean;
+}
+
+export function useCubeControls({ cubeSize, dispatchManualMove, manualInputLocked }: UseCubeControlsProps) {
+  const [selectedSticker, setSelectedSticker] = useState<StickerState | null>(null);
+  const dragStateRef = useRef<DragState | null>(null);
+  const removeDragListenersRef = useRef<() => void>(() => {});
 
   const clearSelectedSticker = useCallback(() => {
     setSelectedSticker(null);
@@ -227,13 +232,13 @@ export function useCubeControls({ cubeSize, dispatchManualMove, manualInputLocke
 
   const clearDragListeners = useCallback(() => {
     removeDragListenersRef.current();
-    removeDragListenersRef.current = () => { };
+    removeDragListenersRef.current = () => {};
     if (typeof document !== 'undefined') {
       document.body.style.cursor = '';
     }
   }, []);
 
-  const toggleStickerSelection = useCallback((info) => {
+  const toggleStickerSelection = useCallback((info: StickerState) => {
     setSelectedSticker((previousSelection) =>
       previousSelection?.face === info.face && previousSelection?.index === info.index
         ? null
@@ -241,7 +246,7 @@ export function useCubeControls({ cubeSize, dispatchManualMove, manualInputLocke
     );
   }, []);
 
-  const handleStickerPointerDown = useCallback((info) => {
+  const handleStickerPointerDown = useCallback((info: StickerPointerDownInfo) => {
     if (manualInputLocked) return;
 
     clearDragListeners();
@@ -257,13 +262,13 @@ export function useCubeControls({ cubeSize, dispatchManualMove, manualInputLocke
         col: info.col,
         dragMoveCandidates: info.dragMoveCandidates ?? [],
         face: info.face,
-        faceScreenBasis: info.faceScreenBasis ?? null,
+        faceScreenBasis: (info.faceScreenBasis as FaceScreenBasis | null) ?? null,
         index: info.index,
         row: info.row,
       },
     };
 
-    const handleWindowPointerMove = (event) => {
+    const handleWindowPointerMove = (event: PointerEvent) => {
       const activeDrag = dragStateRef.current;
       if (!activeDrag || event.pointerId !== activeDrag.pointerId) return;
 
@@ -275,7 +280,7 @@ export function useCubeControls({ cubeSize, dispatchManualMove, manualInputLocke
       }
     };
 
-    const finishPointerGesture = (event, { cancelled = false } = {}) => {
+    const finishPointerGesture = (event: PointerEvent, { cancelled = false } = {}) => {
       const activeDrag = dragStateRef.current;
       if (!activeDrag || event.pointerId !== activeDrag.pointerId) return;
 
@@ -307,13 +312,7 @@ export function useCubeControls({ cubeSize, dispatchManualMove, manualInputLocke
         : dragDirectionToArrow(deltaX, deltaY, activeDrag.sticker.faceScreenBasis);
       const move = candidateMove ?? (
         arrowKey
-          ? getStickerMove(
-            activeDrag.sticker.face,
-            arrowKey,
-            activeDrag.sticker.row,
-            activeDrag.sticker.col,
-            cubeSize,
-          )
+          ? getStickerMove(activeDrag.sticker.face, arrowKey, activeDrag.sticker.row, activeDrag.sticker.col, cubeSize)
           : null
       );
 
@@ -324,11 +323,11 @@ export function useCubeControls({ cubeSize, dispatchManualMove, manualInputLocke
       }
     };
 
-    const handleWindowPointerUp = (event) => {
+    const handleWindowPointerUp = (event: PointerEvent) => {
       finishPointerGesture(event);
     };
 
-    const handleWindowPointerCancel = (event) => {
+    const handleWindowPointerCancel = (event: PointerEvent) => {
       finishPointerGesture(event, { cancelled: true });
     };
 
@@ -352,20 +351,14 @@ export function useCubeControls({ cubeSize, dispatchManualMove, manualInputLocke
   }, [clearDragListeners]);
 
   useEffect(() => {
-    const handleArrowKey = (event) => {
+    const handleArrowKey = (event: KeyboardEvent) => {
       if (manualInputLocked || !selectedSticker) return;
       if (isTypingTarget(event.target)) return;
       if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
 
       event.preventDefault();
 
-      const move = getStickerMove(
-        selectedSticker.face,
-        event.key,
-        selectedSticker.row,
-        selectedSticker.col,
-        cubeSize,
-      );
+      const move = getStickerMove(selectedSticker.face, event.key, selectedSticker.row, selectedSticker.col, cubeSize);
 
       if (move) {
         dispatchManualMove(move);
@@ -378,10 +371,10 @@ export function useCubeControls({ cubeSize, dispatchManualMove, manualInputLocke
   }, [cubeSize, dispatchManualMove, manualInputLocked, selectedSticker]);
 
   useEffect(() => {
-    const handleMoveKey = (event) => {
+    const handleMoveKey = (event: KeyboardEvent) => {
       if (manualInputLocked || isTypingTarget(event.target)) return;
 
-      const move = keyMap[event.key];
+      const move = (keyMap as Record<string, string>)[event.key];
       if (move) {
         clearSelectedSticker();
         dispatchManualMove(move);

@@ -8,11 +8,17 @@
  * Displays the error message and stack trace if available, which helps with debugging.
  */
 
+interface CanvasFallbackPanelProps {
+  canvasErrorDetails: string;
+  canvasErrorMessage: string;
+  onRetry: () => void;
+}
+
 export default function CanvasFallbackPanel({
   canvasErrorDetails,
   canvasErrorMessage,
   onRetry,
-}) {
+}: CanvasFallbackPanelProps) {
   return (
     <div className="absolute inset-0 flex items-center justify-center p-6">
       <div className="max-w-md rounded-2xl border border-dictator-red/30 bg-black/55 px-6 py-5 text-center backdrop-blur">

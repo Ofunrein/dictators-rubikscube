@@ -10,11 +10,11 @@
  */
 
 import React from 'react';
-import { getFaceSize } from '../../cube/cubeModel.js';
+import { getFaceSize, type CubeStateObj, type FaceName } from '../../cube/cubeModel.js';
 import { FACE_ORDER, TOKEN_HEX } from './simulatorConstants';
 import { normalizeFaceStickers, orientFaceForMap } from './simulatorFaceMapUtils';
 
-function getCellStyle(size, compact) {
+function getCellStyle(size: number, compact: boolean) {
   const vhUnit = size >= 4 ? '1.2vh' : '1.6vh';
   if (compact) {
     return size >= 4
@@ -27,7 +27,7 @@ function getCellStyle(size, compact) {
     : { width: `clamp(0.6rem, min(1.1vw + 0.5rem, ${vhUnit}), 1.45rem)`, height: `clamp(0.6rem, min(1.1vw + 0.5rem, ${vhUnit}), 1.45rem)` };
 }
 
-function getGridGap(size, compact) {
+function getGridGap(size: number, compact: boolean) {
   if (compact) {
     return size >= 4 ? '2px' : '3px';
   }
@@ -35,7 +35,14 @@ function getGridGap(size, compact) {
   return size >= 4 ? 'clamp(2px, 0.4vh, 4px)' : 'clamp(2px, 0.5vh, 5px)';
 }
 
-const FacePreview = React.memo(function FacePreview({ face, label, size, compact = false }) {
+interface FacePreviewProps {
+  face: string[];
+  label: FaceName;
+  size: number;
+  compact?: boolean;
+}
+
+const FacePreview = React.memo(function FacePreview({ face, label, size, compact = false }: FacePreviewProps) {
   const normalized = normalizeFaceStickers(face, size);
   const faceColors = orientFaceForMap(normalized, label, size);
   const cellStyle = getCellStyle(size, compact);
@@ -61,7 +68,7 @@ const FacePreview = React.memo(function FacePreview({ face, label, size, compact
             className="rounded-[4px] border border-black/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.07)]"
             style={{
               ...cellStyle,
-              backgroundColor: TOKEN_HEX[token] ?? '#333',
+              backgroundColor: TOKEN_HEX[token as keyof typeof TOKEN_HEX] ?? '#333',
             }}
           />
         ))}
@@ -70,7 +77,13 @@ const FacePreview = React.memo(function FacePreview({ face, label, size, compact
   );
 });
 
-export default React.memo(function SimulatorFaceMap({ displayState, compact = false }) {
+interface SimulatorFaceMapProps {
+  displayState: CubeStateObj;
+  compact?: boolean;
+  isDark?: boolean;
+}
+
+export default React.memo(function SimulatorFaceMap({ displayState, compact = false }: SimulatorFaceMapProps) {
   const cubeSize = getFaceSize(displayState) ?? 3;
 
   return (

@@ -1,15 +1,5 @@
-// frontend/src/pages/StepByStepPage.jsx
-/**
- * StepByStepPage.jsx — /step-by-step route — Guided simulator
- *
- * Interactive solving guide: guide panel (text + GIFs + algorithm buttons)
- * on the left, live 3D Rubik's Cube on the right. Users can click algorithm
- * buttons to apply moves, or manually turn the cube via drag/keyboard.
- *
- * Reuses all simulator engine components from pages/simulator/:
- *   useSimulatorQueue, useCubeControls, InteractiveCube, etc.
- */
-import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
+// frontend/src/pages/StepByStepPage.tsx
+import React, { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sun, Moon } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
@@ -82,7 +72,7 @@ export default function StepByStepPage() {
   });
 
   // Manual cube controls (drag + keyboard)
-  const dispatchManualMove = useCallback((move) => {
+  const dispatchManualMove = useCallback((move: string) => {
     queue.enqueueMoves([move]);
   }, [queue]);
 
@@ -93,7 +83,7 @@ export default function StepByStepPage() {
   });
 
   // Algorithm button handler
-  const handleApplyAlgorithm = useCallback((moves) => {
+  const handleApplyAlgorithm = useCallback((moves: string[]) => {
     queue.enqueueMoves(moves);
   }, [queue]);
 
@@ -108,11 +98,11 @@ export default function StepByStepPage() {
 
   // Keyboard nav for steps (only when cube is not animating)
   useEffect(() => {
-    const handleKey = (e) => {
+    const handleKey = (e: KeyboardEvent) => {
       // Don't hijack arrow keys used for cube controls
       if (controls.selectedSticker) return;
       // Let the cube controls handle single-letter keys
-      if (e.key.length === 1 && keyMap[e.key]) return;
+      if (e.key.length === 1 && (keyMap as Record<string, string>)[e.key]) return;
 
       if (e.key === 'ArrowRight') { e.preventDefault(); goNext(); }
       if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev(); }
@@ -133,7 +123,7 @@ export default function StepByStepPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const cameraProfile = useMemo(() => (
+  const cameraProfile = useMemo<{ position: [number,number,number]; fov: number; minDistance: number; maxDistance: number }>(() => (
     isMobile
       ? { position: [5.8, 4.8, 7.1], fov: 54, minDistance: 5.5, maxDistance: 22 }
       : { position: [4, 3.5, 5], fov: 45, minDistance: 4, maxDistance: 20 }
@@ -146,7 +136,7 @@ export default function StepByStepPage() {
         '--sim-panel': isDark ? '#0A0A0A' : '#F0EDE8',
         '--sim-border': isDark ? 'rgba(176,176,176,0.1)' : '#A89F94',
         '--sim-text': isDark ? '#FFFFFF' : '#2C2A26',
-      }}
+      } as React.CSSProperties}
     >
       <PageNavbar />
 

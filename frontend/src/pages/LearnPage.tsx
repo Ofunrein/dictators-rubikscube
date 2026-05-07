@@ -3,12 +3,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import PageNavbar from '../components/PageNavbar';
 import { useTheme } from '../context/ThemeContext';
 import { useLearnSlides } from './learn/useLearnSlides.js';
-import SlideHero from './learn/SlideHero.jsx';
-import SlideOverview from './learn/SlideOverview.jsx';
-import SlideNotation from './learn/SlideNotation.jsx';
-import SlideStepByStep from './learn/SlideStepByStep.jsx';
-import SlideAlgorithms from './learn/SlideAlgorithms.jsx';
-import SlideResources from './learn/SlideResources.jsx';
+import SlideHero from './learn/SlideHero';
+import SlideOverview from './learn/SlideOverview';
+import SlideNotation from './learn/SlideNotation';
+import SlideStepByStep from './learn/SlideStepByStep';
+import SlideAlgorithms from './learn/SlideAlgorithms';
+import SlideResources from './learn/SlideResources';
 import './learn/LearnPage.css';
 
 const TOTAL_SLIDES = 6;
@@ -17,7 +17,7 @@ export default function LearnPage() {
   const { isDark } = useTheme();
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const toastTimeoutRef = useRef(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { currentSlide, isTransitioning, slidesRef, goToSlide, nextSlide, prevSlide } =
     useLearnSlides(TOTAL_SLIDES);
 
@@ -26,14 +26,14 @@ export default function LearnPage() {
     text: isDark ? '#f5f5f5' : '#1a1a1a',
   };
 
-  const showToastMessage = useCallback((msg) => {
+  const showToastMessage = useCallback((msg: string) => {
     setToastMessage(msg);
     setShowToast(true);
-    clearTimeout(toastTimeoutRef.current);
+    if (toastTimeoutRef.current !== null) clearTimeout(toastTimeoutRef.current);
     toastTimeoutRef.current = setTimeout(() => setShowToast(false), 2000);
   }, []);
 
-  const copyToClipboard = useCallback((text) => {
+  const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text).then(
       () => showToastMessage(`Copied: ${text}`),
       () => showToastMessage('Copy failed'),
@@ -41,13 +41,15 @@ export default function LearnPage() {
   }, [showToastMessage]);
 
   useEffect(() => {
-    return () => clearTimeout(toastTimeoutRef.current);
+    return () => {
+      if (toastTimeoutRef.current !== null) clearTimeout(toastTimeoutRef.current);
+    };
   }, []);
 
   useEffect(() => {
     let touchStartX = 0;
-    const onTouchStart = (e) => { touchStartX = e.touches[0].clientX; };
-    const onTouchEnd = (e) => {
+    const onTouchStart = (e: TouchEvent) => { touchStartX = e.touches[0].clientX; };
+    const onTouchEnd = (e: TouchEvent) => {
       const dx = e.changedTouches[0].clientX - touchStartX;
       if (Math.abs(dx) > 50) { if (dx < 0) nextSlide(); else prevSlide(); }
     };
@@ -60,7 +62,7 @@ export default function LearnPage() {
   }, [nextSlide, prevSlide]);
 
   useEffect(() => {
-    const onKey = (e) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') nextSlide();
       if (e.key === 'ArrowLeft') prevSlide();
     };
