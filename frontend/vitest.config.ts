@@ -9,11 +9,10 @@ export default defineConfig({
     setupFiles: [],
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.{js,jsx}'],
+      include: ['src/**/*.{ts,tsx,js,jsx}'],
       exclude: [
-        'src/main.jsx',
-        'src/**/*.test.{js,jsx}',
-        'src/**/*.config.{js,jsx}',
+        'src/main.tsx',
+        'src/**/*.test.{ts,tsx,js,jsx}',
       ],
       thresholds: {
         lines: 15,
