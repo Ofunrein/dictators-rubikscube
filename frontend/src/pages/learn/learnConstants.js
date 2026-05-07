@@ -78,5 +78,5 @@ export const ALGORITHMS = [
   { step: 5, name: 'Sune', notation: "R U R' U R U2 R'", use: 'Orient yellow corners' },
   { step: 6, name: 'Corner Swap', notation: "U R U' L' U R' U' L", use: 'Position corners' },
   { step: 7, name: 'CW Cycle', notation: "R U' R U R U R U' R' U' R2", use: 'Cycle edges CW' },
-  { step: 7, name: 'CCW Cycle', notation: "R2 U R U R' U' R' U' R'", use: 'Cycle edges CCW' },
+  { step: 7, name: 'CCW Cycle', notation: "R2 U R U R' U' R' U' R' U R'", use: 'Cycle edges CCW' },
 ];

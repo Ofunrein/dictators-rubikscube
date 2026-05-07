@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 import PageNavbar from '../components/PageNavbar';
 import { useTheme } from '../context/ThemeContext';
@@ -17,6 +17,7 @@ export default function LearnPage() {
   const { isDark } = useTheme();
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const toastTimeoutRef = useRef(null);
   const { currentSlide, isTransitioning, slidesRef, goToSlide, nextSlide, prevSlide } =
     useLearnSlides(TOTAL_SLIDES);
 
@@ -28,7 +29,8 @@ export default function LearnPage() {
   const showToastMessage = useCallback((msg) => {
     setToastMessage(msg);
     setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000);
+    clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setShowToast(false), 2000);
   }, []);
 
   const copyToClipboard = useCallback((text) => {
@@ -37,6 +39,10 @@ export default function LearnPage() {
       () => showToastMessage('Copy failed'),
     );
   }, [showToastMessage]);
+
+  useEffect(() => {
+    return () => clearTimeout(toastTimeoutRef.current);
+  }, []);
 
   useEffect(() => {
     let touchStartX = 0;
