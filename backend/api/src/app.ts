@@ -54,19 +54,13 @@ export function buildApp(options: BuildAppOptions = {}) {
       timeWindow: '1 minute',
       keyGenerator: (request) =>
         (request.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ?? request.ip,
-      errorResponseBuilder: (_request, context) => {
-        const body = {
-          error: {
-            code: 'RATE_LIMITED',
-            message: `Rate limit exceeded. Retry in ${Math.ceil(context.ttl / 1000)} seconds.`,
-            requestId: randomUUID(),
-          },
-        };
-        // @fastify/rate-limit throws the returned value; Fastify reads `.statusCode`
-        // to set the response status. Without it the global error handler would send 500.
-        (body as Record<string, unknown>).statusCode = context.statusCode;
-        return body;
-      },
+      errorResponseBuilder: (_request, context) => ({
+        error: {
+          code: 'RATE_LIMITED',
+          message: `Rate limit exceeded. Retry in ${Math.ceil(context.ttl / 1000)} seconds.`,
+          requestId: randomUUID(),
+        },
+      }),
     });
 
     instance.register(aiHelpRoutes, { prefix: '/ai' });
@@ -85,11 +79,19 @@ export function buildApp(options: BuildAppOptions = {}) {
       return;
     }
 
-    const status = (error as { statusCode?: number }).statusCode;
-    if (status === 429) {
-      // Rate-limit errors carry the full response body as the error object itself
-      const body = error as unknown as Record<string, unknown>;
-      reply.status(429).send({ error: (body.error as unknown) ?? { code: 'RATE_LIMITED', message: 'Rate limit exceeded.' } });
+    // Check if this is a rate-limit error by looking at the error structure
+    const errorObj = error as unknown as Record<string, unknown>;
+    if (errorObj.error && typeof errorObj.error === 'object' && 'code' in errorObj.error) {
+      const errCode = (errorObj.error as Record<string, unknown>).code;
+      if (errCode === 'RATE_LIMITED') {
+        reply.status(429).send(error);
+        return;
+      }
+    }
+
+    // Preserve status codes already set (e.g., from other plugins) if they're 4xx
+    if (reply.statusCode >= 400 && reply.statusCode !== 500) {
+      reply.send({ error: { code: String(reply.statusCode), message: (error as Error).message || 'Request error.' } });
       return;
     }
 
