@@ -54,13 +54,19 @@ export function buildApp(options: BuildAppOptions = {}) {
       timeWindow: '1 minute',
       keyGenerator: (request) =>
         (request.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ?? request.ip,
-      errorResponseBuilder: (_request, context) => ({
-        error: {
-          code: 'RATE_LIMITED',
-          message: `Rate limit exceeded. Retry in ${Math.ceil(context.ttl / 1000)} seconds.`,
-          requestId: randomUUID(),
-        },
-      }),
+      errorResponseBuilder: (_request, context) => {
+        const body = {
+          error: {
+            code: 'RATE_LIMITED',
+            message: `Rate limit exceeded. Retry in ${Math.ceil(context.ttl / 1000)} seconds.`,
+            requestId: randomUUID(),
+          },
+        };
+        // @fastify/rate-limit throws the returned value; Fastify reads `.statusCode`
+        // to set the response status. Without it the global error handler would send 500.
+        (body as Record<string, unknown>).statusCode = context.statusCode;
+        return body;
+      },
     });
 
     instance.register(aiHelpRoutes, { prefix: '/ai' });
@@ -76,6 +82,14 @@ export function buildApp(options: BuildAppOptions = {}) {
   app.setErrorHandler((error, request, reply) => {
     request.log?.error?.(error);
     if (reply.sent) {
+      return;
+    }
+
+    const status = (error as { statusCode?: number }).statusCode;
+    if (status === 429) {
+      // Rate-limit errors carry the full response body as the error object itself
+      const body = error as unknown as Record<string, unknown>;
+      reply.status(429).send({ error: (body.error as unknown) ?? { code: 'RATE_LIMITED', message: 'Rate limit exceeded.' } });
       return;
     }
 
