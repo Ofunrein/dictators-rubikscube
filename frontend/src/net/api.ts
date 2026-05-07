@@ -99,7 +99,7 @@ async function request(
   { method = 'GET', body }: { method?: string; body?: unknown } = {},
 ): Promise<Record<string, unknown>> {
   const url = `${API_BASE_URL}${path}`;
-  const options: RequestInit & { headers: Record<string, string> } = {
+  const options: { method: string; headers: Record<string, string>; body?: string } = {
     method,
     headers: {
       accept: 'application/json',
