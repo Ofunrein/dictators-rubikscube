@@ -1,26 +1,14 @@
 /**
- * auth.js — Supabase authentication service
- *
- * All auth-related Supabase calls live here. The AuthContext calls these
- * functions rather than talking to Supabase directly.
+ * auth.ts — Supabase authentication service
  */
 import { supabase } from './supabase';
+import type { Session, User } from '@supabase/supabase-js';
 
-/**
- * Sign up a new user.
- * Creates an auth user via Supabase Auth, then inserts a row into public.users.
- *
- * If email confirmation is enabled in Supabase, the user will need to confirm
- * their email before they can sign in. In that case, signUp returns a user
- * but no session — the AuthContext will show a confirmation message.
- *
- * Returns { user, session, error }.
- */
-export async function signUp(email, password, username) {
-  // 1. Create the auth user
-  //    A database trigger (handle_new_user) automatically inserts a row into
-  //    public.users when the auth user is created, so we don't need to do it
-  //    manually from the client.
+export async function signUp(
+  email: string,
+  password: string,
+  username: string,
+): Promise<{ user: User | null; session: Session | null; error: Error | null }> {
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -29,62 +17,52 @@ export async function signUp(email, password, username) {
     },
   });
 
-  if (authError) return { user: null, session: null, error: authError };
+  if (authError) return { user: null, session: null, error: authError as Error };
   if (!authData.user) return { user: null, session: null, error: new Error('Sign-up returned no user.') };
 
   return { user: authData.user, session: authData.session, error: null };
 }
 
-/**
- * Sign in with email and password.
- * Returns { user, session, error }.
- */
-export async function signIn(email, password) {
+export async function signIn(
+  email: string,
+  password: string,
+): Promise<{ user: User | null; session: Session | null; error: Error | null }> {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  if (error) return { user: null, session: null, error };
+  if (error) return { user: null, session: null, error: error as Error };
   return { user: data.user, session: data.session, error: null };
 }
 
-/**
- * Sign out the current user.
- */
-export async function signOut() {
+export async function signOut(): Promise<{ error: Error | null }> {
   const { error } = await supabase.auth.signOut();
-  return { error };
+  return { error: error as Error | null };
 }
 
-/**
- * Get the current session (e.g. on app mount to restore auth state).
- */
-export async function getCurrentSession() {
+export async function getCurrentSession(): Promise<{ session: Session | null; error: Error | null }> {
   const { data, error } = await supabase.auth.getSession();
-  if (error) return { session: null, error };
+  if (error) return { session: null, error: error as Error };
   return { session: data.session, error: null };
 }
 
-/**
- * Fetch a user's profile from the public.users table.
- */
-export async function getUserProfile(userId) {
+export async function getUserProfile(
+  userId: string,
+): Promise<{ profile: Record<string, unknown> | null; error: Error | null }> {
   const { data, error } = await supabase
     .from('users')
     .select('*')
     .eq('id', userId)
     .single();
 
-  if (error) return { profile: null, error };
-  return { profile: data, error: null };
+  if (error) return { profile: null, error: error as Error };
+  return { profile: data as Record<string, unknown>, error: null };
 }
 
-/**
- * Fetch a user's stats from both stat tables.
- * Returns { twoByTwo, threeByThree } or null for each.
- */
-export async function getUserStats(userId) {
+export async function getUserStats(
+  userId: string,
+): Promise<{ twoByTwo: Record<string, unknown> | null; threeByThree: Record<string, unknown> | null }> {
   const { data: twoByTwo, error: err2 } = await supabase
     .from('two_by_two_user_stats')
     .select('*')
@@ -98,28 +76,18 @@ export async function getUserStats(userId) {
     .single();
 
   return {
-    twoByTwo: err2 ? null : twoByTwo,
-    threeByThree: err3 ? null : threeByThree,
+    twoByTwo: err2 ? null : (twoByTwo as Record<string, unknown>),
+    threeByThree: err3 ? null : (threeByThree as Record<string, unknown>),
   };
 }
 
-/**
- * Delete the current user's account.
- * Calls the delete_account Supabase function which should handle both
- * the data deletion and auth user deletion (via a trigger or the function itself).
- *
- * NOTE: The delete_account function needs to also delete the auth user,
- * or you'll need a separate server-side endpoint for that. If the function
- * only deletes DB rows, the auth user will remain.
- */
-export async function deleteAccount(userId) {
+export async function deleteAccount(userId: string): Promise<{ error: Error | null }> {
   const { error: funcError } = await supabase.rpc('delete_account', {
     p_user_id: userId,
   });
 
-  if (funcError) return { error: funcError };
+  if (funcError) return { error: funcError as Error };
 
-  // Sign out locally after the account is deleted
   await supabase.auth.signOut();
 
   return { error: null };

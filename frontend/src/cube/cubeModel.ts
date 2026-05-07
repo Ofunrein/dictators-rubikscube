@@ -1,33 +1,53 @@
 /**
- * cubeModel.js — Shared cube state helpers for 2x2, 3x3, and 4x4 cubes
- *
- * This file is the common ground between the frontend simulator and the backend API.
- * It keeps the "what does a cube state look like?" rules in one place so the
- * renderer, move engine, validators, and API routes all agree.
- *
- * A cube state is still the same simple shape the project already uses:
- *   {
- *     U: [...stickers],
- *     R: [...stickers],
- *     F: [...stickers],
- *     D: [...stickers],
- *     L: [...stickers],
- *     B: [...stickers]
- *   }
- *
- * The only difference now is that each face can hold 4, 9, or 16 stickers
- * depending on whether the cube is 2x2, 3x3, or 4x4.
- *
- * This file also knows how to translate between a face sticker (face + row + col)
- * and a cubie's 3D coordinates. That translation is what lets the move engine
- * rotate any supported cube size without hardcoding one giant set of indices.
+ * cubeModel.ts — Shared cube state helpers for 2x2, 3x3, and 4x4 cubes
  */
 
 import { isPlainObject } from '../utils/isPlainObject.js';
 
-export const FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
+export type FaceName = 'U' | 'R' | 'F' | 'D' | 'L' | 'B';
+export type StickerToken = 'W' | 'R' | 'G' | 'Y' | 'O' | 'B';
 
-export const FACE_COLORS = {
+export interface CubeStateObj {
+  U: StickerToken[];
+  R: StickerToken[];
+  F: StickerToken[];
+  D: StickerToken[];
+  L: StickerToken[];
+  B: StickerToken[];
+}
+
+export interface StickerAddress {
+  face: FaceName;
+  row: number;
+  col: number;
+  x: number;
+  y: number;
+  z: number;
+  nx: number;
+  ny: number;
+  nz: number;
+}
+
+export interface StickerModel extends StickerAddress {
+  color: StickerToken;
+}
+
+export interface CubieLayout {
+  key: string;
+  x: number;
+  y: number;
+  z: number;
+  position: [number, number, number];
+}
+
+interface ValidationDetail {
+  path: string;
+  message: string;
+}
+
+export const FACE_ORDER: FaceName[] = ['U', 'R', 'F', 'D', 'L', 'B'];
+
+export const FACE_COLORS: Record<FaceName, StickerToken> = {
   U: 'W',
   R: 'R',
   F: 'G',
@@ -36,13 +56,19 @@ export const FACE_COLORS = {
   B: 'B',
 };
 
-export const STICKER_TOKENS = Object.values(FACE_COLORS);
+export const STICKER_TOKENS = Object.values(FACE_COLORS) as StickerToken[];
 export const SUPPORTED_CUBE_SIZES = [2, 3, 4];
 
-const FACE_SET = new Set(FACE_ORDER);
-const STICKER_SET = new Set(STICKER_TOKENS);
+const FACE_SET = new Set<string>(FACE_ORDER);
+const STICKER_SET = new Set<string>(STICKER_TOKENS);
 
-const FACE_NORMALS = {
+interface FaceNormal {
+  nx: number;
+  ny: number;
+  nz: number;
+}
+
+const FACE_NORMALS: Record<FaceName, FaceNormal> = {
   U: { nx: 0, ny: 1, nz: 0 },
   R: { nx: 1, ny: 0, nz: 0 },
   F: { nx: 0, ny: 0, nz: 1 },
@@ -51,7 +77,7 @@ const FACE_NORMALS = {
   B: { nx: 0, ny: 0, nz: -1 },
 };
 
-const FACE_FROM_NORMAL = {
+const FACE_FROM_NORMAL: Record<string, FaceName> = {
   '0,1,0': 'U',
   '1,0,0': 'R',
   '0,0,1': 'F',
@@ -60,16 +86,23 @@ const FACE_FROM_NORMAL = {
   '0,0,-1': 'B',
 };
 
-function getSquareFaceSize(length) {
+function getSquareFaceSize(length: number): number | null {
   const size = Math.sqrt(length);
   return Number.isInteger(size) ? size : null;
 }
 
-function getCoordKey(value) {
+function getCoordKey(value: number): string {
   return String(value);
 }
 
-function getCoordinateContext(size) {
+interface CoordinateContext {
+  coords: number[];
+  indexByCoord: Map<string, number>;
+  max: number;
+  min: number;
+}
+
+function getCoordinateContext(size: number): CoordinateContext {
   const coords = getCoordinateValues(size);
   return {
     coords,
@@ -79,7 +112,7 @@ function getCoordinateContext(size) {
   };
 }
 
-function getCoordIndex(indexByCoord, value, label) {
+function getCoordIndex(indexByCoord: Map<string, number>, value: number, label: string): number {
   const index = indexByCoord.get(getCoordKey(value));
   if (index === undefined) {
     throw new Error(`Unable to map ${label} coordinate ${value} back to a face index.`);
@@ -87,7 +120,7 @@ function getCoordIndex(indexByCoord, value, label) {
   return index;
 }
 
-function getFaceFromNormal(nx, ny, nz) {
+function getFaceFromNormal(nx: number, ny: number, nz: number): FaceName {
   const face = FACE_FROM_NORMAL[`${nx},${ny},${nz}`];
   if (!face) {
     throw new Error(`Unknown sticker normal: ${nx},${ny},${nz}`);
@@ -95,7 +128,7 @@ function getFaceFromNormal(nx, ny, nz) {
   return face;
 }
 
-export function normalizeCubeSize(size = 3) {
+export function normalizeCubeSize(size: number | null | undefined = 3): number {
   const numericSize = Number(size);
   if (!Number.isInteger(numericSize) || !SUPPORTED_CUBE_SIZES.includes(numericSize)) {
     throw new Error(`Cube size must be one of ${SUPPORTED_CUBE_SIZES.join(', ')}.`);
@@ -103,25 +136,21 @@ export function normalizeCubeSize(size = 3) {
   return numericSize;
 }
 
-// Generates the list of coordinate values used to place cubies along each axis.
-// For a 3x3, cubies sit at -1, 0, 1. For a 2x2, they sit at -0.5, 0.5.
-// For a 4x4, they sit at -1.5, -0.5, 0.5, 1.5.
-// The trick: subtract the offset so the cube is centered at the origin (0,0,0).
-export function getCoordinateValues(size) {
+export function getCoordinateValues(size: number): number[] {
   const normalizedSize = normalizeCubeSize(size);
   const offset = (normalizedSize - 1) / 2;
   return Array.from({ length: normalizedSize }, (_, index) => index - offset);
 }
 
-export function getFaceSize(state) {
+export function getFaceSize(state: unknown): number | null {
   if (!isPlainObject(state)) {
     return null;
   }
 
-  let detectedSize = null;
+  let detectedSize: number | null = null;
 
   for (const face of FACE_ORDER) {
-    const stickers = state[face];
+    const stickers = (state as Record<string, unknown>)[face];
     if (!Array.isArray(stickers)) {
       return null;
     }
@@ -144,25 +173,29 @@ export function getFaceSize(state) {
   return detectedSize;
 }
 
-export function createSolvedState(size = 3) {
+export function createSolvedState(size: number = 3): CubeStateObj {
   const normalizedSize = normalizeCubeSize(size);
   const stickerCount = normalizedSize * normalizedSize;
 
   return FACE_ORDER.reduce((acc, face) => {
     acc[face] = Array(stickerCount).fill(FACE_COLORS[face]);
     return acc;
-  }, {});
+  }, {} as CubeStateObj);
 }
 
-export function cloneCubeState(state) {
+export function cloneCubeState(state: CubeStateObj): CubeStateObj {
   return FACE_ORDER.reduce((acc, face) => {
     acc[face] = [...state[face]];
     return acc;
-  }, {});
+  }, {} as CubeStateObj);
 }
 
-export function collectCubeStateDetails(candidate, expectedSize, path = 'state') {
-  const details = [];
+export function collectCubeStateDetails(
+  candidate: unknown,
+  expectedSize?: number,
+  path: string = 'state',
+): ValidationDetail[] {
+  const details: ValidationDetail[] = [];
   const normalizedExpectedSize = expectedSize === undefined ? undefined : Number(expectedSize);
 
   if (!isPlainObject(candidate)) {
@@ -173,7 +206,8 @@ export function collectCubeStateDetails(candidate, expectedSize, path = 'state')
     return details;
   }
 
-  const unknownFaces = Object.keys(candidate).filter((key) => !FACE_SET.has(key));
+  const candidateRecord = candidate as Record<string, unknown>;
+  const unknownFaces = Object.keys(candidateRecord).filter((key) => !FACE_SET.has(key));
   for (const face of unknownFaces) {
     details.push({ path: `${path}.${face}`, message: 'Unknown face key.' });
   }
@@ -201,7 +235,7 @@ export function collectCubeStateDetails(candidate, expectedSize, path = 'state')
     normalizedExpectedSize !== undefined ? normalizedExpectedSize * normalizedExpectedSize : null;
 
   for (const face of FACE_ORDER) {
-    const stickers = candidate[face];
+    const stickers = candidateRecord[face];
 
     if (!Array.isArray(stickers)) {
       details.push({
@@ -237,7 +271,7 @@ export function collectCubeStateDetails(candidate, expectedSize, path = 'state')
     }
 
     for (let index = 0; index < stickers.length; index += 1) {
-      if (!STICKER_SET.has(stickers[index])) {
+      if (!STICKER_SET.has(stickers[index] as string)) {
         details.push({
           path: `${path}.${face}[${index}]`,
           message: 'Sticker must be one of W, R, G, Y, O, B.',
@@ -249,26 +283,15 @@ export function collectCubeStateDetails(candidate, expectedSize, path = 'state')
   return details;
 }
 
-export function validateCubeState(candidate, expectedSize) {
+export function validateCubeState(candidate: unknown, expectedSize?: number): CubeStateObj {
   const details = collectCubeStateDetails(candidate, expectedSize);
   if (details.length > 0) {
     throw new Error(details[0].message);
   }
-  return cloneCubeState(candidate);
+  return cloneCubeState(candidate as CubeStateObj);
 }
 
-// Converts a face sticker at (face, row, col) into 3D coordinates (x, y, z)
-// plus a surface normal vector (nx, ny, nz) that says which direction the
-// sticker faces.
-//
-// Why this is complex:
-//   Each face of the cube maps row/col to different 3D axes. For example,
-//   the Front face maps col → x and row → y, while the Up face maps
-//   col → x and row → z (because "up" looks down the Y axis).
-//
-//   yFromRow flips the row so row 0 is at the TOP of the face visually
-//   (matching the sticker array's layout where index 0 is top-left).
-export function getStickerAddress(face, row, col, size) {
+export function getStickerAddress(face: string, row: number, col: number, size: number): StickerAddress {
   const normalizedSize = normalizeCubeSize(size);
   const { coords, max, min } = getCoordinateContext(normalizedSize);
 
@@ -288,30 +311,33 @@ export function getStickerAddress(face, row, col, size) {
   }
 
   const yFromRow = coords[normalizedSize - 1 - row];
+  const faceName = face as FaceName;
 
-  switch (face) {
+  switch (faceName) {
     case 'F':
-      return { face, row, col, x: coords[col], y: yFromRow, z: max, ...FACE_NORMALS.F };
+      return { face: faceName, row, col, x: coords[col], y: yFromRow, z: max, ...FACE_NORMALS.F };
     case 'B':
-      return { face, row, col, x: coords[normalizedSize - 1 - col], y: yFromRow, z: min, ...FACE_NORMALS.B };
+      return { face: faceName, row, col, x: coords[normalizedSize - 1 - col], y: yFromRow, z: min, ...FACE_NORMALS.B };
     case 'U':
-      return { face, row, col, x: coords[col], y: max, z: coords[normalizedSize - 1 - row], ...FACE_NORMALS.U };
+      return { face: faceName, row, col, x: coords[col], y: max, z: coords[normalizedSize - 1 - row], ...FACE_NORMALS.U };
     case 'D':
-      return { face, row, col, x: coords[col], y: min, z: coords[row], ...FACE_NORMALS.D };
+      return { face: faceName, row, col, x: coords[col], y: min, z: coords[row], ...FACE_NORMALS.D };
     case 'R':
-      return { face, row, col, x: max, y: yFromRow, z: coords[normalizedSize - 1 - col], ...FACE_NORMALS.R };
+      return { face: faceName, row, col, x: max, y: yFromRow, z: coords[normalizedSize - 1 - col], ...FACE_NORMALS.R };
     case 'L':
-      return { face, row, col, x: min, y: yFromRow, z: coords[col], ...FACE_NORMALS.L };
+      return { face: faceName, row, col, x: min, y: yFromRow, z: coords[col], ...FACE_NORMALS.L };
     default:
       throw new Error(`Unhandled face: ${face}`);
   }
 }
 
-// The reverse of getStickerAddress: given a face name and 3D coordinates,
-// figure out which row and column of the face array this sticker belongs to.
-// Used after a move rotates stickers to new 3D positions — we need to know
-// which slot in the flat face array each sticker should land in.
-export function getFaceRowColFromAddress(face, x, y, z, size) {
+export function getFaceRowColFromAddress(
+  face: string,
+  x: number,
+  y: number,
+  z: number,
+  size: number,
+): { row: number; col: number } {
   const normalizedSize = normalizeCubeSize(size);
   const { indexByCoord } = getCoordinateContext(normalizedSize);
 
@@ -351,22 +377,16 @@ export function getFaceRowColFromAddress(face, x, y, z, size) {
   }
 }
 
-export function getFaceIndexFromAddress(face, x, y, z, size) {
+export function getFaceIndexFromAddress(face: string, x: number, y: number, z: number, size: number): number {
   const { row, col } = getFaceRowColFromAddress(face, x, y, z, size);
   return row * normalizeCubeSize(size) + col;
 }
 
-// Builds the full 3D sticker model from a flat cube state.
-// For every face → every row → every column, it creates a sticker object
-// with 3D coordinates (x,y,z), a normal vector (nx,ny,nz), and the color token.
-// This is the bridge between the simple face-array state and the 3D world.
-// The move engine uses this to rotate stickers in 3D space and then
-// convert back to the flat state with stickersToState().
-export function createStickerModel(state) {
+export function createStickerModel(state: CubeStateObj): StickerModel[] {
   const size = normalizeCubeSize(getFaceSize(state));
   validateCubeState(state, size);
 
-  const stickers = [];
+  const stickers: StickerModel[] = [];
 
   for (const face of FACE_ORDER) {
     for (let row = 0; row < size; row += 1) {
@@ -383,17 +403,12 @@ export function createStickerModel(state) {
   return stickers;
 }
 
-// Converts rotated 3D stickers back into the flat face-array state.
-// After a move, stickers have new positions and normals. The normal tells
-// us which face the sticker now belongs to, and the position tells us which
-// row/col slot it lands in. If any face has unfilled slots after reconstruction,
-// something went wrong with the rotation math, so we throw an error.
-export function stickersToState(stickers, size) {
+export function stickersToState(stickers: StickerModel[], size: number): CubeStateObj {
   const normalizedSize = normalizeCubeSize(size);
   const state = FACE_ORDER.reduce((acc, face) => {
-    acc[face] = Array(normalizedSize * normalizedSize).fill(null);
+    acc[face] = Array(normalizedSize * normalizedSize).fill(null) as StickerToken[];
     return acc;
-  }, {});
+  }, {} as CubeStateObj);
 
   for (const sticker of stickers) {
     const face = getFaceFromNormal(sticker.nx, sticker.ny, sticker.nz);
@@ -410,13 +425,10 @@ export function stickersToState(stickers, size) {
   return state;
 }
 
-// Generates the 3D grid of cubie positions for the InteractiveCube renderer.
-// A 3x3 produces 27 cubies (including the invisible center one).
-// Each cubie gets a position array [x, y, z] and a unique key string.
-export function buildCubieLayout(size) {
+export function buildCubieLayout(size: number): CubieLayout[] {
   const normalizedSize = normalizeCubeSize(size);
   const coords = getCoordinateValues(normalizedSize);
-  const cubies = [];
+  const cubies: CubieLayout[] = [];
 
   for (const x of coords) {
     for (const y of coords) {
