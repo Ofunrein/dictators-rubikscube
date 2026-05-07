@@ -13,20 +13,25 @@
  * On submit the modal calls AuthContext's Supabase-backed login() or signup()
  * action, then closes after a successful auth response.
  */
-import { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-export default function AuthModal({ initialMode = 'login', onClose }) {
+interface AuthModalProps {
+  initialMode?: string;
+  onClose: () => void;
+}
+
+export default function AuthModal({ initialMode = 'login', onClose }: AuthModalProps) {
   const [mode, setMode] = useState(initialMode);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const overlayRef = useRef(null);
-  const dialogRef = useRef(null);
-  const firstFieldRef = useRef(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const firstFieldRef = useRef<HTMLInputElement>(null);
   const headingId = useId();
   const descriptionId = useId();
   const usernameId = useId();
@@ -40,7 +45,7 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
   }, []);
 
   useEffect(() => {
-    function onKey(e) {
+    function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         onClose();
         return;
@@ -57,10 +62,10 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
       const last = focusable[focusable.length - 1];
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
-        last.focus();
+        (last as HTMLElement).focus();
       } else if (!e.shiftKey && document.activeElement === last) {
         e.preventDefault();
-        first.focus();
+        (first as HTMLElement).focus();
       }
     }
 
@@ -68,11 +73,11 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  function handleOverlayClick(e) {
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose();
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
     if (!email || !password) { setError('Please fill in all fields.'); return; }
@@ -97,7 +102,7 @@ export default function AuthModal({ initialMode = 'login', onClose }) {
     onClose();
   }
 
-  function switchMode(next) {
+  function switchMode(next: string) {
     setMode(next);
     setError('');
     setUsername('');

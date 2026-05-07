@@ -1,6 +1,7 @@
 import { STEPS } from './learnConstants.js';
 
-const DIFFICULTY_CLASS = { Easy: 'easy', Medium: 'medium', Hard: 'hard' };
+type DifficultyKey = 'Easy' | 'Medium' | 'Hard';
+const DIFFICULTY_CLASS: Record<DifficultyKey, string> = { Easy: 'easy', Medium: 'medium', Hard: 'hard' };
 
 export default function SlideStepByStep() {
   return (
@@ -19,7 +20,7 @@ export default function SlideStepByStep() {
             </div>
             <div className="step-body">
               <div className="step-meta">
-                <span className={`step-difficulty ${DIFFICULTY_CLASS[step.difficulty]}`}>{step.difficulty}</span>
+                <span className={`step-difficulty ${DIFFICULTY_CLASS[step.difficulty as DifficultyKey] ?? ''}`}>{step.difficulty}</span>
                 <span className="step-layer">{step.layer}</span>
               </div>
               <h3>{step.title}</h3>

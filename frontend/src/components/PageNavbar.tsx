@@ -23,7 +23,7 @@ const NAV_LINKS = [
 ];
 
 export default function PageNavbar() {
-  const [authModal, setAuthModal] = useState(null);
+  const [authModal, setAuthModal] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { currentUser } = useAuth();
   const { isDark, toggleTheme } = useTheme();
@@ -34,7 +34,7 @@ export default function PageNavbar() {
   const activeText = isDark ? 'text-white' : 'text-dictator-ink';
   const border = isDark ? 'border-white/20 hover:border-white/40' : 'border-dictator-ink/30 hover:border-dictator-ink/60';
 
-  function navTo(href) {
+  function navTo(href: string) {
     navigate(href);
     setMobileMenuOpen(false);
   }

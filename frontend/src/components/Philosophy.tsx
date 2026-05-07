@@ -8,10 +8,17 @@ import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Edges, Float } from '@react-three/drei';
+import * as THREE from 'three';
+
+interface FloatingCubeProps {
+  position: [number, number, number];
+  rotationSpeed: { x: number; y: number };
+  scale: number;
+}
 
 // Helper component for floating wireframes
-const FloatingCube = ({ position, rotationSpeed, scale }) => {
-    const meshRef = useRef();
+const FloatingCube = ({ position, rotationSpeed, scale }: FloatingCubeProps) => {
+    const meshRef = useRef<THREE.Mesh>(null);
 
     useFrame(() => {
         if (meshRef.current) {
@@ -57,7 +64,7 @@ const Philosophy = () => {
             const lines = gsap.utils.toArray('.phil-line');
 
             lines.forEach((line, index) => {
-                gsap.fromTo(line,
+                gsap.fromTo(line as gsap.TweenTarget,
                     { y: 30, opacity: 0 },
                     {
                         y: 0,

@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
+import type { NavigateFunction } from 'react-router-dom';
 
 const RESOURCES = [
-  { type: 'Guide', title: "Beginner's Full Tutorial", desc: 'A comprehensive walkthrough for absolute beginners.', action: (navigate) => navigate('/step-by-step') },
+  { type: 'Guide', title: "Beginner's Full Tutorial", desc: 'A comprehensive walkthrough for absolute beginners.', action: (navigate: NavigateFunction) => navigate('/step-by-step') },
   { type: 'Reference', title: 'OLL Algorithms', desc: 'All 57 OLL cases with diagrams.', action: () => window.open('/OLL_Algorithms.pdf', '_blank') },
   { type: 'Reference', title: 'PLL Algorithms', desc: 'All 21 PLL cases for permuting the last layer.', action: () => window.open('/PLL_Algorithms.pdf', '_blank') },
   { type: 'Diagram', title: 'Color Scheme & Notation Map', desc: 'Visual reference for color placement and notation.', action: () => window.open('/Color_Scheme_Notation_Map.pdf', '_blank') },

@@ -1,4 +1,9 @@
-export default function SlideHero({ onStart, onNotation }) {
+interface SlideHeroProps {
+  onStart: () => void;
+  onNotation: () => void;
+}
+
+export default function SlideHero({ onStart, onNotation }: SlideHeroProps) {
   return (
     <div className="slide-inner hero-centered">
       <p className="hero-badge">// Solving Guide</p>
