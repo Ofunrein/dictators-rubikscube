@@ -14,6 +14,8 @@ An interactive, browser-based 3D Rubik's Cube platform with real-time manipulati
 - [Production app](https://dictators-rubikscube.vercel.app)
 - [Production API base](https://dictators-rubikscube.vercel.app/api/v1)
 
+![Demo](docs/demo.gif)
+
 ## Features
 
 | Feature | Description |
@@ -46,6 +48,17 @@ An interactive, browser-based 3D Rubik's Cube platform with real-time manipulati
 - **Interactive 3D UI:** React Three Fiber, queued move animation, keyboard controls, and a live 2D face map keep visual and logical cube state in sync.
 - **Product persistence:** Supabase Auth and Postgres-backed stats power account, leaderboard, and profile workflows.
 - **Automated checks:** GitHub Actions runs frontend lint/tests/build, Playwright smoke tests, and backend type-check/tests.
+
+## Screenshots
+
+| Page | Preview |
+|------|---------|
+| Landing | ![Landing](docs/screenshots/landing.png) |
+| Simulator | ![Simulator](docs/screenshots/simulator.png) |
+| Step-by-Step Guide | ![Guide](docs/screenshots/step-guide-solving.png) |
+| Leaderboard | ![Leaderboard](docs/screenshots/leaderboard.png) |
+| Learn | ![Learn](docs/screenshots/learn-page.png) |
+| Profile | ![Profile](docs/screenshots/profile.png) |
 
 ## Quick Start
 
