@@ -1,6 +1,5 @@
 # The Dictators — 3D Rubik's Cube Platfor
 
-![CI](https://github.com/Ofunrein/dictators-rubikscube/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)
 ![React](https://img.shields.io/badge/React-19-61dafb.svg)
