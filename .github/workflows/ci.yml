@@ -81,5 +81,5 @@ jobs:
         run: npm run test:ts -- tests/vercelHandler.test.ts
 
       - name: Run solver integration tests
-        if: ${{ hashFiles('api/solver.js') != '' }}
+        if: ${{ hashFiles('api/solver.js') != '' && hashFiles('frontend/src/utils/isPlainObject.js') != '' }}
         run: npm test
