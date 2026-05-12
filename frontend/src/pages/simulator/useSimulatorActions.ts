@@ -1,5 +1,16 @@
 /**
  * useSimulatorActions.ts — Scramble, Solve, Reset, and size-change handlers
+ *
+ * Coordinates the higher-level user actions that affect the whole cube state
+ * rather than a single move. Fetches scrambles and solves from the remote API,
+ * feeds the resulting move sequences into the animation queue, and manages the
+ * loading/error state for each action.
+ *
+ * Key exports:
+ *   - useSimulatorActions(props) — returns { scramble, solve, reset, changeSize, … }
+ *
+ * Network requests go through net/api.ts. Animation is handled by the queue
+ * from useSimulatorQueue.ts — this hook only decides what to enqueue and when.
  */
 
 import { useCallback, useRef, useState } from 'react';

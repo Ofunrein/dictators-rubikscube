@@ -1,5 +1,18 @@
 /**
  * auth.ts — Supabase authentication service
+ *
+ * Wraps the Supabase auth API so UI components never call supabase.auth
+ * directly. All sign-up, sign-in, sign-out, and session-retrieval logic
+ * lives here, keeping the auth flow in one testable place.
+ *
+ * Key exports:
+ *   - signUp(email, password, username) — creates an account and profile row
+ *   - signIn(email, password) — returns a session on success
+ *   - signOut() — ends the current session
+ *   - getCurrentSession() — returns the active session or null
+ *   - getUserProfile(userId) — fetches the public profile row
+ *   - getUserStats(userId) — fetches aggregate stats via the stats service
+ *   - deleteAccount() — permanently removes the user and all their data
  */
 import { supabase } from './supabase';
 import type { Session, User } from '@supabase/supabase-js';

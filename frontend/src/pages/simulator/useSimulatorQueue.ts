@@ -1,5 +1,16 @@
 /**
- * useSimulatorQueue.ts — Manages the move animation queue
+ * useSimulatorQueue.ts — Manages the move animation queue for the simulator
+ *
+ * Decouples "a move was requested" from "the move is being animated." Moves
+ * enter a FIFO queue and are dequeued one at a time, each waiting for the
+ * previous animation to finish before starting. This prevents visual overlap
+ * when multiple moves arrive quickly (e.g. during a solve sequence).
+ *
+ * Key exports:
+ *   - useSimulatorQueue(props) — returns { enqueueMove, currentMove, isSolving, … }
+ *
+ * Does NOT apply moves to cube state — the caller does that when a move completes.
+ * Max history is capped at MAX_HISTORY_LENGTH to prevent unbounded memory growth.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';

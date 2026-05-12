@@ -1,3 +1,17 @@
+/**
+ * auth.ts — Request authentication helpers for Fastify routes
+ *
+ * Extracts and validates JWT access tokens from incoming HTTP requests so that
+ * route handlers don't need to duplicate token-parsing logic.
+ *
+ * Key exports:
+ *   - getAccessAuthUser(prisma, request) — returns the authenticated user or null
+ *   - requireAccessAuth(prisma, request, reply) — same, but sends 401 and returns null
+ *     if the token is missing or invalid (use this in protected routes)
+ *
+ * Does NOT issue tokens — see jwt.ts and routes/auth.ts for that.
+ * Does NOT handle refresh tokens — see lib/refreshSessions.ts.
+ */
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 

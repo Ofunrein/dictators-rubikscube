@@ -1,4 +1,18 @@
-// frontend/src/pages/StepByStepPage.tsx
+/**
+ * StepByStepPage.tsx — /step-by-step route — guided interactive solving tutorial
+ *
+ * Combines the 3D cube simulator with a step-by-step solving guide so the
+ * user can practice each stage of the beginner method on their own cube.
+ * The guide panel shows the current step and highlights relevant moves.
+ *
+ * Key responsibilities:
+ *   - Renders the 3D InteractiveCube alongside the GuidePanel
+ *   - Wires keyboard/button controls to the cube via useCubeControls
+ *   - Tracks which solving step the user is on and advances on demand
+ *   - Applies light/dark theme from ThemeContext
+ *
+ * For the free-play simulator without the guide, see SimulatorPage.tsx.
+ */
 import React, { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sun, Moon } from 'lucide-react';

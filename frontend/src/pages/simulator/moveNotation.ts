@@ -1,5 +1,16 @@
 /**
  * moveNotation.ts — String utilities for Rubik's Cube move notation
+ *
+ * Pure functions for parsing, normalizing, inverting, and expanding move
+ * tokens. Used by the queue, the undo system, and the solve pipeline to
+ * manipulate move sequences without touching cube state directly.
+ *
+ * Key exports:
+ *   - inverseMove(move) — returns the inverse of a single move token
+ *   - isSliceMove(move) — true for M, E, S, r, l, u, d, f, b moves
+ *   - expandMoveToken(move) — expands "X2" into ["X", "X"] for animation
+ *   - normalizeMoveSequence(moves) — cancels redundant adjacent moves
+ *   - mergeMoveIntoSolveStack(stack, move) — appends a move and cancels inverses
  */
 
 export function inverseMove(move: string): string {
