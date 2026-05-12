@@ -9,7 +9,7 @@ import { solveCubeStateWithPython } from '../solvers/pythonNxNSolver.js';
 import { solveCubeMoveListWithWasm } from '../solvers/wasmSolver.js';
 import { validateMoveApplyRequest, validateScrambleRequest, validateSolveRequest } from '../validation.js';
 
-// Short scrambles get Kociemba (near-optimal); longer ones get the WASM
+// Short scrambles get Python NxN solver; longer ones get the WASM
 // beginner layer-by-layer method which shows the full step-by-step animation.
 const KOCIEMBA_THRESHOLD = 10;
 
@@ -59,8 +59,8 @@ export default async function cubeRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
 
-    // Short scramble: use Kociemba (near-optimal, returns fewer moves)
-    // Skip if history contains slice moves — kociemba requires fixed centers
+    // Short scramble: use Python NxN solver (same as 2x2)
+    // Skip if history contains slice moves — NxN solver requires fixed centers
     const hasSliceMoves = Array.isArray(moveHistory) && moveHistory.some((m) => /^[MESmes]/.test(m));
     if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= KOCIEMBA_THRESHOLD && !hasSliceMoves) {
       try {
@@ -71,7 +71,7 @@ export default async function cubeRoutes(app: FastifyInstance): Promise<void> {
             moves,
             estimatedMoveCount: moves.length,
             isMock: false,
-            solver: 'python-kociemba-3',
+            solver: 'python-nxn-3',
           });
           return;
         }

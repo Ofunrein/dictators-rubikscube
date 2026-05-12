@@ -127,6 +127,9 @@ def solve_nxn(state, size):
     if size == 2:
         from rubikscubennnsolver.RubiksCube222 import RubiksCube222
         cube = RubiksCube222(flat, 'URFDLB', None)
+    elif size == 3:
+        from rubikscubennnsolver.RubiksCube333 import RubiksCube333
+        cube = RubiksCube333(flat, 'URFDLB', None)
     else:
         from rubikscubennnsolver.RubiksCube444 import RubiksCube444
         cube = RubiksCube444(flat, 'URFDLB', None)
@@ -157,7 +160,7 @@ def handle_solve(body):
         raise ValueError(f"Unsupported cube size: {size}. Must be 2, 3, or 4.")
 
     if size == 3:
-        return solve_3x3(state)
+        return solve_nxn(state, 3)  # RubiksCube333 from vendored wheel — same path as 2x2
     if size == 4:
         # 4x4 lookup tables are hundreds of MB — too large for Vercel's /tmp.
         raise NotImplementedError(

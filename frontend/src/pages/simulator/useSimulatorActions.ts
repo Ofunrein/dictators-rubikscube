@@ -157,7 +157,7 @@ export function useSimulatorActions({
     const label = cubeSize !== 3
       ? `Solving ${cubeSize}x${cubeSize} via Python bridge`
       : (!import.meta.env['DEV'] && isShortHistory)
-        ? 'Solving via Kociemba'
+        ? 'Solving via Python NxN'
         : 'Solving via Eric C++ WASM';
     setSolveStatusLabel(label);
     setIsSolvingRemote(true);
