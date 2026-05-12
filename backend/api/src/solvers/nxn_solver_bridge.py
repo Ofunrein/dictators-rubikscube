@@ -32,6 +32,11 @@ def build_cube(size: int, state: str):
 
         return RubiksCube222(state, "URFDLB", None)
 
+    if size == 3:
+        from rubikscubennnsolver.RubiksCube333 import RubiksCube333
+
+        return RubiksCube333(state, "URFDLB", None)
+
     if size == 4:
         from rubikscubennnsolver.RubiksCube444 import RubiksCube444
 

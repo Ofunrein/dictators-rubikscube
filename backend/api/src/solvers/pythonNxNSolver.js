@@ -186,13 +186,13 @@ async function runBridge({ mode = 'solve', size, state, moves = [] }) {
   }
 }
 
-// Solves a 2x2 or 4x4 cube using the vendored Python solver.
+// Solves a 2x2, 3x3 (Kociemba), or 4x4 cube using the vendored Python solver.
 // Returns { moves, estimatedMoveCount, state, solver } matching the API response shape.
 export async function solveCubeStateWithPython(state, size) {
   const normalizedSize = normalizeCubeSize(size);
 
-  if (![2, 4].includes(normalizedSize)) {
-    throw new Error(`Python NxN solver only handles 2x2 and 4x4, received ${normalizedSize}.`);
+  if (![2, 3, 4].includes(normalizedSize)) {
+    throw new Error(`Python NxN solver only handles 2x2, 3x3, and 4x4, received ${normalizedSize}.`);
   }
 
   const payload = await runBridge({ mode: 'solve', size: normalizedSize, state });
@@ -204,11 +204,12 @@ export async function solveCubeStateWithPython(state, size) {
   const rawMoves = Array.isArray(payload.moves) ? payload.moves : [];
   const replayableMoves = normalizeSolverMoves(rawMoves, normalizedSize);
 
+  const solverName = normalizedSize === 3 ? 'python-kociemba-3' : `python-nxn-${normalizedSize}`;
   return {
     moves: replayableMoves,
     estimatedMoveCount: Number.isInteger(payload.move_count) ? payload.move_count : rawMoves.length,
     state: createSolvedState(normalizedSize),
-    solver: `python-nxn-${normalizedSize}`,
+    solver: solverName,
   };
 }
 
