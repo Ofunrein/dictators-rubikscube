@@ -2,7 +2,7 @@
  * useSimulatorActions.ts — Scramble, Solve, Reset, and size-change handlers
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { SUPPORTED_CUBE_SIZES, normalizeCubeSize, type CubeStateObj } from '../../cube/cubeModel.js';
 import { CubeState } from '../../cube/CubeState';
@@ -67,11 +67,7 @@ export function useSimulatorActions({
   // eslint-disable-next-line react-hooks/refs
   moveHistoryRef.current = moveHistory;
 
-  const solveStatusLabel = useMemo(() => (
-    cubeSize === 3
-      ? 'Solving via Eric C++ WASM'
-      : `Solving ${cubeSize}x${cubeSize} via Python bridge`
-  ), [cubeSize]);
+  const [solveStatusLabel, setSolveStatusLabel] = useState('Solving via Eric C++ WASM');
 
   const interactionLocked = queueActive || isSolvingRemote || isScramblingRemote;
 
@@ -155,6 +151,15 @@ export function useSimulatorActions({
     if (interactionLocked || !solveStackRef.current.length) return;
 
     cancelTimedSolve();
+
+    const KOCIEMBA_THRESHOLD = 10;
+    const isShortHistory = solveStackRef.current.length > 0 && solveStackRef.current.length <= KOCIEMBA_THRESHOLD;
+    const label = cubeSize !== 3
+      ? `Solving ${cubeSize}x${cubeSize} via Python bridge`
+      : (!import.meta.env['DEV'] && isShortHistory)
+        ? 'Solving via Kociemba'
+        : 'Solving via Eric C++ WASM';
+    setSolveStatusLabel(label);
     setIsSolvingRemote(true);
 
     try {
