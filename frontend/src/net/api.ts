@@ -195,7 +195,9 @@ export async function solveCubeRemote(
 
   const isLocalDev = !!import.meta.env['DEV'];
   const KOCIEMBA_THRESHOLD = 10;
-  const isShortHistory = Array.isArray(history) && history.length > 0 && history.length <= KOCIEMBA_THRESHOLD;
+  // Slice moves (M/E/S) displace center stickers; kociemba requires fixed centers
+  const hasSliceMoves = Array.isArray(history) && history.some((m) => /^[MESmes]/.test(m));
+  const isShortHistory = Array.isArray(history) && history.length > 0 && history.length <= KOCIEMBA_THRESHOLD && !hasSliceMoves;
   const endpoint = (!isLocalDev && (normalizedSize === 2 || (normalizedSize === 3 && isShortHistory)))
     ? '/api/nxn-solve'
     : '/api/v1/cube/solve';

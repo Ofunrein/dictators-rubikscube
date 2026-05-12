@@ -109,6 +109,7 @@ const SimulatorPage = () => {
 
   // Layout reset key — bumped when the cube needs to rebuild its 3D layout
   const [layoutResetKey, setLayoutResetKey] = useState(0);
+  const [showSolverLabel, setShowSolverLabel] = useState(false);
   const bumpLayout = useCallback(() => setLayoutResetKey((k) => k + 1), []);
 
   // Derived values from cube size
@@ -172,6 +173,16 @@ const SimulatorPage = () => {
 
   // Viewport breakpoints
   const isMobileViewport = viewportSize.width < 768;
+
+  // Keep solver label visible for 500ms after solve completes
+  useEffect(() => {
+    if (actions.isSolvingRemote) {
+      setShowSolverLabel(true);
+      return;
+    }
+    const t = setTimeout(() => setShowSolverLabel(false), 500);
+    return () => clearTimeout(t);
+  }, [actions.isSolvingRemote]);
   const isTabletViewport = viewportSize.width >= 768 && viewportSize.width < 1280;
   const isShortViewport = viewportSize.height < 760;
   const useCompactFaceMap = viewportSize.width < 420;
@@ -571,7 +582,7 @@ const SimulatorPage = () => {
                 </div>
               )}
 
-              {actions.isSolvingRemote && (
+              {showSolverLabel && (
                 <div className={`absolute top-4 left-4 ${t.overlay} border border-dictator-red/30 rounded-full px-3 py-1.5 flex items-center gap-2 backdrop-blur`}>
                   <span className="w-2 h-2 rounded-full bg-dictator-red animate-pulse" />
                   <span className="font-mono text-[10px] uppercase tracking-widest text-dictator-red">
