@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import handler from '../../../api/v1/[...path].js';
+import { applyMoves } from '../src/cube.js';
+import { isSolvedState } from '../src/lib/solve.js';
 
 const SOLVED_STATE = {
   U: Array(9).fill('W'),
@@ -217,6 +219,9 @@ describe('vercel catch-all handler', () => {
     await handler(solveSliceReq as never, solveSliceRes as never);
 
     expect(solveSliceRes.statusCode).toBe(200);
-    expect((solveSliceRes.payload as any).moves).toEqual(["M'"]);
+    const sliceMoves: string[] = (solveSliceRes.payload as any).moves;
+    expect(Array.isArray(sliceMoves) && sliceMoves.length > 0).toBe(true);
+    // Kociemba decomposes M into outer face moves — verify the result is solved, not exact tokens
+    expect(isSolvedState(applyMoves((moveSliceRes.payload as any).state, sliceMoves))).toBe(true);
   });
 });
