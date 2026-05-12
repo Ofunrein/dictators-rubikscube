@@ -172,10 +172,10 @@ async function handleSolveRoute(body, ctx) {
 
   try {
     if (size === 3) {
-      // Short scramble (≤10 moves): Kociemba for a near-optimal solution.
+      // Short scramble (≤10 moves): Python NxN solver (same solver as 2x2).
       // Full scramble: WASM C++ beginner layer-by-layer for the step-by-step animation.
       const KOCIEMBA_THRESHOLD = 10;
-      // Slice moves (M/E/S) displace center stickers; kociemba requires fixed centers
+      // Slice moves (M/E/S) displace center stickers; NxN solver requires fixed centers
       const hasSliceMoves = Array.isArray(moveHistory) && moveHistory.some((m) => /^[MESmes]/.test(m));
       if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= KOCIEMBA_THRESHOLD && !hasSliceMoves) {
         const kocPayload = await solveCubeStateWithPython(state, 3);
@@ -184,7 +184,7 @@ async function handleSolveRoute(body, ctx) {
             state,
             moves: kocPayload.moves,
             size: 3,
-            context: '3x3 Kociemba solve',
+            context: '3x3 NxN solve',
           });
           ctx.sendJson(200, { size, ...kocPayload, isMock: false });
           return;
