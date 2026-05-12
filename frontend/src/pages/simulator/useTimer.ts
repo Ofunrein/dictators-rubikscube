@@ -1,5 +1,16 @@
 /**
  * useTimer.ts — React hook for the solve timer
+ *
+ * Tracks elapsed milliseconds while a solve is in progress and stops
+ * automatically when the cube reaches the solved state. Uses
+ * requestAnimationFrame for smooth sub-millisecond precision rather
+ * than a coarse setInterval.
+ *
+ * Key exports:
+ *   - useTimer({ isSolved }) — returns { timerRunning, timerMs, startTimer, stopTimer, resetTimer }
+ *
+ * The hook watches isSolved and stops the timer automatically when it
+ * becomes true, so callers don't need to call stopTimer themselves on solve.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';

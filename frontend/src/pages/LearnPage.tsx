@@ -1,3 +1,16 @@
+/**
+ * LearnPage.tsx — /learn route — interactive slide-based tutorial
+ *
+ * Presents a six-slide guided introduction to solving the Rubik's Cube:
+ * hero intro, overview, notation guide, step-by-step method, key algorithms,
+ * and external resources. Slide navigation is handled by useLearnSlides.
+ *
+ * Key responsibilities:
+ *   - Renders and animates between six slide components
+ *   - Provides prev/next navigation and dot indicators
+ *   - Manages a toast notification for clipboard copy feedback
+ *   - Applies the active theme from ThemeContext
+ */
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 import PageNavbar from '../components/PageNavbar';

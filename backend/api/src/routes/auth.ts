@@ -1,3 +1,18 @@
+/**
+ * routes/auth.ts — Authentication route handlers (register, login, logout, refresh)
+ *
+ * Mounts under /auth and handles all credential-based flows. Access tokens are
+ * short-lived JWTs returned in the response body; refresh tokens are stored as
+ * HttpOnly cookies to reduce XSS exposure.
+ *
+ * Key routes:
+ *   POST /auth/register  — create a new account
+ *   POST /auth/login     — exchange credentials for tokens
+ *   POST /auth/logout    — revoke the refresh token and clear the cookie
+ *   POST /auth/refresh   — rotate the refresh token and issue a new access token
+ *   GET  /auth/me        — return the currently authenticated user
+ *   DELETE /auth/me      — permanently delete the authenticated user's account
+ */
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 

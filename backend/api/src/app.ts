@@ -1,3 +1,19 @@
+/**
+ * app.ts — Fastify application factory
+ *
+ * Builds and configures the Fastify server instance without starting it.
+ * Keeping the factory separate from the entry point (index.ts) makes the
+ * server testable — tests can call buildApp() and inject requests without
+ * binding to a real port.
+ *
+ * Key responsibilities:
+ *   - Register plugins: cookies, CORS, rate limiting
+ *   - Decorate the app with the Prisma client
+ *   - Mount all API routes under /v1 and /api/v1
+ *   - Set global error and not-found handlers
+ *
+ * CORS origins are read from environment config, not hardcoded here.
+ */
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';

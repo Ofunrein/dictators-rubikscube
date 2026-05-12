@@ -1,3 +1,16 @@
+/**
+ * http.ts — Shared HTTP response helpers for the Fastify API
+ *
+ * Centralizes how the API sends errors and validates request input so every
+ * route returns errors in the same shape. Without this, each route would
+ * build its own error objects and the client could never rely on a stable format.
+ *
+ * Key exports:
+ *   - sendApiError(reply, statusCode, code, message, details?) — sends a
+ *     standardized JSON error response with an optional field-level details array
+ *   - parseInput(schema, data, reply) — validates input with a Zod schema and
+ *     calls sendApiError(422) automatically on failure, returning null
+ */
 import type { FastifyReply } from 'fastify';
 import type { ZodIssue, ZodTypeAny } from 'zod';
 

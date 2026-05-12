@@ -1,5 +1,17 @@
 /**
- * simulatorAnimation.ts — 3D animation config and cubie geometry
+ * simulatorAnimation.ts — 3D animation config and cubie geometry helpers
+ *
+ * Defines the timing constants and per-move rotation descriptors that drive
+ * the Three.js animation loop. Translates a standard Rubik's Cube move token
+ * (e.g. "R", "U'", "2F") into the axis, layer set, and direction that the
+ * renderer needs to animate the correct cubies.
+ *
+ * Key exports:
+ *   - TURN_DURATION_SECONDS, SOLVE_TURN_DURATION_SECONDS — animation speeds
+ *   - IDLE_ROTATION_SPEED — speed of the passive rotation when no move is playing
+ *   - parseMoveAnimation(move, size) — converts a move token into an animation descriptor
+ *   - getCubieLayout(size) — returns the 3D positions of all cubies for a given size
+ *   - easeInOutCubic(t) — easing function used by the render loop
  */
 
 import {

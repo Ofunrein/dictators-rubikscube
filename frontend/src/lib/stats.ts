@@ -1,5 +1,15 @@
 /**
  * stats.ts — Supabase stats and leaderboard service
+ *
+ * Fetches aggregate solve statistics and global leaderboard rankings from
+ * Supabase. Isolating these queries here keeps the page components free of
+ * raw SQL / RPC details, and makes it easy to swap the data source later.
+ *
+ * Key exports:
+ *   - getLeaderboard(size, statType, limit) — ranked list of users for a
+ *     given cube size and stat (avg, fastest, or solves)
+ *   - getUserStats(userId) — personal aggregate stats for the profile page
+ *   - getUserRanks(userId) — the authenticated user's global rank per stat
  */
 import { supabase } from './supabase';
 
