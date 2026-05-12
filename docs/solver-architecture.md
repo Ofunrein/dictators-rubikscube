@@ -101,9 +101,11 @@ const endpoint = (!isLocalDev && normalizedSize === 2)
 
 ### 3×3 — kociemba wheel workaround available
 
-**Problem**: kociemba C extension won't compile on Vercel (Python 3.14, no distutils).
+**Problem**: kociemba C extension won't compile on Vercel (Python 3.14+, no distutils).
 
-**Workaround**: build a pre-compiled kociemba wheel on Linux x86_64 (Vercel's runtime), add to `api/wheels/`. This bypasses compilation entirely.
+**Fix applied**: `runtime.txt` at repo root pins Vercel's Python runtime to `python-3.11`. Python 3.11 ships `setuptools` with a distutils compatibility shim, so `pip install kociemba` compiles successfully without a pre-built wheel. Pin holds until Python 3.11 EOL (Oct 2027). If the project ever needs 3.12+ features, switch to the pre-built wheel approach below.
+
+**Alternative workaround** (if pinning is not viable): build a pre-compiled kociemba wheel on Linux x86_64 (Vercel's runtime), add to `api/wheels/`. This bypasses compilation entirely.
 
 Why must it be Linux x86_64:
 - The rubikscubennnsolver wheel is `py3-none-any` (pure Python) — works on any platform
@@ -141,7 +143,8 @@ Local dev (/api/v1/cube/solve → routes.js):
 
 Vercel (/api/nxn-solve Python serverless):
   2×2                      →  RubiksCube222 from wheel ✅
-  3×3                      →  501 Not Supported (kociemba unavailable)
+  3×3 ≤10 moves, no slice  →  kociemba.solve() ✅  (runtime.txt pins Python 3.11)
+  3×3 >10 moves or slice   →  routes to WASM instead (handled in api.ts)
   4×4                      →  501 Not Supported (tables too large)
 
 Vercel (/api/v1/cube/solve Node.js serverless → routes.js):
