@@ -119,7 +119,7 @@ Once wheel is built and added:
 
 ### 4×4 — not fixable on Vercel
 
-**Problem**: rubikscubennnsolver generates 4×4 reduction lookup tables at runtime (~400MB). Vercel `/tmp` limit is 512MB — too tight, and generation on cold start would time out.
+**Problem**: rubikscubennnsolver generates 4×4 reduction lookup tables at runtime (~366–524MB verified from wheel source). Vercel `/tmp` limit is 512MB — too tight, and generation on cold start would time out.
 
 **No practical workaround for serverless.** Would require pre-generating tables, bundling them (~400MB), and serving them — exceeds Vercel function size limits. Works fine locally where tables are cached to disk after first generation.
 
