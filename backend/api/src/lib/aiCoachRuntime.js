@@ -19,6 +19,8 @@ function normalizeMove(move, size = 3) {
 }
 
 function buildSolveSuggestion(moveHistory = [], size = 3) {
+  // Reversing the history plays moves in the opposite order they were made,
+  // and inverting each one undoes it — together they retrace the scramble backwards.
   return moveHistory
     .map((move) => normalizeMove(move, size))
     .filter(Boolean)
@@ -30,7 +32,9 @@ function mismatchScore(state) {
   let score = 0;
   for (const face of FACE_ORDER) {
     const stickers = state[face];
+    // On any NxN cube the center sticker is always the middle index; floor handles both odd and even face arrays.
     const center = stickers[Math.floor(stickers.length / 2)];
+    // Each sticker that disagrees with its face's center is "out of place" — more mismatches = deeper scramble.
     for (const sticker of stickers) {
       if (sticker !== center) score += 1;
     }
@@ -40,8 +44,10 @@ function mismatchScore(state) {
 
 function detectRepeatedLoop(history, candidateMove) {
   if (history.length < 6) return false;
+  // A 6-move window lets us compare two consecutive triplets; shorter windows miss multi-move loops.
   const previousTriplet = history.slice(-6, -3);
   const currentTriplet = history.slice(-3);
+  // If the last two triplets are identical and the next move would restart the pattern, the solver is cycling.
   return currentTriplet.every((move, index) => move === previousTriplet[index])
     && candidateMove === currentTriplet[0];
 }
@@ -52,6 +58,7 @@ function moveFace(move) {
 
 function alternativeMoves(candidateMove, size) {
   const blockedFace = moveFace(candidateMove).toUpperCase();
+  // Suggesting moves on the same face as the rejected move would be equally wrong or redundant.
   return ['U', 'R', 'F', 'L', 'D', 'B']
     .filter((move) => moveFace(move) !== blockedFace)
     .filter((move) => isSupportedMove(move, size))
@@ -213,6 +220,8 @@ export function analyzeMoveValidation(payload) {
   let shouldBlock = false;
   let alternatives;
 
+  // A loop or an undo during a timed solve are hard-blocked: loops waste moves, and undos during
+  // timed solves invalidate the attempt — but outside timed mode an undo is just a softer warning.
   if (loopsBack || (isUndo && payload.isTimedSolve)) {
     status = 'correction';
     shouldBlock = true;
@@ -224,9 +233,13 @@ export function analyzeMoveValidation(payload) {
     status = 'warning';
     reason = 'This undoes your last move. Continue only if you are intentionally backtracking.';
   } else if (sameFaceCount >= 4) {
+    // Four or more turns on the same face in a 6-move window almost always means the solver is stuck
+    // cycling instead of making real progress on a different layer.
     status = 'warning';
     reason = `You are heavily repeating ${moveFace(candidateMove)} turns. Consider a setup move on another face.`;
   } else if (scoreDelta > 4) {
+    // A delta above 4 means at least 5 additional stickers moved away from their center color,
+    // which is a strong signal the move is going in the wrong direction.
     status = 'warning';
     reason = 'This move appears to reduce overall cube alignment. Re-check your target pair first.';
   } else if (scoreDelta < -2) {
