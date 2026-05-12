@@ -45,6 +45,7 @@ interface ValidationDetail {
   message: string;
 }
 
+// URFDLB is the WCA (World Cube Association) standard — solvers and move notation all expect this order.
 export const FACE_ORDER: FaceName[] = ['U', 'R', 'F', 'D', 'L', 'B'];
 
 export const FACE_COLORS: Record<FaceName, StickerToken> = {
@@ -68,6 +69,7 @@ interface FaceNormal {
   nz: number;
 }
 
+// Each face normal is a unit vector pointing outward; used to map a 3-D sticker position back to a face name.
 const FACE_NORMALS: Record<FaceName, FaceNormal> = {
   U: { nx: 0, ny: 1, nz: 0 },
   R: { nx: 1, ny: 0, nz: 0 },
@@ -77,6 +79,7 @@ const FACE_NORMALS: Record<FaceName, FaceNormal> = {
   B: { nx: 0, ny: 0, nz: -1 },
 };
 
+// Stringify the normal tuple so it can be used as an object key for O(1) reverse-lookup.
 const FACE_FROM_NORMAL: Record<string, FaceName> = {
   '0,1,0': 'U',
   '1,0,0': 'R',
@@ -138,6 +141,7 @@ export function normalizeCubeSize(size: number | null | undefined = 3): number {
 
 export function getCoordinateValues(size: number): number[] {
   const normalizedSize = normalizeCubeSize(size);
+  // Centering at 0 keeps rotation math symmetric: rotating 90° is just swapping/negating axes.
   const offset = (normalizedSize - 1) / 2;
   return Array.from({ length: normalizedSize }, (_, index) => index - offset);
 }
@@ -177,6 +181,7 @@ export function createSolvedState(size: number = 3): CubeStateObj {
   const normalizedSize = normalizeCubeSize(size);
   const stickerCount = normalizedSize * normalizedSize;
 
+  // Flat array per face — no 2-D grid — so any sticker is O(1) by index = row*size+col.
   return FACE_ORDER.reduce((acc, face) => {
     acc[face] = Array(stickerCount).fill(FACE_COLORS[face]);
     return acc;
@@ -207,6 +212,7 @@ export function collectCubeStateDetails(
   }
 
   const candidateRecord = candidate as Record<string, unknown>;
+  // Unknown face keys are reported separately so the caller gets a complete error list, not just the first.
   const unknownFaces = Object.keys(candidateRecord).filter((key) => !FACE_SET.has(key));
   for (const face of unknownFaces) {
     details.push({ path: `${path}.${face}`, message: 'Unknown face key.' });
@@ -253,6 +259,7 @@ export function collectCubeStateDetails(
       continue;
     }
 
+    // Square root must be a whole number; non-integer means the sticker count can't form a square face.
     const faceSize = getSquareFaceSize(stickers.length);
     if (!faceSize) {
       details.push({
@@ -310,20 +317,27 @@ export function getStickerAddress(face: string, row: number, col: number, size: 
     throw new Error(`Sticker row/col must be inside a ${normalizedSize}x${normalizedSize} face.`);
   }
 
+  // Row 0 is the top of the face in 2-D, but +y is up in 3-D, so invert: row 0 → max y coord.
   const yFromRow = coords[normalizedSize - 1 - row];
   const faceName = face as FaceName;
 
   switch (faceName) {
+    // F faces the viewer (+z). x increases left→right (col), y increases bottom→top (inverted row).
     case 'F':
       return { face: faceName, row, col, x: coords[col], y: yFromRow, z: max, ...FACE_NORMALS.F };
+    // B faces away (−z). x is mirrored so the face reads correctly when viewed from the back.
     case 'B':
       return { face: faceName, row, col, x: coords[normalizedSize - 1 - col], y: yFromRow, z: min, ...FACE_NORMALS.B };
+    // U is the top face (+y). The "row" axis maps to −z so row 0 is the back edge (far from viewer).
     case 'U':
       return { face: faceName, row, col, x: coords[col], y: max, z: coords[normalizedSize - 1 - row], ...FACE_NORMALS.U };
+    // D is the bottom face (−y). Row 0 is the front edge, so z maps directly without inversion.
     case 'D':
       return { face: faceName, row, col, x: coords[col], y: min, z: coords[row], ...FACE_NORMALS.D };
+    // R face (+x). z decreases as col increases so the face reads left→right when viewed from the right.
     case 'R':
       return { face: faceName, row, col, x: max, y: yFromRow, z: coords[normalizedSize - 1 - col], ...FACE_NORMALS.R };
+    // L face (−x). z increases with col — mirror of R — so the face reads correctly from the left.
     case 'L':
       return { face: faceName, row, col, x: min, y: yFromRow, z: coords[col], ...FACE_NORMALS.L };
     default:
@@ -379,6 +393,7 @@ export function getFaceRowColFromAddress(
 
 export function getFaceIndexFromAddress(face: string, x: number, y: number, z: number, size: number): number {
   const { row, col } = getFaceRowColFromAddress(face, x, y, z, size);
+  // Flatten 2-D (row, col) to 1-D index; matches how createSolvedState lays out the flat array.
   return row * normalizeCubeSize(size) + col;
 }
 
@@ -417,6 +432,7 @@ export function stickersToState(stickers: StickerModel[], size: number): CubeSta
   }
 
   for (const face of FACE_ORDER) {
+    // Null gap means a sticker address mapped to a slot that no input sticker covered — broken input.
     if (state[face].some((token) => token === null)) {
       throw new Error(`Sticker reconstruction left gaps on the ${face} face.`);
     }
@@ -430,6 +446,8 @@ export function buildCubieLayout(size: number): CubieLayout[] {
   const coords = getCoordinateValues(normalizedSize);
   const cubies: CubieLayout[] = [];
 
+  // Triple loop over all (x,y,z) positions — includes interior cubies, but the renderer
+  // only attaches stickers to outer faces so interior slots are naturally invisible.
   for (const x of coords) {
     for (const y of coords) {
       for (const z of coords) {

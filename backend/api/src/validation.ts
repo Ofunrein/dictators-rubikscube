@@ -7,10 +7,12 @@ import type {
   ApiErrorDetail,
 } from './types/contracts.js';
 
+// Sets give O(1) lookup — faster than .includes() on an array, important for hot-path validation
 const FACE_SET = new Set(FACE_ORDER);
 const ALLOWED_STRATEGIES = new Set(['beginner', 'cfop']);
 const AI_COACH_MODES = new Set<AiCoachMode>(['hint', 'guide', 'solve', 'explain']);
 
+// Rejects arrays and null — both satisfy typeof === 'object', so we need explicit guards
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -19,6 +21,7 @@ function findUnknownKeys(value: Record<string, unknown>, allowedKeys: string[]):
   return Object.keys(value).filter((key) => !allowedKeys.includes(key));
 }
 
+// Collecting all errors at once (not short-circuiting) gives callers a full picture in one request
 export function validateCubeState(candidate: unknown, path = 'state'): ApiErrorDetail[] {
   const details: ApiErrorDetail[] = [];
 
@@ -42,6 +45,7 @@ export function validateCubeState(candidate: unknown, path = 'state'): ApiErrorD
       continue;
     }
 
+    // A standard 3×3 cube has 6 faces × 9 stickers each; this validator only supports that size
     if (stickers.length !== 9) {
       details.push({ path: `${path}.${face}`, message: 'Face must contain exactly 9 stickers.' });
       continue;
@@ -61,6 +65,8 @@ export function validateCubeState(candidate: unknown, path = 'state'): ApiErrorD
   return details;
 }
 
+// The discriminated union { ok: true; value } | { ok: false; details } lets callers type-narrow
+// with a single if-check instead of try/catch — no exceptions thrown across the API boundary
 export function validateMoveApplyRequest(payload: unknown):
   | { ok: true; value: { state: CubeState; move: string } }
   | { ok: false; details: ApiErrorDetail[] } {
@@ -122,6 +128,7 @@ export function validateScrambleRequest(payload: unknown):
     details.push({ path: key, message: 'Unknown request field.' });
   }
 
+  // Default to 25 — enough to produce a genuinely random scramble without being excessively long
   let length = 25;
   if (Object.hasOwn(body, 'length')) {
     const requestedLength = body.length;
@@ -139,6 +146,7 @@ export function validateScrambleRequest(payload: unknown):
     const requestedSeed = body.seed;
     if (typeof requestedSeed !== 'number' || !Number.isInteger(requestedSeed)) {
       details.push({ path: 'seed', message: 'seed must be an integer.' });
+    // 2^31 − 1: the upper bound of a signed 32-bit integer, which many PRNG implementations expect
     } else if (requestedSeed < 0 || requestedSeed > 2147483647) {
       details.push({ path: 'seed', message: 'seed must be between 0 and 2147483647.' });
     } else {
@@ -159,6 +167,8 @@ export function validateScrambleRequest(payload: unknown):
   };
 }
 
+// moveHistory is optional: clients that haven't tracked moves yet can still request a solve.
+// When present, solvers can use it to produce a deterministic or context-aware solution.
 export function validateSolveRequest(payload: unknown):
   | { ok: true; value: { state: CubeState; strategy: string; moveHistory?: string[] } }
   | { ok: false; details: ApiErrorDetail[] } {
@@ -181,6 +191,7 @@ export function validateSolveRequest(payload: unknown):
     details.push(...validateCubeState(payload.state, 'state'));
   }
 
+  // Default strategy so clients don't have to send it; 'beginner' is the friendlier starting point
   let strategy = 'beginner';
   if (Object.hasOwn(payload, 'strategy')) {
     if (typeof payload.strategy !== 'string' || !ALLOWED_STRATEGIES.has(payload.strategy)) {
@@ -195,6 +206,8 @@ export function validateSolveRequest(payload: unknown):
     const rawHistory = payload.moveHistory;
     if (!Array.isArray(rawHistory)) {
       details.push({ path: 'moveHistory', message: 'moveHistory must be an array of move tokens.' });
+    // 10000 items is a generous ceiling; a full CFOP solve rarely exceeds ~100 moves, so this only
+    // guards against accidental or malicious payloads that would exhaust memory or processing time
     } else if (rawHistory.length > 10000) {
       details.push({ path: 'moveHistory', message: 'moveHistory must contain at most 10000 items.' });
     } else {
@@ -206,6 +219,7 @@ export function validateSolveRequest(payload: unknown):
           continue;
         }
 
+        // Trim whitespace so "R " and "R" are treated identically; don't silently reject user input
         const token = item.trim();
         if (!isSupportedMove(token)) {
           details.push({
@@ -226,6 +240,10 @@ export function validateSolveRequest(payload: unknown):
     return { ok: false, details };
   }
 
+  // cloneCubeState deep-copies so the validated output is isolated from the raw input object;
+  // callers mutating their copy won't silently corrupt the validated state
+  // Spread-into-object pattern: only adds the key when defined, avoids an explicit `undefined`
+  // property which would force callers to handle a key that may or may not be present
   return {
     ok: true,
     value: {
@@ -292,6 +310,8 @@ export function validateAiMoveValidationRequest(payload: unknown):
     }
   }
 
+  // tutorialStepTitle is optional — only present when the UI is in tutorial mode; gives the AI
+  // context about which step the user is on so advice stays step-relevant
   let tutorialStepTitle: string | undefined;
   if (Object.hasOwn(payload, 'tutorialStepTitle')) {
     if (typeof payload.tutorialStepTitle !== 'string') {
@@ -303,6 +323,8 @@ export function validateAiMoveValidationRequest(payload: unknown):
     }
   }
 
+  // isTimedSolve is optional — lets the AI coach adjust its tone (e.g. skip long explanations
+  // during a timed attempt where the user just needs the next move fast)
   let isTimedSolve: boolean | undefined;
   if (Object.hasOwn(payload, 'isTimedSolve')) {
     if (typeof payload.isTimedSolve !== 'boolean') {
@@ -312,6 +334,8 @@ export function validateAiMoveValidationRequest(payload: unknown):
     }
   }
 
+  // `!state || !candidateMove` catches cases where required fields were present but failed their own
+  // sub-validation — details array may be empty but the typed values were never assigned
   if (details.length > 0 || !state || !candidateMove) {
     return { ok: false, details };
   }
@@ -328,6 +352,8 @@ export function validateAiMoveValidationRequest(payload: unknown):
   };
 }
 
+// Shared helper to avoid copy-pasting the same array-of-strings logic for moveHistory and scramble;
+// mutates the shared `details` array directly so the caller sees all errors in one pass
 function validateStringArrayField(
   details: ApiErrorDetail[],
   parent: Record<string, unknown>,
@@ -388,6 +414,7 @@ export function validateAiHelpRequest(payload: unknown):
     mode = payload.mode as AiCoachMode;
   }
 
+  // message is optional — the AI coach can respond to context alone without a user text prompt
   if (Object.hasOwn(payload, 'message')) {
     if (typeof payload.message !== 'string') {
       details.push({ path: 'message', message: 'message must be a string.' });
@@ -396,6 +423,8 @@ export function validateAiHelpRequest(payload: unknown):
     }
   }
 
+  // previousCoachResponse is optional — only present when the user is continuing a conversation;
+  // the AI uses it for continuity so it doesn't repeat advice it already gave
   let previousCoachResponse: AiHelpRequest['previousCoachResponse'] | undefined;
   if (Object.hasOwn(payload, 'previousCoachResponse')) {
     const previous = payload.previousCoachResponse;
@@ -563,6 +592,8 @@ export function validateAiHelpRequest(payload: unknown):
     }
   }
 
+  // Same guard pattern as validateAiMoveValidationRequest: null-check catches sub-validation
+  // failures on required fields even when the top-level details array looks clean
   if (details.length > 0 || !mode || !contextValue) {
     return { ok: false, details };
   }
