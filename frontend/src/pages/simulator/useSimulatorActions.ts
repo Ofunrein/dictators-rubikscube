@@ -152,12 +152,14 @@ export function useSimulatorActions({
 
     cancelTimedSolve();
 
-    const KOCIEMBA_THRESHOLD = 10;
-    const isShortHistory = solveStackRef.current.length > 0 && solveStackRef.current.length <= KOCIEMBA_THRESHOLD;
+    const SHORT_SOLVE_THRESHOLD = 10;
+    const stackMoves = solveStackRef.current;
+    const hasSliceMoves = stackMoves.some((m: string) => /^[MESmes]/.test(m));
+    const isShortHistory = stackMoves.length > 0 && stackMoves.length <= SHORT_SOLVE_THRESHOLD && !hasSliceMoves;
     const label = cubeSize !== 3
-      ? `Solving ${cubeSize}x${cubeSize} via Python bridge`
+      ? `Solving ${cubeSize}x${cubeSize} via Python NxN`
       : (!import.meta.env['DEV'] && isShortHistory)
-        ? 'Solving via Python NxN'
+        ? 'Solving 3x3 via Python NxN'
         : 'Solving via Eric C++ WASM';
     setSolveStatusLabel(label);
     setIsSolvingRemote(true);
