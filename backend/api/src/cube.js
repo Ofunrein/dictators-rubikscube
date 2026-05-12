@@ -21,12 +21,6 @@
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { register } from 'tsx/esm/api';
-
-// Register tsx so that dynamic imports of .ts files work in plain Node.js.
-// The TypeScript migration renamed the frontend cube modules from .js → .ts,
-// and Node.js cannot load .ts natively without a transpile hook.
-const unregisterTsx = register();
 
 // Walk up from this file's directory to find the repo root.
 // import.meta.url gives us the file:// URL of this module (an ES modules thing).
@@ -113,9 +107,6 @@ const {
 } = frontendMovesModule;
 
 const { isPlainObject } = frontendUtilsModule;
-
-// All .ts dynamic imports are done; release the tsx hook.
-unregisterTsx();
 
 const FACE_SET = new Set(FACE_ORDER);
 const TOKEN_SET = new Set(STICKER_TOKENS);
