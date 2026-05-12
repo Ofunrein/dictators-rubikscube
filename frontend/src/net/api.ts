@@ -194,7 +194,9 @@ export async function solveCubeRemote(
   validateCubeState(state, 'state', normalizedSize);
 
   const isLocalDev = !!import.meta.env['DEV'];
-  const endpoint = (!isLocalDev && normalizedSize === 2)
+  const KOCIEMBA_THRESHOLD = 10;
+  const isShortHistory = Array.isArray(history) && history.length > 0 && history.length <= KOCIEMBA_THRESHOLD;
+  const endpoint = (!isLocalDev && (normalizedSize === 2 || (normalizedSize === 3 && isShortHistory)))
     ? '/api/nxn-solve'
     : '/api/v1/cube/solve';
 
