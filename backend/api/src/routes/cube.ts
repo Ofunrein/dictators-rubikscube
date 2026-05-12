@@ -11,7 +11,7 @@ import { validateMoveApplyRequest, validateScrambleRequest, validateSolveRequest
 
 // Short scrambles get Python NxN solver; longer ones get the WASM
 // beginner layer-by-layer method which shows the full step-by-step animation.
-const KOCIEMBA_THRESHOLD = 10;
+const SHORT_SOLVE_THRESHOLD = 10;
 
 export default async function cubeRoutes(app: FastifyInstance): Promise<void> {
   app.get('/state/solved', async (_request, reply) => {
@@ -62,7 +62,7 @@ export default async function cubeRoutes(app: FastifyInstance): Promise<void> {
     // Short scramble: use Python NxN solver (same as 2x2)
     // Skip if history contains slice moves — NxN solver requires fixed centers
     const hasSliceMoves = Array.isArray(moveHistory) && moveHistory.some((m) => /^[MESmes]/.test(m));
-    if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= KOCIEMBA_THRESHOLD && !hasSliceMoves) {
+    if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= SHORT_SOLVE_THRESHOLD && !hasSliceMoves) {
       try {
         const payload = await solveCubeStateWithPython(state, 3) as Record<string, unknown>;
         const moves = payload['moves'] as string[];

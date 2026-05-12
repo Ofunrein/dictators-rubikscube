@@ -122,7 +122,10 @@ def solve_nxn(state, size):
     # Vercel's filesystem is read-only except /tmp.
     # The library writes lookup-tables to the working directory, so redirect it.
     os.chdir('/tmp')
-    flat = flatten_state_for_solver(state)
+    # 3x3: RubiksCube333 calls kociemba internally and expects the same no-flip
+    # format as kociemba. Applying the U/D row flip used for 2x2/4x4 creates an
+    # odd permutation for 3x3 → parity error. Use the kociemba-compatible flatten.
+    flat = flatten_state_for_kociemba(state) if size == 3 else flatten_state_for_solver(state)
 
     if size == 2:
         from rubikscubennnsolver.RubiksCube222 import RubiksCube222

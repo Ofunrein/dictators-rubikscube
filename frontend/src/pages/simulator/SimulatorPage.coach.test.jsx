@@ -271,7 +271,7 @@ describe('useSimulatorActions — solveStatusLabel', () => {
     };
   });
 
-  it('shows "Solving via Kociemba" for 3x3 with ≤10 history moves in production', async () => {
+  it('shows "Solving 3x3 via Python NxN" for 3x3 with ≤10 history moves in production', async () => {
     // Simulate production: DEV = false
     vi.stubEnv('DEV', false);
 
@@ -296,7 +296,7 @@ describe('useSimulatorActions — solveStatusLabel', () => {
       expect(result.current.isSolvingRemote).toBe(true);
     });
 
-    expect(result.current.solveStatusLabel).toBe('Solving via Kociemba');
+    expect(result.current.solveStatusLabel).toBe('Solving 3x3 via Python NxN');
 
     // Cleanup: resolve the hanging promise
     resolveRemote({ moves: [] });
