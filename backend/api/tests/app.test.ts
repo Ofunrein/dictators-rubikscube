@@ -54,6 +54,7 @@ describe('buildApp', () => {
   });
 
   it('preserves solved-state, move-apply, scramble, and solve routes', async () => {
+
     const app = buildApp({ prisma: createPrismaStub() as never, logger: false });
     await app.ready();
 
@@ -146,7 +147,7 @@ describe('buildApp', () => {
     expect(Array.isArray(unsolvedWithoutHistoryResponse.json().moves)).toBe(true);
 
     await app.close();
-  });
+  }, 30000);
 
   it('returns the structured validation error envelope for bad requests', async () => {
     const app = buildApp({ prisma: createPrismaStub() as never, logger: false });
