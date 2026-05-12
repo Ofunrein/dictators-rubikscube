@@ -271,34 +271,30 @@ describe('useSimulatorActions — solveStatusLabel', () => {
     };
   });
 
-  it('shows "Solving 3x3 via Python NxN" for 3x3 with ≤10 history moves in production', async () => {
-    // Simulate production: DEV = false
+  it('shows "Solving via Eric C++ WASM" for 3x3 regardless of history length', async () => {
+    // 3x3 always uses WASM — RubiksCube333 requires kociemba CLI unavailable on Vercel
     vi.stubEnv('DEV', false);
 
-    // Arrange: 5-move history, production env (DEV = false)
     const { solveCubeRemote: mockSolve } = await import('../../net/api');
     let resolveRemote;
     mockSolve.mockReturnValue(new Promise((res) => { resolveRemote = res; }));
 
     const { useSimulatorActions: realHook } = await vi.importActual('./useSimulatorActions');
 
-    mockProps.solveStackRef.current = ['U', 'R', 'F', 'L', 'B'];  // 5 moves ≤ 10
+    mockProps.solveStackRef.current = ['U', 'R', 'F', 'L', 'B'];  // 5 moves
 
     const { result } = renderHook(() => realHook(mockProps));
 
-    // Trigger solve (in-flight — promise never resolves during assertion)
     act(() => {
       result.current.handleSolve();
     });
 
-    // Label should update before/with setIsSolvingRemote(true)
     await waitFor(() => {
       expect(result.current.isSolvingRemote).toBe(true);
     });
 
-    expect(result.current.solveStatusLabel).toBe('Solving 3x3 via Python NxN');
+    expect(result.current.solveStatusLabel).toBe('Solving via Eric C++ WASM');
 
-    // Cleanup: resolve the hanging promise
     resolveRemote({ moves: [] });
 
     vi.unstubAllEnvs();
@@ -311,7 +307,7 @@ describe('useSimulatorActions — solveStatusLabel', () => {
 
     const { useSimulatorActions: realHook } = await vi.importActual('./useSimulatorActions');
 
-    // 11 moves — exceeds KOCIEMBA_THRESHOLD
+    // 11 moves
     mockProps.solveStackRef.current = ['U','R','F','L','B','U','R','F','L','B','U'];
 
     const { result } = renderHook(() => realHook(mockProps));

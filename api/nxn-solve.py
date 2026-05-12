@@ -163,7 +163,11 @@ def handle_solve(body):
         raise ValueError(f"Unsupported cube size: {size}. Must be 2, 3, or 4.")
 
     if size == 3:
-        return solve_nxn(state, 3)  # RubiksCube333 from vendored wheel — same path as 2x2
+        # RubiksCube333 requires the kociemba CLI binary which is unavailable on Vercel.
+        # All 3x3 solves are handled by the WASM path at /api/v1/cube/solve instead.
+        raise NotImplementedError(
+            '3x3 solving via Python is not available — use /api/v1/cube/solve (WASM).'
+        )
     if size == 4:
         # 4x4 lookup tables are hundreds of MB — too large for Vercel's /tmp.
         raise NotImplementedError(
