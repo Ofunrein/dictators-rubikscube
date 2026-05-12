@@ -78,21 +78,33 @@ const SimulatorPage = () => {
 
   // Core cube state — owned here, passed to hooks via refs
   const [cubeSize, setCubeSize] = useState(3);
+  // Ref not state: the animation loop reads this on every frame; a ref gives a stable
+  // identity so the loop never closes over a stale snapshot and never triggers re-renders.
   const cubeStateObjRef = useRef(new CubeState(3));
   // eslint-disable-next-line react-hooks/refs
+  // Separate from cubeStateObjRef: mutating a ref doesn't schedule a re-render, so we
+  // mirror the logical state here — React diffs displayState and repaints the UI.
   const [displayState, setDisplayState] = useState(() => cubeStateObjRef.current.getState());
   const solveStackRef = useRef([]);
 
-  // Canvas error handling — fallback mode when WebGL crashes
+  // Canvas error handling — fallback mode when WebGL crashes.
+  // When the error boundary catches a WebGL context loss or Three.js crash we flip
+  // canvasFailed, which hides the Canvas entirely and shows a flat 2-D fallback panel.
+  // Keeping the Canvas mounted after a crash would loop error → remount → crash.
   const [canvasFailed, setCanvasFailed] = useState(false);
   const [canvasErrorMessage, setCanvasErrorMessage] = useState('');
   const [canvasErrorDetails, setCanvasErrorDetails] = useState('');
+  // canvasRetryKey is incremented on retry so React remounts the Canvas with a fresh
+  // WebGL context; just resetting canvasFailed alone would reuse the broken renderer.
   const [canvasRetryKey, setCanvasRetryKey] = useState(0);
   const [tutorialDrawerOpen, setTutorialDrawerOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
   const [coachInput, setCoachInput] = useState('');
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState('');
+  // Coach messages live as local component state, not in a global store, because they
+  // are ephemeral UI — they have no meaning outside this session and don't need to
+  // survive navigation or be shared with other components.
   const [coachMessages, setCoachMessages] = useState<CoachMessage[]>([]);
   const [lastCoachResponse, setLastCoachResponse] = useState<LastCoachResponse | null>(null);
   const coachMessagesEndRef = useRef<HTMLDivElement>(null);
@@ -101,18 +113,24 @@ const SimulatorPage = () => {
     return window.innerWidth >= 420;
   });
 
-  // Viewport responsiveness
+  // Viewport responsiveness — SSR guard returns a safe desktop default (1440x900)
+  // so the hook works in a server/test environment where window is undefined.
   const [viewportSize, setViewportSize] = useState(() => ({
     width: typeof window === 'undefined' ? 1440 : window.innerWidth,
     height: typeof window === 'undefined' ? 900 : window.innerHeight,
   }));
 
-  // Layout reset key — bumped when the cube needs to rebuild its 3D layout
+  // layoutResetKey forces InteractiveCube to fully unmount and remount its Three.js
+  // geometry when the cube size changes or a hard reset is needed; CSS keys alone can't
+  // do this because React would patch the existing subtree rather than replacing it.
   const [layoutResetKey, setLayoutResetKey] = useState(0);
+  // showSolverLabel stays true for 500ms after isSolvingRemote goes false so the
+  // "solving..." badge doesn't flash off immediately when the last move is queued.
   const [showSolverLabel, setShowSolverLabel] = useState(false);
   const bumpLayout = useCallback(() => setLayoutResetKey((k) => k + 1), []);
 
-  // Derived values from cube size
+  // useMemo keeps these config objects referentially stable; without it each render
+  // would produce new arrays/objects, causing dependent hooks to re-run unnecessarily.
   const moveGroups = useMemo(() => getMoveGroups(cubeSize), [cubeSize]);
   const keyMap = useMemo(() => getKeyMap(cubeSize), [cubeSize]);
   const scrambleLength = useMemo(() => getDefaultScrambleLength(cubeSize), [cubeSize]);
@@ -137,6 +155,7 @@ const SimulatorPage = () => {
 
   // Ref-based callback so we can pass clearSelectedSticker to the actions hook
   // before the controls hook is initialized (avoids circular init order).
+  // A ref works here because actions only calls it imperatively, never reads it during render.
   const clearSelectedStickerRef = useRef(() => {});
 
   // --- Hook: Actions ---
@@ -167,14 +186,19 @@ const SimulatorPage = () => {
     manualInputLocked: actions.interactionLocked,
   });
 
-  // Now that controls is initialized, wire up the ref so actions can clear sticker selection
+  // Now that controls is initialized, wire up the ref so actions can clear sticker selection.
+  // Done here (not inside a hook) because useCubeControls must run first to produce
+  // clearSelectedSticker; assigning the ref afterward breaks no rules — it's not a side effect.
   // eslint-disable-next-line react-hooks/refs
   clearSelectedStickerRef.current = controls.clearSelectedSticker;
 
-  // Viewport breakpoints
+  // Viewport breakpoints — raw pixel thresholds rather than Tailwind classes because
+  // we need these values in JS to conditionally render whole subtrees, not just style them.
   const isMobileViewport = viewportSize.width < 768;
 
-  // Keep solver label visible for 500ms after solve completes
+  // Keep solver label visible for 500ms after solve completes.
+  // Without the linger the badge disappears the instant isSolvingRemote flips — too fast
+  // for the user to register that a solve just ran; 500ms is barely perceptible but enough.
   useEffect(() => {
     if (actions.isSolvingRemote) {
       setShowSolverLabel(true);
@@ -189,7 +213,8 @@ const SimulatorPage = () => {
   const useTutorialDrawer = viewportSize.width < 1024;
   const tutorialLabel = `${cubeSize}x${cubeSize} Guide`;
 
-  // Keep the camera config stable so OrbitControls is not fighting fresh object instances
+  // cameraProfile is memoized so OrbitControls receives the same object reference
+  // across re-renders; a new object every render would reset the camera position.
   const cameraProfile = useMemo<{ position: [number,number,number]; fov: number; minDistance: number; maxDistance: number }>(() => (
     isMobileViewport
       ? { position: [5.8, 4.8, 7.1], fov: 54, minDistance: 5.5, maxDistance: 22 }
@@ -198,7 +223,9 @@ const SimulatorPage = () => {
         : { position: [4, 3.5, 5], fov: 45, minDistance: 4, maxDistance: 20 }
   ), [isMobileViewport, isTabletViewport]);
 
-  // Track window resize for responsive breakpoints
+  // Track window resize for responsive breakpoints.
+  // The cleanup return is required: if SimulatorPage unmounts (e.g. user navigates away)
+  // without removing the listener, the handler would keep firing on a dead component.
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
 
@@ -253,7 +280,9 @@ const SimulatorPage = () => {
     }
   }, [isSolved]);
 
-  // Canvas error handling: when WebGL crashes, drain any pending moves instantly
+  // Canvas error handling: when WebGL crashes, drain any pending moves instantly.
+  // useCallback prevents a new function reference on every render, which matters because
+  // handleCanvasFailure is passed as a prop to SimulatorCanvasBoundary.
   const handleCanvasFailure = useCallback((error: Error, info: ErrorInfo) => {
     console.error('Simulator 3D canvas failed; switching to fallback mode.', error);
     setCanvasErrorMessage(error?.message || String(error) || 'Unknown renderer error');
@@ -261,6 +290,8 @@ const SimulatorPage = () => {
       [error?.name, error?.stack, info?.componentStack].filter(Boolean).join('\n\n'),
     );
 
+    // Functional update form guards against the double-invocation in React 18 StrictMode:
+    // if canvasFailed is already true we return the existing value unchanged.
     setCanvasFailed((prev) => {
       if (prev) return prev;
 
@@ -288,10 +319,15 @@ const SimulatorPage = () => {
     setCanvasRetryKey((prev) => prev + 1);
   }, []);
 
+  // handleApplyAlgorithm is memoized so TutorialPanel doesn't re-render every time
+  // the parent re-renders; the function identity stays stable as long as queue is stable.
   const handleApplyAlgorithm = useCallback((moves: string[]) => {
     queue.enqueueMoves(moves);
   }, [queue]);
 
+  // buildCoachContext snapshots the relevant simulator state into a plain object for
+  // the API call; useCallback prevents a new closure on every render while still
+  // picking up the latest values listed in deps.
   const buildCoachContext = useCallback(() => ({
     cubeState: { ...displayState },
     moveHistory: [...queue.moveHistory],
