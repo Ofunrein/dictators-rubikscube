@@ -1,3 +1,14 @@
+/**
+ * password.ts — Argon2id password hashing and verification
+ *
+ * Wraps the argon2 library so the rest of the codebase never calls it directly.
+ * Argon2id is the recommended algorithm for password storage because it resists
+ * both GPU-based and side-channel attacks.
+ *
+ * Key exports:
+ *   - hashPassword(password) — returns a hash string to store in the database
+ *   - verifyPassword(hash, password) — returns true if password matches the hash
+ */
 import argon2 from 'argon2';
 
 export async function hashPassword(password: string): Promise<string> {

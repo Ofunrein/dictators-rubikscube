@@ -1,3 +1,14 @@
+/**
+ * routes/stats.ts — Per-user solve statistics endpoint
+ *
+ * Returns aggregate stats for the authenticated user: total solve count,
+ * average solve time, personal best, and when they last solved. Used by the
+ * profile page to display performance over time.
+ *
+ * Key routes:
+ *   GET /stats/summary — returns { totalSolves, avgMs, bestMs, lastSolvedAt }
+ *     for the current user (requires access token)
+ */
 import type { FastifyInstance } from 'fastify';
 
 import { requireAccessAuth } from '../lib/auth.js';

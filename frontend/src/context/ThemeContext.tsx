@@ -1,3 +1,13 @@
+/**
+ * ThemeContext.tsx — Light/dark theme state for the React app
+ *
+ * Persists the user's theme preference to localStorage and makes it available
+ * anywhere in the component tree. Defaults to dark if no preference is stored.
+ *
+ * Key exports:
+ *   - ThemeProvider — wrap the app root with this to enable theming
+ *   - useTheme() — hook that returns { theme, isDark, toggleTheme }
+ */
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 

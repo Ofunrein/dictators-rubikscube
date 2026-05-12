@@ -1,5 +1,17 @@
 /**
- * InteractiveCube.tsx — The 3D Rubik's Cube rendered with Three.js
+ * InteractiveCube.tsx — The 3D Rubik's Cube rendered with Three.js via React Three Fiber
+ *
+ * Builds the cube scene from cubie meshes, runs the per-frame rotation animation,
+ * and handles mouse/touch drag for orbit controls. Also exports the scene camera
+ * and canvas error boundary used by SimulatorPage and StepByStepPage.
+ *
+ * Key exports:
+ *   - InteractiveCube — the main 3D cube component (accepts move queue and state)
+ *   - ResponsiveSceneCamera — adjusts FOV/position based on cube size
+ *   - SimulatorCanvasBoundary — ErrorBoundary wrapper for the Three.js Canvas
+ *
+ * Does NOT manage cube state or move history — those live in useSimulatorQueue
+ * and useSimulatorActions. This component only renders whatever state it receives.
  */
 
 import React, { Component, ErrorInfo, ReactNode, useEffect, useRef, useState } from 'react';

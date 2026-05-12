@@ -1,5 +1,17 @@
 /**
  * supabase.ts — Supabase client singleton
+ *
+ * Creates and exports a single shared Supabase client used throughout the
+ * frontend for auth and database queries. Centralizing it here prevents
+ * multiple client instances, which would create separate connection pools
+ * and desync auth state.
+ *
+ * Key exports:
+ *   - supabase — the configured SupabaseClient instance
+ *
+ * Connection credentials (URL + anon key) come from VITE_ environment
+ * variables. Missing variables log a warning and cause API calls to return
+ * a structured error instead of throwing, so the UI degrades gracefully.
  */
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 

@@ -1,3 +1,15 @@
+/**
+ * learnConstants.ts — Static slide data for the Learn page
+ *
+ * Contains the step-by-step solving guide data used by SlideStepByStep and
+ * other Learn slides. Defining this data here (rather than inline in JSX)
+ * keeps the slide components clean and makes it easy to add, reorder, or
+ * update steps without touching any rendering logic.
+ *
+ * Key exports:
+ *   - STEPS — ordered array of beginner method solving steps, each with a
+ *     title, difficulty, layer, description, algorithms, and tips
+ */
 export const STEPS = [
   {
     id: 1,

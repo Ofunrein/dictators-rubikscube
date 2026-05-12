@@ -1,3 +1,15 @@
+/**
+ * AuthContext.tsx — Global authentication state for the React app
+ *
+ * Provides the logged-in user, their stats, and auth actions (sign up, sign in,
+ * sign out, delete account) to any component in the tree without prop drilling.
+ * Subscribes to Supabase auth state changes so the UI updates automatically
+ * when a session starts or ends.
+ *
+ * Key exports:
+ *   - AuthProvider — wrap the app root with this to enable auth everywhere
+ *   - useAuth() — hook that returns { user, stats, signIn, signUp, signOut, … }
+ */
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {

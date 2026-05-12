@@ -1,3 +1,18 @@
+/**
+ * ErrorBoundary.tsx — React class component that catches render errors
+ *
+ * Wraps a subtree and displays a fallback UI instead of crashing the whole
+ * page when a descendant component throws during rendering. React requires a
+ * class component for this because functional components cannot implement
+ * getDerivedStateFromError or componentDidCatch.
+ *
+ * Key exports:
+ *   - ErrorBoundary — accepts children, optional onError callback, and optional
+ *     fallback UI; renders the fallback (or a default message) on error
+ *
+ * Used around the Three.js Canvas in the simulator to prevent a WebGL crash
+ * from taking down the whole page.
+ */
 import { Component, ReactNode, ErrorInfo } from 'react';
 
 interface ErrorBoundaryProps {
