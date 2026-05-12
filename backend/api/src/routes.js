@@ -178,16 +178,20 @@ async function handleSolveRoute(body, ctx) {
       // Slice moves (M/E/S) displace center stickers; NxN solver requires fixed centers
       const hasSliceMoves = Array.isArray(moveHistory) && moveHistory.some((m) => /^[MESmes]/.test(m));
       if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= SHORT_SOLVE_THRESHOLD && !hasSliceMoves) {
-        const kocPayload = await solveCubeStateWithPython(state, 3);
-        if (kocPayload.moves.length > 0) {
-          kocPayload.state = await replayValidatedMovesOrThrow({
-            state,
-            moves: kocPayload.moves,
-            size: 3,
-            context: '3x3 NxN solve',
-          });
-          ctx.sendJson(200, { size, ...kocPayload, isMock: false });
-          return;
+        try {
+          const kocPayload = await solveCubeStateWithPython(state, 3);
+          if (kocPayload.moves.length > 0) {
+            kocPayload.state = await replayValidatedMovesOrThrow({
+              state,
+              moves: kocPayload.moves,
+              size: 3,
+              context: '3x3 NxN solve',
+            });
+            ctx.sendJson(200, { size, ...kocPayload, isMock: false });
+            return;
+          }
+        } catch {
+          // Python solver unavailable (e.g. Vercel) — fall through to WASM
         }
       }
 
