@@ -1,3 +1,19 @@
+/**
+ * solve.ts — History-based solve derivation utilities
+ *
+ * When a user has been moving the cube manually, we can reconstruct the solve
+ * sequence by reversing their move history — no external solver needed. This is
+ * the "undo everything" approach and only works if the full history is available.
+ *
+ * Key exports:
+ *   - isSolvedState(state) — returns true when every face is a single color
+ *   - deriveSolveMovesFromHistory(moveHistory) — inverts and simplifies the history
+ *     to produce the shortest replay that would undo all recorded moves
+ *   - solveStateFromHistory(state, moveHistory) — combines the two above; returns
+ *     the move list only if replaying it actually produces a solved state
+ *
+ * Does NOT call the WASM solver — see solvePipeline.js and wasmSolver.js for that.
+ */
 import { applyMoves, FACE_ORDER, isSupportedMove, type CubeState } from '../cube.js';
 
 function inverseMove(move: string): string {

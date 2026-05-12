@@ -1,3 +1,17 @@
+/**
+ * jwt.ts — JWT access token creation and verification
+ *
+ * Handles the short-lived access tokens that clients include in the
+ * Authorization header. Refresh tokens are managed separately in
+ * lib/refreshSessions.ts.
+ *
+ * Key exports:
+ *   - createAccessToken(user) — signs a new JWT with the user's id/email/username
+ *   - verifyAccessToken(token) — validates a JWT and returns its claims, or null
+ *
+ * Token lifetime is controlled by env.JWT_ACCESS_TTL_MINUTES.
+ * Secret is read from env.JWT_ACCESS_SECRET — never hardcoded here.
+ */
 import jwt from 'jsonwebtoken';
 
 import { env } from '../config/env.js';

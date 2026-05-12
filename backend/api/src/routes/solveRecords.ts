@@ -1,3 +1,15 @@
+/**
+ * routes/solveRecords.ts — CRUD routes for solve records
+ *
+ * Stores and retrieves individual solve attempts so users can track their
+ * history over time. Each record captures the cube size, duration, and
+ * whether the solve was completed.
+ *
+ * Key routes:
+ *   GET  /solve-records       — list the authenticated user's recent solves
+ *   POST /solve-records       — save a new solve result after completing a solve
+ *   DELETE /solve-records/:id — remove a single solve record
+ */
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 

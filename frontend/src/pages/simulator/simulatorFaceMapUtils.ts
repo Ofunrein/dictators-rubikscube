@@ -1,5 +1,15 @@
 /**
  * simulatorFaceMapUtils.ts — Helpers for the 2D face map display
+ *
+ * Pure utility functions used by SimulatorFaceMap.tsx to normalize and
+ * orient sticker arrays before rendering. Keeping them here means the
+ * component stays declarative and these helpers can be tested independently.
+ *
+ * Key exports:
+ *   - getFaceDimension(face, fallbackSize) — infers NxN dimension from sticker count
+ *   - normalizeFaceStickers(face, fallbackSize) — pads/trims sticker array to N²
+ *   - orientFaceForMap(stickers, faceName, size) — rotates U/D stickers so they
+ *     appear in the correct visual orientation on the unfolded cross layout
  */
 
 export function getFaceDimension(face: unknown[] = [], fallbackSize: number = 3): number {

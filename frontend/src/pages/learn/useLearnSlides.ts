@@ -1,3 +1,17 @@
+/**
+ * useLearnSlides.ts — Slide navigation state for the Learn page
+ *
+ * Manages the current slide index and transition animation state so that
+ * LearnPage can navigate between slides without duplicating this logic in
+ * the page component itself.
+ *
+ * Key exports:
+ *   - useLearnSlides(totalSlides) — returns { currentSlide, goToSlide,
+ *     goNext, goPrev, isTransitioning, slidesRef }
+ *
+ * Prevents rapid double-transitions by locking navigation while
+ * isTransitioning is true and clearing any pending timeout on unmount.
+ */
 import { useState, useRef, useEffect } from 'react';
 
 export function useLearnSlides(totalSlides: number) {
