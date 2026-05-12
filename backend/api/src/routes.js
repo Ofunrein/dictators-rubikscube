@@ -175,7 +175,9 @@ async function handleSolveRoute(body, ctx) {
       // Short scramble (≤10 moves): Kociemba for a near-optimal solution.
       // Full scramble: WASM C++ beginner layer-by-layer for the step-by-step animation.
       const KOCIEMBA_THRESHOLD = 10;
-      if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= KOCIEMBA_THRESHOLD) {
+      // Slice moves (M/E/S) displace center stickers; kociemba requires fixed centers
+      const hasSliceMoves = Array.isArray(moveHistory) && moveHistory.some((m) => /^[MESmes]/.test(m));
+      if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= KOCIEMBA_THRESHOLD && !hasSliceMoves) {
         const kocPayload = await solveCubeStateWithPython(state, 3);
         if (kocPayload.moves.length > 0) {
           kocPayload.state = await replayValidatedMovesOrThrow({

@@ -3,7 +3,9 @@ import type { FastifyInstance } from 'fastify';
 import { applyMoveToState, applyMoves, createSolvedState, generateScramble, type CubeState } from '../cube.js';
 import { sendApiError } from '../lib/http.js';
 import { isSolvedState, solveStateFromHistory } from '../lib/solve.js';
+// @ts-ignore — JS solver modules without declaration files
 import { solveCubeStateWithPython } from '../solvers/pythonNxNSolver.js';
+// @ts-ignore — JS solver modules without declaration files
 import { solveCubeMoveListWithWasm } from '../solvers/wasmSolver.js';
 import { validateMoveApplyRequest, validateScrambleRequest, validateSolveRequest } from '../validation.js';
 
@@ -58,7 +60,9 @@ export default async function cubeRoutes(app: FastifyInstance): Promise<void> {
     }
 
     // Short scramble: use Kociemba (near-optimal, returns fewer moves)
-    if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= KOCIEMBA_THRESHOLD) {
+    // Skip if history contains slice moves — kociemba requires fixed centers
+    const hasSliceMoves = Array.isArray(moveHistory) && moveHistory.some((m) => /^[MESmes]/.test(m));
+    if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= KOCIEMBA_THRESHOLD && !hasSliceMoves) {
       try {
         const payload = await solveCubeStateWithPython(state, 3) as Record<string, unknown>;
         const moves = payload['moves'] as string[];
