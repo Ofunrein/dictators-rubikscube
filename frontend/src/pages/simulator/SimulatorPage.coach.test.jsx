@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
+import { render, screen, waitFor, renderHook, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 
@@ -223,6 +223,112 @@ function renderSimulator() {
     </BrowserRouter>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Solver label tests — unit-test useSimulatorActions directly via renderHook.
+// vi.mock above stubs the module for SimulatorPage renders; we bypass it here
+// by importing the real implementation via vi.importActual inside each test.
+// ---------------------------------------------------------------------------
+describe('useSimulatorActions — solveStatusLabel', () => {
+  // Shared mock deps for renderHook
+  let mockProps;
+
+  beforeEach(() => {
+    const cubeStateMock = {
+      getState: vi.fn(() => ({
+        U: Array(9).fill('white'),
+        R: Array(9).fill('red'),
+        F: Array(9).fill('green'),
+        D: Array(9).fill('yellow'),
+        L: Array(9).fill('orange'),
+        B: Array(9).fill('blue'),
+      })),
+      setState: vi.fn(),
+    };
+
+    mockProps = {
+      cubeSize: 3,
+      setCubeSize: vi.fn(),
+      cubeStateObjRef: { current: cubeStateMock },
+      solveStackRef: { current: [] },
+      setDisplayState: vi.fn(),
+      enqueueMoves: vi.fn(),
+      clearPendingAnimation: vi.fn(),
+      setMoveHistory: vi.fn(),
+      setSolveDepth: vi.fn(),
+      clearSelectedStickerRef: { current: vi.fn() },
+      timer: {
+        timerRunning: false,
+        timerMs: 0,
+        startFreshTimer: vi.fn(),
+        stopTimer: vi.fn(),
+        resetTimer: vi.fn(),
+      },
+      queueActive: false,
+      bumpLayout: vi.fn(),
+      scrambleLength: 20,
+      moveHistory: [],
+    };
+  });
+
+  it('shows "Solving via Kociemba" for 3x3 with ≤10 history moves in production', async () => {
+    // Simulate production: DEV = false
+    vi.stubEnv('DEV', false);
+
+    // Arrange: 5-move history, production env (DEV = false)
+    const { solveCubeRemote: mockSolve } = await import('../../net/api');
+    let resolveRemote;
+    mockSolve.mockReturnValue(new Promise((res) => { resolveRemote = res; }));
+
+    const { useSimulatorActions: realHook } = await vi.importActual('./useSimulatorActions');
+
+    mockProps.solveStackRef.current = ['U', 'R', 'F', 'L', 'B'];  // 5 moves ≤ 10
+
+    const { result } = renderHook(() => realHook(mockProps));
+
+    // Trigger solve (in-flight — promise never resolves during assertion)
+    act(() => {
+      result.current.handleSolve();
+    });
+
+    // Label should update before/with setIsSolvingRemote(true)
+    await waitFor(() => {
+      expect(result.current.isSolvingRemote).toBe(true);
+    });
+
+    expect(result.current.solveStatusLabel).toBe('Solving via Kociemba');
+
+    // Cleanup: resolve the hanging promise
+    resolveRemote({ moves: [] });
+
+    vi.unstubAllEnvs();
+  });
+
+  it('shows "Solving via Eric C++ WASM" for 3x3 with >10 history moves', async () => {
+    const { solveCubeRemote: mockSolve } = await import('../../net/api');
+    let resolveRemote;
+    mockSolve.mockReturnValue(new Promise((res) => { resolveRemote = res; }));
+
+    const { useSimulatorActions: realHook } = await vi.importActual('./useSimulatorActions');
+
+    // 11 moves — exceeds KOCIEMBA_THRESHOLD
+    mockProps.solveStackRef.current = ['U','R','F','L','B','U','R','F','L','B','U'];
+
+    const { result } = renderHook(() => realHook(mockProps));
+
+    act(() => {
+      result.current.handleSolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSolvingRemote).toBe(true);
+    });
+
+    expect(result.current.solveStatusLabel).toBe('Solving via Eric C++ WASM');
+
+    resolveRemote({ moves: [] });
+  });
+});
 
 describe('AI Coach panel', () => {
   afterEach(() => {
