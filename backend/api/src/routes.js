@@ -170,24 +170,25 @@ async function handleSolveRoute(body, ctx) {
     return;
   }
 
-  if (Array.isArray(moveHistory) && moveHistory.length > 0) {
-    const moves = solveMovesFromHistory(moveHistory);
-    const replayedState = applyMoves(state, moves);
-    if (isSolvedState(replayedState)) {
-      ctx.sendJson(200, {
-        size,
-        moves,
-        estimatedMoveCount: moves.length,
-        state: replayedState,
-        solver: 'verified-history-inverse',
-        isMock: false,
-      });
-      return;
-    }
-  }
-
   try {
     if (size === 3) {
+      // Short scramble (≤10 moves): Kociemba for a near-optimal solution.
+      // Full scramble: WASM C++ beginner layer-by-layer for the step-by-step animation.
+      const KOCIEMBA_THRESHOLD = 10;
+      if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= KOCIEMBA_THRESHOLD) {
+        const kocPayload = await solveCubeStateWithPython(state, 3);
+        if (kocPayload.moves.length > 0) {
+          kocPayload.state = await replayValidatedMovesOrThrow({
+            state,
+            moves: kocPayload.moves,
+            size: 3,
+            context: '3x3 Kociemba solve',
+          });
+          ctx.sendJson(200, { size, ...kocPayload, isMock: false });
+          return;
+        }
+      }
+
       // 3x3: try the WASM move-list solver first (returns the actual moves)
       const solveMoves = await solveCubeMoveListWithWasm(state);
       if (solveMoves.length > 0) {

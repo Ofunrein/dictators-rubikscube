@@ -1,9 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 
-import { applyMoveToState, applyMoves, createSolvedState, generateScramble } from '../cube.js';
+import { applyMoveToState, applyMoves, createSolvedState, generateScramble, type CubeState } from '../cube.js';
 import { sendApiError } from '../lib/http.js';
 import { isSolvedState, solveStateFromHistory } from '../lib/solve.js';
+import { solveCubeStateWithPython } from '../solvers/pythonNxNSolver.js';
+import { solveCubeMoveListWithWasm } from '../solvers/wasmSolver.js';
 import { validateMoveApplyRequest, validateScrambleRequest, validateSolveRequest } from '../validation.js';
+
+// Short scrambles get Kociemba (near-optimal); longer ones get the WASM
+// beginner layer-by-layer method which shows the full step-by-step animation.
+const KOCIEMBA_THRESHOLD = 10;
 
 export default async function cubeRoutes(app: FastifyInstance): Promise<void> {
   app.get('/state/solved', async (_request, reply) => {
@@ -45,18 +51,48 @@ export default async function cubeRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const { state, moveHistory } = validation.value;
-    const alreadySolved = isSolvedState(state);
 
-    if (alreadySolved) {
-      reply.send({
-        moves: [],
-        estimatedMoveCount: 0,
-        isMock: false,
-        note: 'Cube is already solved; returning an empty solution.',
-      });
+    if (isSolvedState(state)) {
+      reply.send({ moves: [], estimatedMoveCount: 0, isMock: false });
       return;
     }
 
+    // Short scramble: use Kociemba (near-optimal, returns fewer moves)
+    if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= KOCIEMBA_THRESHOLD) {
+      try {
+        const payload = await solveCubeStateWithPython(state, 3) as Record<string, unknown>;
+        const moves = payload['moves'] as string[];
+        if (Array.isArray(moves) && moves.length > 0) {
+          reply.send({
+            moves,
+            estimatedMoveCount: moves.length,
+            isMock: false,
+            solver: 'python-kociemba-3',
+          });
+          return;
+        }
+      } catch {
+        // fall through to WASM
+      }
+    }
+
+    // Full scramble or no moveHistory: use WASM C++ layer-by-layer solver
+    try {
+      const wasmMoves = await solveCubeMoveListWithWasm(state as CubeState);
+      if (wasmMoves.length > 0) {
+        reply.send({
+          moves: wasmMoves,
+          estimatedMoveCount: wasmMoves.length,
+          isMock: false,
+          solver: 'eric-cpp-wasm-moves',
+        });
+        return;
+      }
+    } catch {
+      // fall through
+    }
+
+    // Last resort: history inversion (no animation, but correct)
     if (Array.isArray(moveHistory) && moveHistory.length > 0) {
       const solvedMoves = solveStateFromHistory(state, moveHistory);
       if (solvedMoves) {
@@ -64,7 +100,7 @@ export default async function cubeRoutes(app: FastifyInstance): Promise<void> {
           moves: solvedMoves,
           estimatedMoveCount: solvedMoves.length,
           isMock: false,
-          note: 'Solved by inverting verified session move history.',
+          solver: 'verified-history-inverse',
         });
         return;
       }
@@ -74,7 +110,7 @@ export default async function cubeRoutes(app: FastifyInstance): Promise<void> {
       moves: [],
       estimatedMoveCount: 0,
       isMock: false,
-      note: 'Unable to derive a verified solution from state alone. Include moveHistory for deterministic solve reconstruction.',
+      note: 'Unable to solve. Try sending moveHistory.',
     });
   });
 }
