@@ -19,7 +19,7 @@
  *   in afterEach restores the original to avoid cross-test pollution.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createSolvedState } from '../cube/cubeModel.js';
 import { solveCubeRemote } from './api.js';
@@ -57,12 +57,11 @@ describe('solveCubeRemote', () => {
   });
 
   describe('endpoint routing for size=3', () => {
-    beforeEach(() => {
+    beforeAll(() => {
       Object.assign(import.meta.env, { DEV: false });
     });
-    afterEach(() => {
-      Object.assign(import.meta.env, { DEV: true }); // restore
-      vi.unstubAllGlobals();
+    afterAll(() => {
+      Object.assign(import.meta.env, { DEV: true });
     });
 
     it('routes to /api/nxn-solve on production when size=3 and history.length=5 (≤10)', async () => {
@@ -81,6 +80,42 @@ describe('solveCubeRemote', () => {
 
       const url = fetchMock.mock.calls[0][0];
       expect(url).toBe('/api/nxn-solve');
+    });
+
+    it('routes to /api/nxn-solve on production when size=3 and history.length=10 (exactly at threshold)', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          moves: ["R'"],
+          state: createSolvedState(3),
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const history = Array.from({ length: 10 }, (_, i) => (i % 2 === 0 ? 'R' : "R'"));
+      await solveCubeRemote(createSolvedState(3), 'beginner', 3, history);
+
+      const url = fetchMock.mock.calls[0][0];
+      expect(url).toBe('/api/nxn-solve');
+    });
+
+    it('routes to /api/v1/cube/solve on production when size=3 and history.length=11 (one over threshold)', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          moves: ["R'"],
+          state: createSolvedState(3),
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const history = Array.from({ length: 11 }, (_, i) => (i % 2 === 0 ? 'R' : "R'"));
+      await solveCubeRemote(createSolvedState(3), 'beginner', 3, history);
+
+      const url = fetchMock.mock.calls[0][0];
+      expect(url).toBe('/api/v1/cube/solve');
     });
 
     it('routes to /api/v1/cube/solve on production when size=3 and history.length=20 (>10)', async () => {
