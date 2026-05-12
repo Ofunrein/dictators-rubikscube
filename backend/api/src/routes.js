@@ -176,20 +176,16 @@ async function handleSolveRoute(body, ctx) {
       // Full scramble: WASM C++ beginner layer-by-layer for the step-by-step animation.
       const KOCIEMBA_THRESHOLD = 10;
       if (Array.isArray(moveHistory) && moveHistory.length > 0 && moveHistory.length <= KOCIEMBA_THRESHOLD) {
-        try {
-          const kocPayload = await solveCubeStateWithPython(state, 3);
-          if (kocPayload.moves.length > 0) {
-            kocPayload.state = await replayValidatedMovesOrThrow({
-              state,
-              moves: kocPayload.moves,
-              size: 3,
-              context: '3x3 Kociemba solve',
-            });
-            ctx.sendJson(200, { size, ...kocPayload, isMock: false });
-            return;
-          }
-        } catch {
-          // Python solver unavailable (e.g. Vercel); fall through to WASM
+        const kocPayload = await solveCubeStateWithPython(state, 3);
+        if (kocPayload.moves.length > 0) {
+          kocPayload.state = await replayValidatedMovesOrThrow({
+            state,
+            moves: kocPayload.moves,
+            size: 3,
+            context: '3x3 Kociemba solve',
+          });
+          ctx.sendJson(200, { size, ...kocPayload, isMock: false });
+          return;
         }
       }
 
