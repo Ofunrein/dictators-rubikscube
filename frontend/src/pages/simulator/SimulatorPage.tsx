@@ -81,7 +81,6 @@ const SimulatorPage = () => {
   // Ref not state: the animation loop reads this on every frame; a ref gives a stable
   // identity so the loop never closes over a stale snapshot and never triggers re-renders.
   const cubeStateObjRef = useRef(new CubeState(3));
-  // eslint-disable-next-line react-hooks/refs
   // Separate from cubeStateObjRef: mutating a ref doesn't schedule a re-render, so we
   // mirror the logical state here — React diffs displayState and repaints the UI.
   const [displayState, setDisplayState] = useState(() => cubeStateObjRef.current.getState());
@@ -189,7 +188,6 @@ const SimulatorPage = () => {
   // Now that controls is initialized, wire up the ref so actions can clear sticker selection.
   // Done here (not inside a hook) because useCubeControls must run first to produce
   // clearSelectedSticker; assigning the ref afterward breaks no rules — it's not a side effect.
-  // eslint-disable-next-line react-hooks/refs
   clearSelectedStickerRef.current = controls.clearSelectedSticker;
 
   // Viewport breakpoints — raw pixel thresholds rather than Tailwind classes because
@@ -200,11 +198,9 @@ const SimulatorPage = () => {
   // Without the linger the badge disappears the instant isSolvingRemote flips — too fast
   // for the user to register that a solve just ran; 500ms is barely perceptible but enough.
   useEffect(() => {
-    if (actions.isSolvingRemote) {
-      setShowSolverLabel(true);
-      return;
-    }
-    const t = setTimeout(() => setShowSolverLabel(false), 500);
+    // Both branches use setTimeout (0ms for immediate, 500ms for linger) so setState
+    // is never called synchronously inside the effect body — avoids cascading renders.
+    const t = setTimeout(() => setShowSolverLabel(actions.isSolvingRemote), actions.isSolvingRemote ? 0 : 500);
     return () => clearTimeout(t);
   }, [actions.isSolvingRemote]);
   const isTabletViewport = viewportSize.width >= 768 && viewportSize.width < 1280;
