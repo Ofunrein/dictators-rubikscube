@@ -1,15 +1,18 @@
 """
-nxn-solve.py — Vercel Python serverless function for 2x2 cube solving
+nxn-solve.py — Vercel Python serverless function for 2x2 and 3x3 cube solving
 
-Handles only 2x2 solving. 3x3 goes through the Node.js WASM path
+Handles 2x2 solving and 3x3 short-scramble solving (≤10 moves via kociemba).
+Long 3x3 scrambles and local dev go through the Node.js WASM path
 (api/v1/[...path].js → wasmSolver.js → Eric's C++ solver).
 4x4 is not supported on Vercel — lookup tables (~400 MB) exceed /tmp limits.
 
 Invoked directly at POST /api/nxn-solve by the frontend (api.js routes
-size=2 here). The old vercel.json rewrite that blanket-redirected all
-/api/v1/cube/solve requests here was removed to restore 3x3 WASM solving.
+size=2 here, and size=3 with short history here). The old vercel.json rewrite
+that blanket-redirected all /api/v1/cube/solve requests here was removed to
+restore 3x3 WASM solving for long scrambles.
 
   2x2 → rubikscubennnsolver (pre-built wheel at api/wheels/)
+  3x3 → kociemba (under-10-move path only)
   4x4 → NotImplementedError (returns 501)
 
 Local dev uses the Node.js path for all sizes:
@@ -106,7 +109,10 @@ def flatten_state_for_kociemba(state):
 
 
 def solve_3x3(state):
-    import kociemba
+    try:
+        import kociemba
+    except ImportError:
+        raise NotImplementedError('kociemba is not installed in this environment.')
     flat = flatten_state_for_kociemba(state)
     solution_str = kociemba.solve(flat)
     moves = [m for m in solution_str.split() if m]
@@ -163,11 +169,7 @@ def handle_solve(body):
         raise ValueError(f"Unsupported cube size: {size}. Must be 2, 3, or 4.")
 
     if size == 3:
-        # RubiksCube333 requires the kociemba CLI binary which is unavailable on Vercel.
-        # All 3x3 solves are handled by the WASM path at /api/v1/cube/solve instead.
-        raise NotImplementedError(
-            '3x3 solving via Python is not available — use /api/v1/cube/solve (WASM).'
-        )
+        return solve_3x3(state)
     if size == 4:
         # 4x4 lookup tables are hundreds of MB — too large for Vercel's /tmp.
         raise NotImplementedError(

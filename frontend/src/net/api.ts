@@ -194,9 +194,12 @@ export async function solveCubeRemote(
   validateCubeState(state, 'state', normalizedSize);
 
   const isLocalDev = !!import.meta.env['DEV'];
-  // 3x3 always uses WASM via /api/v1/cube/solve — RubiksCube333 requires the kociemba
-  // CLI binary which is unavailable on Vercel. Only 2x2 routes to the Python serverless.
-  const endpoint = (!isLocalDev && normalizedSize === 2)
+  const KOCIEMBA_THRESHOLD = 10;
+  const hasSliceMoves = Array.isArray(history) && history.some((m) => /^[MESmes]/.test(m));
+  const isShortHistory = Array.isArray(history) && history.length > 0 && history.length <= KOCIEMBA_THRESHOLD && !hasSliceMoves;
+  // Short 3x3 scrambles (≤10 moves, no slice moves) use kociemba via the Python serverless.
+  // Long scrambles and local dev fall back to WASM via /api/v1/cube/solve.
+  const endpoint = (!isLocalDev && (normalizedSize === 2 || (normalizedSize === 3 && isShortHistory)))
     ? '/api/nxn-solve'
     : '/api/v1/cube/solve';
 

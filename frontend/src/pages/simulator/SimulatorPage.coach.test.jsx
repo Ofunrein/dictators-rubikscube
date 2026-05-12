@@ -271,8 +271,8 @@ describe('useSimulatorActions — solveStatusLabel', () => {
     };
   });
 
-  it('shows "Solving via Eric C++ WASM" for 3x3 regardless of history length', async () => {
-    // 3x3 always uses WASM — RubiksCube333 requires kociemba CLI unavailable on Vercel
+  it('shows "Solving 3x3 via Kociemba" for 3x3 with short history (≤10 moves) in production', async () => {
+    // Short 3x3 scrambles use the kociemba path via /api/nxn-solve on Vercel
     vi.stubEnv('DEV', false);
 
     const { solveCubeRemote: mockSolve } = await import('../../net/api');
@@ -293,7 +293,7 @@ describe('useSimulatorActions — solveStatusLabel', () => {
       expect(result.current.isSolvingRemote).toBe(true);
     });
 
-    expect(result.current.solveStatusLabel).toBe('Solving via Eric C++ WASM');
+    expect(result.current.solveStatusLabel).toBe('Solving 3x3 via Kociemba');
 
     resolveRemote({ moves: [] });
 

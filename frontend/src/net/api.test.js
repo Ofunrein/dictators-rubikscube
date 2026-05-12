@@ -64,7 +64,7 @@ describe('solveCubeRemote', () => {
       Object.assign(import.meta.env, { DEV: true });
     });
 
-    it('routes to /api/v1/cube/solve on production when size=3 and history.length=5', async () => {
+    it('routes to /api/nxn-solve on production when size=3 and history.length=5', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
@@ -79,10 +79,10 @@ describe('solveCubeRemote', () => {
       await solveCubeRemote(createSolvedState(3), 'beginner', 3, history);
 
       const url = fetchMock.mock.calls[0][0];
-      expect(url).toBe('/api/v1/cube/solve');
+      expect(url).toBe('/api/nxn-solve');
     });
 
-    it('routes to /api/v1/cube/solve on production when size=3 and history.length=10', async () => {
+    it('routes to /api/nxn-solve on production when size=3 and history.length=10', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
@@ -97,7 +97,7 @@ describe('solveCubeRemote', () => {
       await solveCubeRemote(createSolvedState(3), 'beginner', 3, history);
 
       const url = fetchMock.mock.calls[0][0];
-      expect(url).toBe('/api/v1/cube/solve');
+      expect(url).toBe('/api/nxn-solve');
     });
 
     it('routes to /api/v1/cube/solve on production when size=3 and history.length=11 (one over threshold)', async () => {
