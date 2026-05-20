@@ -13,24 +13,13 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Missing Supabase env vars' });
   }
 
-  const resp = await fetch(`${url}/rest/v1/keepalive?id=eq.1`, {
-    method: 'PATCH',
+  const resp = await fetch(`${url}/rest/v1/users?limit=0`, {
+    method: 'GET',
     headers: {
       apikey: key,
       authorization: `Bearer ${key}`,
-      'content-type': 'application/json',
-      prefer: 'return=minimal',
     },
-    body: JSON.stringify({
-      touched_at: new Date().toISOString(),
-      source: 'vercel-cron',
-    }),
   });
 
-  if (!resp.ok) {
-    const text = await resp.text();
-    return res.status(502).json({ error: text });
-  }
-
-  return res.status(200).json({ ok: true });
+  return res.status(200).json({ ok: true, status: resp.status });
 }
