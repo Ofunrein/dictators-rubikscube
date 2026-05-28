@@ -1,4 +1,4 @@
-# The Dictators — 3D Rubik's Cube Platfor
+# The Dictators — 3D Rubik's Cube Platform
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)
