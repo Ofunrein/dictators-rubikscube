@@ -95,14 +95,20 @@ export function buildApp(options: BuildAppOptions = {}) {
       return;
     }
 
-    // Check if this is a rate-limit error by looking at the error structure
+    // @fastify/rate-limit has emitted both a status-bearing Fastify error and
+    // the custom response object across releases. Handle either shape so the
+    // global handler never turns an intentional 429 into a 500.
     const errorObj = error as unknown as Record<string, unknown>;
-    if (errorObj.error && typeof errorObj.error === 'object' && 'code' in errorObj.error) {
-      const errCode = (errorObj.error as Record<string, unknown>).code;
-      if (errCode === 'RATE_LIMITED') {
+    const isRateLimited = errorObj.statusCode === 429
+      || (errorObj.error && typeof errorObj.error === 'object'
+        && (errorObj.error as Record<string, unknown>).code === 'RATE_LIMITED');
+    if (isRateLimited) {
+      if (errorObj.error && typeof errorObj.error === 'object' && 'code' in errorObj.error) {
         reply.status(429).send(error);
-        return;
+      } else {
+        sendApiError(reply, 429, 'RATE_LIMITED', 'Rate limit exceeded.');
       }
+      return;
     }
 
     // Preserve status codes already set (e.g., from other plugins) if they're 4xx
